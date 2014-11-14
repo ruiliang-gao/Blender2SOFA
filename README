@@ -1,5 +1,3 @@
-== Blender to SOFA export plugin
+# Blender to SOFA export plugin #
 
 A plugin that can be easily installed into Blender from "File" -> "User Preferences..." -> "Addons" -> "Install From File..." and then select export2sofa.py
-
-
