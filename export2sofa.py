@@ -32,7 +32,7 @@ def write_some_data(context, filepath, use_some_setting):
             oglmodel.set("rotation", vector_to_string(i.rotation_euler))
     
             i.select = True
-            bpy.ops.export_scene.obj(filepath = os.path.join(dir, i.name + ".obj"), use_selection=True, axis_forward="-Z", axis_up="Y")
+            bpy.ops.export_scene.obj(filepath = os.path.join(dir, i.name + ".obj"), use_selection=True, axis_forward="Y", axis_up="Z")
             i.select = False
             
             root.append(o)
