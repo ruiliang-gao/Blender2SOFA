@@ -1,9 +1,21 @@
+bl_info = { 
+    'name': "SOFA Export plugin",
+    'author': "Saleh Dindar, Di Xie",
+    'version': (0, 0,  0),
+    'blender': (2, 69, 0),
+    'location': "",
+    'warning': "",
+    'description': "Export Blender scenes into SOFA scene files",
+    'wiki_url': "https://bitbucket.org/salehqt/blender2sofa/wiki/",
+    'tracker_url': "https://bitbucket.org/salehqt/blender2sofa/",
+    'category': 'Mesh'
+}
+
 import bpy
 import xml.etree.ElementTree as ET
 import os
 from mathutils import Vector
 
-C = bpy.context
 
 def vector_to_string(v):
     t = ""
@@ -20,7 +32,7 @@ def write_some_data(context, filepath, use_some_setting):
     f = open(filepath, 'wb')
     root= ET.Element("Node")
     root.set("name", "root")
-    for i in C.scene.objects: 
+    for i in bpy.context.scene.objects: 
         if i.type == "MESH":
             o =  ET.Element("Node")
             o.set("name", i.name)
@@ -109,6 +121,3 @@ def unregister():
 
 if __name__ == "__main__":
     register()
-
-    # test call
-    bpy.ops.export.tosofa('INVOKE_DEFAULT')
