@@ -15,7 +15,6 @@ import bpy
 import xml.etree.ElementTree as ET
 import os
 from mathutils import Vector
-from tempfile import mktemp
 
 def vector_to_string(v):
     t = ""
@@ -86,15 +85,11 @@ def has_modifier(o,name_of_modifier):
             return True    
     return False
 
-def write_some_data(C, filepath, use_some_setting):
-    dir = os.path.dirname(filepath)
-    
+def exportScene(scene,dir):
     bpy.ops.object.select_all(False)
-    
-    f = open(filepath, 'wb')
     root= ET.Element("Node")
     root.set("name", "root")
-    root.set("gravity",vector_to_string(C.scene.gravity))
+    root.set("gravity",vector_to_string(scene.gravity))
     # for late alarmDistance="0.1"  contactDistance="0.005"  attractDistance="0.01"
     root.append(ET.Element("DefaultPipeline"))
     root.append(ET.Element("BruteForceDetection"))
@@ -103,7 +98,7 @@ def write_some_data(C, filepath, use_some_setting):
     
     root.append(ET.Element("LightManager"))
     root.append(ET.Element("OglSceneFrame"))
-    for o in C.scene.objects: 
+    for o in scene.objects: 
         if o.type == "MESH":
             meshFN = o.name + ".obj"
             o.select = True
@@ -132,11 +127,14 @@ def write_some_data(C, filepath, use_some_setting):
                 t.set("position", vector_to_string(o.location))
                 t.set("color", vector_to_string(o.data.color))
                 root.append(t)
-                    
+    return root    
+
+def exportSceneToFile(C, filepath):
+    dir = os.path.dirname(filepath)
+    
+    root = exportScene(C.scene, dir)                    
             
-    ET.ElementTree(root).write(f)
-    f.close()
-    print("export finished")
+    ET.ElementTree(root).write(filepath)
 
     return {'FINISHED'}
 
@@ -152,7 +150,7 @@ from bpy.types import Operator
 class ExportToSofa(Operator, ExportHelper):
     """Export to Sofa XML scene format"""
     bl_idname = "export.tosofa"  # important since its how bpy.ops.import_test.some_data is constructed
-    bl_label = "Export To Sofa"
+    bl_label = "Export To Sofa XML"
 
     # ExportHelper mixin class uses this
     filename_ext = ".scn"
@@ -162,33 +160,19 @@ class ExportToSofa(Operator, ExportHelper):
             options={'HIDDEN'},
             )
 
-    # List of operator properties, the attributes will be assigned
-    # to the class instance from the operator settings before calling.
-    use_setting = BoolProperty(
-            name="Example Boolean",
-            description="Example Tooltip",
-            default=True,
-            )
 
-    type = EnumProperty(
-            name="Example Enum",
-            description="Choose between two items",
-            items=(('OPT_A', "First Option", "Description one"),
-                   ('OPT_B', "Second Option", "Description two")),
-            default='OPT_A',
-            )
-
+    @classmethod
+    def poll(cls, context):
+        return context.scene is not None
+ 
     def execute(self, context):
-        return write_some_data(context, self.filepath, self.use_setting)
+        return exportSceneToFile(context, self.filepath)
 
 
-# Only needed if you want to add into a dynamic menu
-def menu_func_export(self, context):
-    self.layout.operator(ExportToSofa.bl_idname, text="To Sofa XML Scene")
 
 
 from subprocess import Popen
-
+from tempfile import mktemp
 
 class RunSofaOperator(bpy.types.Operator):
     bl_idname = "scene.runsofa"
@@ -200,10 +184,16 @@ class RunSofaOperator(bpy.types.Operator):
 
     def execute(self, context):
         fn = mktemp(suffix='.scn')
-        write_some_data(context, fn, True)
+        exportSceneToFile(context, fn)
         Popen(fn,shell=True)
         return {'FINISHED'}
 
+
+############## Register/Unregister add-on ###########################################
+
+# Only needed if you want to add into a dynamic menu
+def menu_func_export(self, context):
+    self.layout.operator(ExportToSofa.bl_idname, text="To Sofa XML Scene")
 
 addon_keymaps = []
 
@@ -217,7 +207,6 @@ def register():
     wm = bpy.context.window_manager
     km = wm.keyconfigs.addon.keymaps.new(name='Object Mode', space_type='EMPTY')
 
-    kmi = km.keymap_items.new(RunSofaOperator.bl_idname, 'F5', 'PRESS', ctrl=True,shift=True)
     kmi = km.keymap_items.new(RunSofaOperator.bl_idname, 'F5', 'PRESS', ctrl=True)
     addon_keymaps.append((km, kmi))
     #kmi.properties.total = 4
@@ -237,7 +226,8 @@ def unregister():
     
 if __name__ == "__main__":
     register()
-    bpy.ops.export.tosofa('INVOKE_DEFAULT')
+    #bpy.ops.export.tosofa('INVOKE_DEFAULT')
+
 
 
 

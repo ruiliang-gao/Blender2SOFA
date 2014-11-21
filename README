@@ -1,3 +1,21 @@
 # Blender to SOFA export plugin #
 
-A plugin that can be easily installed into Blender from "File" -> "User Preferences..." -> "Addons" -> "Install From File..." and then select export2sofa.py
+## Install
+1. Open Blender
+2. Go to user preferences ("File" -> "User Preferences...")
+3. In "Addons" tab, click on "Install From File..." button at the bottom of window
+4. Select export2sofa.py in the file browser
+5. Click the checkbox next to the name of the addon to enable it
+
+## Usage
+To export a Sofa readable .SCN file, go to "File" -> "Export" -> "Export To Sofa", and then in the save dialog
+specify the name of your .SCN file
+
+To launch Sofa simulation directly from Blender, hit Ctrl-F5
+
+## Supported functionality
+Objects with SoftBody physics turned on will be exported as deformable objects with SparseGridTopology in Sofa.
+
+Objects with Collision physics turned on will be exported as obstacles in Sofa
+
+All other mesh objects are exported as visible objects in Sofa with no physics simulation
