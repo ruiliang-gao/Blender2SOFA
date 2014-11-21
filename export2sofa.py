@@ -28,19 +28,19 @@ def createMechanicalObject(o):
     t = ET.Element("MechanicalObject",template="Vec3d",name="MO")
     t.set("translation", vector_to_string(o.location))
     t.set("rotation", vector_to_string(o.rotation_euler))
-    t.set("scale", vector_to_string(o.scale))
+    t.set("scale3d", vector_to_string(o.scale))
     return t
     
-def exportSoftBody(o):
+def exportSoftBody(o, scn):
     t = ET.Element("Node",name=o.name)
     t.append(ET.Element("EulerImplicitSolver"))
     t.append(ET.Element("CGLinearSolver",template="GraphScattered"))
-    mo = createMechanicalObject(o)
-    t.append(mo)
+    
+    t.append(createMechanicalObject(o))
     t.append(ET.Element("UniformMass",template="Vec3d"))
  
     v = ET.Element("Node",name="Visual")
-    og = exportVisual(o, name = 'Visual', with_transform = False)
+    og = exportVisual(o, scn,name = 'Visual', with_transform = False)
     og.set('template', 'ExtVec3f')
     v.append(og)
     v.append(ET.Element("BarycentricMapping",template="Vec3d,ExtVec3f",object1="../MO",object2="Visual"))
@@ -53,7 +53,7 @@ def exportSoftBody(o):
 
     
     c = ET.Element("Node",name="Collision")    
-    c.append(ET.Element("MeshTopology",position=og.get('position'),quads="@../Visual/Visual.quads",triangles="@../Visual/Visual.triangles"))
+    c.append(exportTopology(o,scn))
     c.append(ET.Element("MechanicalObject",template="Vec3d",name="MOC"))
     c.extend([ ET.Element("PointModel"), ET.Element("LineModel"), ET.Element("TriangleModel") ])
     c.append(ET.Element("BarycentricMapping",template="Vec3d,Vec3d",input="@../",output="@./"))
@@ -61,10 +61,10 @@ def exportSoftBody(o):
     
     return t
   
-def exportObstacle(o):
+def exportObstacle(o, scn):
     t = ET.Element("Node",name=o.name)
-    t.append(exportVisual(o, name = 'Visual', with_transform = False))
-    t.append(ET.Element("MeshTopology",position="@Visual.position",quads="@Visual.quads",triangles="@Visual.triangles"))
+    t.append(exportVisual(o, scn, name = 'Visual', with_transform = False))
+    t.append(exportTopology(o,scn))
     t.append(createMechanicalObject(o))
     t.extend([ ET.Element("PointModel",moving='0',simulated='0')
         , ET.Element("LineModel",moving='0',simulated='0')
@@ -74,8 +74,27 @@ def exportObstacle(o):
     
 from array import array
     
-def exportVisual(o, name = None,with_transform = True):
-    m = o.data
+def exportTopology(o,scn):
+    if o.type == 'MESH':
+        m = o.data
+    else:
+        m = o.to_mesh(scn, True, 'PREVIEW')
+    
+    t = ET.Element("MeshTopology",name='Topology')
+    position = [ vector_to_string(v.co) for v in m.vertices]
+    triangles = [ vector_to_string(f.vertices) for f in m.polygons if len(f.vertices) == 3 ]
+    quads     = [ vector_to_string(f.vertices) for f in m.polygons if len(f.vertices) == 4 ]
+    t.set("position", ' '.join(position))
+    t.set("triangles", ' '.join(triangles))
+    t.set("quads", ' '.join(quads))    
+    return t    
+    
+def exportVisual(o, scn, name = None,with_transform = True):
+    if o.type == 'MESH':
+        m = o.data
+    else:
+        m = o.to_mesh(scn, True, 'RENDER')
+    
     o.rotation_mode = "ZYX"
     
     t = ET.Element("OglModel",name=name or o.name)
@@ -83,7 +102,7 @@ def exportVisual(o, name = None,with_transform = True):
     if with_transform :
         t.set("translation", vector_to_string(o.location))
         t.set("rotation", vector_to_string(o.rotation_euler))
-        t.set("scale", vector_to_string(o.scale))
+        t.set("scale3d", vector_to_string(o.scale))
 
     position = [ vector_to_string(v.co) for v in m.vertices]
     t.set("position", ' '.join(position))
@@ -129,7 +148,6 @@ def has_modifier(o,name_of_modifier):
     return False
 
 def exportScene(scene,dir):
-    bpy.ops.object.select_all(False)
     root= ET.Element("Node")
     root.set("name", "root")
     root.set("gravity",vector_to_string(scene.gravity))
@@ -145,29 +163,31 @@ def exportScene(scene,dir):
     #root.append(ET.Element("LightManager"))
     root.append(ET.Element("OglSceneFrame"))
     for o in scene.objects: 
-        if o.type == "MESH":
-            if has_modifier(o,'SOFT_BODY'):
-                t = exportSoftBody(o)
-            elif has_modifier(o,'COLLISION'):
-                t = exportObstacle(o)
-            else:
-                t = exportVisual(o)
-            
-            root.append(t) 
-        elif o.type == "LAMP":
-            if o.data.type == 'SPOT':
-                t = ET.Element("SpotLight", name=o.name)
-                o.rotation_mode = "QUATERNION"
-                t.set("position", vector_to_string(o.location))
-                t.set("color", vector_to_string(o.data.color))
-                direction = o.rotation_quaternion * Vector((0,0,-1))
-                t.set("direction",vector_to_string(direction))
-                root.append(t)
-            elif o.data.type == 'POINT':
-                t = ET.Element("PositionalLight", name=o.name)
-                t.set("position", vector_to_string(o.location))
-                t.set("color", vector_to_string(o.data.color))
-                root.append(t)
+        if not o.hide_render:
+            annotated_type = o.get('annotated_type')
+            if o.type == 'MESH' or o.type == 'SURFACE':
+                if has_modifier(o,'SOFT_BODY') or annotated_type == 'SOFT_BODY':
+                    t = exportSoftBody(o, scene)
+                elif has_modifier(o,'COLLISION') or annotated_type == 'COLLISION':
+                    t = exportObstacle(o, scene)
+                else:
+                    t = exportVisual(o, scene)
+                
+                root.append(t) 
+            elif o.type == "LAMP":
+                if o.data.type == 'SPOT':
+                    t = ET.Element("SpotLight", name=o.name)
+                    o.rotation_mode = "QUATERNION"
+                    t.set("position", vector_to_string(o.location))
+                    t.set("color", vector_to_string(o.data.color))
+                    direction = o.rotation_quaternion * Vector((0,0,-1))
+                    t.set("direction",vector_to_string(direction))
+                    root.append(t)
+                elif o.data.type == 'POINT':
+                    t = ET.Element("PositionalLight", name=o.name)
+                    t.set("position", vector_to_string(o.location))
+                    t.set("color", vector_to_string(o.data.color))
+                    root.append(t)
     return root    
 
 def exportSceneToFile(C, filepath):
@@ -269,6 +289,7 @@ if __name__ == "__main__":
     register()
     #bpy.ops.export.tosofa('INVOKE_DEFAULT')
     bpy.ops.scene.runsofa('INVOKE_DEFAULT')
+
 
 
 
