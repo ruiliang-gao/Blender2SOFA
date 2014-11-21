@@ -27,7 +27,7 @@ def createMechanicalObject(o):
     o.rotation_mode = "ZYX"
     t = ET.Element("MechanicalObject",template="Vec3d",name="MO")
     t.set("translation", vector_to_string(o.location))
-    #t.set("rotation", vector_to_string(o.rotation_euler))
+    t.set("rotation", vector_to_string(o.rotation_euler))
     t.set("scale", vector_to_string(o.scale))
     return t
     
@@ -35,8 +35,10 @@ def exportSoftBody(o):
     t = ET.Element("Node",name=o.name)
     t.append(ET.Element("EulerImplicitSolver"))
     t.append(ET.Element("CGLinearSolver",template="GraphScattered"))
-    t.append(createMechanicalObject(o))
+    mo = createMechanicalObject(o)
+    t.append(mo)
     t.append(ET.Element("UniformMass",template="Vec3d"))
+ 
     v = ET.Element("Node",name="Visual")
     og = exportVisual(o, name = 'Visual', with_transform = False)
     og.set('template', 'ExtVec3f')
@@ -51,7 +53,7 @@ def exportSoftBody(o):
 
     
     c = ET.Element("Node",name="Collision")    
-    c.append(ET.Element("MeshTopology",position="@../Visual/Visual.position",quads="@../Visual/Visual.quads",triangles="@../Visual/Visual.triangles",translation=vector_to_string(o.location)))
+    c.append(ET.Element("MeshTopology",position=og.get('position'),quads="@../Visual/Visual.quads",triangles="@../Visual/Visual.triangles"))
     c.append(ET.Element("MechanicalObject",template="Vec3d",name="MOC"))
     c.extend([ ET.Element("PointModel"), ET.Element("LineModel"), ET.Element("TriangleModel") ])
     c.append(ET.Element("BarycentricMapping",template="Vec3d,Vec3d",input="@../",output="@./"))
