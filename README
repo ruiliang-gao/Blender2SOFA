@@ -19,3 +19,13 @@ Objects with SoftBody physics turned on will be exported as deformable objects w
 Objects with Collision physics turned on will be exported as obstacles in Sofa
 
 All other mesh objects are exported as visible objects in Sofa with no physics simulation
+
+
+## Specifying SOFA objects in Blender
+
+### Custom Properties
+Scene: 
+1. displayFlag: Controls what is displayed in SOFA simulation, same syntax as SOFA displayFlags on VisualStyle tag
+2. SofaComponent: if non-zero, the scene is exported as a file that can be included in another SOFA scene
+3. TYPE: override type for exporting to SOFA
+

@@ -15,6 +15,7 @@ import bpy
 import xml.etree.ElementTree as ET
 import os
 from mathutils import Vector
+from math import degrees
 
 def vector_to_string(v):
     t = ""
@@ -23,11 +24,14 @@ def vector_to_string(v):
     return t
 
 
+def vector_degrees(v):
+    return Vector(map(degrees,v))
+
 def createMechanicalObject(o):
     o.rotation_mode = "ZYX"
     t = ET.Element("MechanicalObject",template="Vec3d",name="MO")
     t.set("translation", vector_to_string(o.location))
-    t.set("rotation", vector_to_string(o.rotation_euler))
+    t.set("rotation", vector_to_string(vector_degrees(o.rotation_euler)))
     t.set("scale3d", vector_to_string(o.scale))
     return t
     
@@ -63,15 +67,24 @@ def exportSoftBody(o, scn):
   
 def exportObstacle(o, scn):
     t = ET.Element("Node",name=o.name)
-    t.append(exportVisual(o, scn, name = 'Visual', with_transform = False))
+    t.append(exportVisual(o, scn, name = 'Visual', with_transform = True))
     t.append(exportTopology(o,scn))
     t.append(createMechanicalObject(o))
     t.extend([ ET.Element("PointModel",moving='0',simulated='0')
         , ET.Element("LineModel",moving='0',simulated='0')
-        , ET.Element("TriangleModel",moving='0',simulated='0') ])
-    t.append(ET.Element("IdentityMapping",object1="MO",object2="Visual"))
+        , ET.Element("TTriangleModel",moving='0',simulated='0') ])
+    t.append(ET.Element("BarycentricMapping",template="Vec3d,ExtVec3f",object1="MO",object2="Visual"))
     return t
     
+def exportRigid(o, scn):
+    t = ET.Element("Node",name=o.name)
+    t.append(exportVisual(o, scn, name = 'Visual', with_transform = False))
+    mo = createMechanicalObject(o)
+    mo.set('template','Rigid')
+    t.append(mo)
+    t.append(ET.Element("RigidMapping",template='Rigid,ExtVec3f',object1="MO",object2="Visual"))
+    return t
+
 from array import array
     
 def exportTopology(o,scn):
@@ -84,6 +97,7 @@ def exportTopology(o,scn):
     position = [ vector_to_string(v.co) for v in m.vertices]
     triangles = [ vector_to_string(f.vertices) for f in m.polygons if len(f.vertices) == 3 ]
     quads     = [ vector_to_string(f.vertices) for f in m.polygons if len(f.vertices) == 4 ]
+
     t.set("position", ' '.join(position))
     t.set("triangles", ' '.join(triangles))
     t.set("quads", ' '.join(quads))    
@@ -101,7 +115,7 @@ def exportVisual(o, scn, name = None,with_transform = True):
     
     if with_transform :
         t.set("translation", vector_to_string(o.location))
-        t.set("rotation", vector_to_string(o.rotation_euler))
+        t.set("rotation", vector_to_string(vector_degrees(o.rotation_euler)))
         t.set("scale3d", vector_to_string(o.scale))
 
     position = [ vector_to_string(v.co) for v in m.vertices]
@@ -150,17 +164,24 @@ def has_modifier(o,name_of_modifier):
 def exportScene(scene,dir):
     root= ET.Element("Node")
     root.set("name", "root")
-    root.set("gravity",vector_to_string(scene.gravity))
+    if scene.use_gravity :
+        root.set("gravity",vector_to_string(scene.gravity))
+    else:
+        root.set("gravity","0 0 0")
     
     if scene.get('displayFlags') != None :
         root.append(ET.Element("VisualStyle",displayFlags=scene['displayFlags']))
+    if scene.get('includes') != None :
+        for i in scene['includes'].split(';') :
+            root.append(ET.Element("include", href=i))
+            
     # for late alarmDistance="0.1"  contactDistance="0.005"  attractDistance="0.01"
     root.append(ET.Element("DefaultPipeline"))
     root.append(ET.Element("BruteForceDetection"))
-    root.append(ET.Element("MinProximityIntersection",useSurfaceNormals="1"))
+    root.append(ET.Element("MinProximityIntersection",useSurfaceNormals="0"))
     root.append(ET.Element("DefaultContactManager"))
     
-    #root.append(ET.Element("LightManager"))
+    root.append(ET.Element("LightManager"))
     root.append(ET.Element("OglSceneFrame"))
     for o in scene.objects: 
         if not o.hide_render:
@@ -170,6 +191,8 @@ def exportScene(scene,dir):
                     t = exportSoftBody(o, scene)
                 elif has_modifier(o,'COLLISION') or annotated_type == 'COLLISION':
                     t = exportObstacle(o, scene)
+                elif o.rigid_body != None and o.rigid_body.enabled:
+                    t = exportRigid(o, scene)
                 else:
                     t = exportVisual(o, scene)
                 
@@ -289,6 +312,8 @@ if __name__ == "__main__":
     register()
     #bpy.ops.export.tosofa('INVOKE_DEFAULT')
     bpy.ops.scene.runsofa('INVOKE_DEFAULT')
+
+
 
 
 
