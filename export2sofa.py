@@ -53,7 +53,7 @@ def exportSoftBody(o, scn):
     # set n later
     t.append(ET.Element("SparseGridTopology",position="@Visual/Visual.position",quads="@Visual/Visual.quads",triangles="@Visual/Visual.triangles",n="10 10 10"))
     # set young modulus later
-    t.append(ET.Element("HexahedronFEMForceField",template="Vec3d"))
+    t.append(ET.Element("HexahedronFEMForceField",template="Vec3d",youngModulus=str(o.get('youngModulus')),poissonRatio=str(o.get('poissonRatio'))))
 
     
     c = ET.Element("Node",name="Collision")    
@@ -178,7 +178,7 @@ def exportScene(scene,dir):
     # for late alarmDistance="0.1"  contactDistance="0.005"  attractDistance="0.01"
     root.append(ET.Element("DefaultPipeline"))
     root.append(ET.Element("BruteForceDetection"))
-    root.append(ET.Element("MinProximityIntersection",useSurfaceNormals="0"))
+    root.append(ET.Element("MinProximityIntersection",useSurfaceNormals="1",contactDistance="0.001",alarmDistance="1"))
     root.append(ET.Element("DefaultContactManager"))
     
     root.append(ET.Element("LightManager"))
