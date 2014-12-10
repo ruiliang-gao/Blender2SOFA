@@ -55,11 +55,20 @@ def exportSoftBody(o, scn):
     # set young modulus later
     t.append(ET.Element("HexahedronFEMForceField",template="Vec3d",youngModulus=str(o.get('youngModulus')),poissonRatio=str(o.get('poissonRatio'))))
 
-    
+    for q in o.children:
+        if q.name.startswith('BoxConstraint'):
+            tl = q.matrix_world * Vector(q.bound_box[0])
+            br = q.matrix_world * Vector(q.bound_box[6])
+            t.append(ET.Element("BoxConstraint",box=vector_to_string(tl)+ ' ' + vector_to_string(br)))
+        elif q.name.startswith('SphereConstraint'):
+            n = q.name.replace('.', '_')
+            t.append(ET.Element("SphereROI",name=n,centers=vector_to_string(q.location),radii=str(max(q.scale))))
+            t.append(ET.Element("FixedConstraint", indices="@%s.indices" % n))
+            
     c = ET.Element("Node",name="Collision")    
     c.append(exportTopology(o,scn))
     c.append(ET.Element("MechanicalObject",template="Vec3d",name="MOC"))
-    c.extend([ ET.Element("PointModel"), ET.Element("LineModel"), ET.Element("TriangleModel") ])
+    c.extend([ ET.Element("PointModel",selfCollision='0'), ET.Element("LineModel",selfCollision='0'), ET.Element("TriangleModel",selfCollision='1') ])
     c.append(ET.Element("BarycentricMapping",template="Vec3d,Vec3d",input="@../",output="@./"))
     t.append(c)
     
@@ -88,10 +97,7 @@ def exportRigid(o, scn):
 from array import array
     
 def exportTopology(o,scn):
-    if o.type == 'MESH':
-        m = o.data
-    else:
-        m = o.to_mesh(scn, True, 'PREVIEW')
+    m = o.to_mesh(scn, True, 'PREVIEW')
     
     t = ET.Element("MeshTopology",name='Topology')
     position = [ vector_to_string(v.co) for v in m.vertices]
@@ -104,10 +110,8 @@ def exportTopology(o,scn):
     return t    
     
 def exportVisual(o, scn, name = None,with_transform = True):
-    if o.type == 'MESH':
-        m = o.data
-    else:
-        m = o.to_mesh(scn, True, 'RENDER')
+
+    m = o.to_mesh(scn, True, 'RENDER')
     
     o.rotation_mode = "ZYX"
     
@@ -175,7 +179,7 @@ def exportScene(scene,dir):
         for i in scene['includes'].split(';') :
             root.append(ET.Element("include", href=i))
             
-    # for late alarmDistance="0.1"  contactDistance="0.005"  attractDistance="0.01"
+    # for late alarmDistance="0.1"  contactDistance="0.0005"  attractDistance="0.01"
     root.append(ET.Element("DefaultPipeline"))
     root.append(ET.Element("BruteForceDetection"))
     root.append(ET.Element("MinProximityIntersection",useSurfaceNormals="1",contactDistance="0.001",alarmDistance="1"))
@@ -184,7 +188,7 @@ def exportScene(scene,dir):
     root.append(ET.Element("LightManager"))
     root.append(ET.Element("OglSceneFrame"))
     for o in scene.objects: 
-        if not o.hide_render:
+        if not o.hide_render and o.parent == None:
             annotated_type = o.get('annotated_type')
             if o.type == 'MESH' or o.type == 'SURFACE':
                 if has_modifier(o,'SOFT_BODY') or annotated_type == 'SOFT_BODY':
@@ -267,7 +271,10 @@ class RunSofaOperator(bpy.types.Operator):
         return context.scene is not None
 
     def execute(self, context):
-        fn = mktemp(suffix='.scn')
+        if bpy.data.filepath == '':
+            fn = mktemp(suffix='.scn')
+        else:
+            fn = bpy.data.filepath + '.scn'
         exportSceneToFile(context, fn)
         Popen(fn,shell=True)
         return {'FINISHED'}
