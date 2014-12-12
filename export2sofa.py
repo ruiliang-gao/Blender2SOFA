@@ -69,9 +69,41 @@ def exportSoftBody(o, scn):
     c.append(exportTopology(o,scn))
     c.append(ET.Element("MechanicalObject",template="Vec3d",name="MOC"))
     c.extend([ ET.Element("PointModel",selfCollision='0'), ET.Element("LineModel",selfCollision='0'), ET.Element("TriangleModel",selfCollision='1') ])
-    c.append(ET.Element("BarycentricMapping",template="Vec3d,Vec3d",input="@../",output="@./"))
+    c.append(ET.Element("BarycentricMapping",c,input="@../",output="@./"))
     t.append(c)
     
+    return t
+
+def exportHaptic(o, scn):
+    t = ET.Element("Node",name=o.name)
+    t.append(ET.Element("RequiredPlugin",name="Sensable Plugin",pluginName="Sensable"))
+    t.append(ET.Element("NewOmniDriver",name="Omni Driver",deviceName="Phantom 1",listening="true",tags="Omni",forceScale="0.5",scale="500", permanent="true", printLog="1"))
+    t.append(ET.Element("GraspingManager",name="graspingManager0",listening="1"))
+    #Mechanical Object
+    #t.append(ET.Element("MechanicalObject",template="Rigid",name="instrumentstate", tags="Omni", position="1 0 0 0 0 0 1"))
+    momain = createMechanicalObject(o)
+    momain.set('template', 'Rigid')
+    momain.set('name', 'instrumentstate')
+    momain.set('tags', 'Omni')
+    momain.set('position', '1 0 0 0 0 0 1')
+    t.append(momain)   
+    
+    t.append(ET.Element("UniformMass", template="Rigid", name="mass", totalmass="0.05"))
+    #Visual Model
+    t.append(exportVisual(o, scn, name = 'Visual', with_transform = True))
+    t.append(ET.Element("RigidMapping", template = "Rigid,ExtVec3f", object1="instrumentstate", object2="Visual"))
+    #Collision Model
+    c = ET.Element("Node",name="Collision")    
+    c.append(exportTopology(o,scn))
+    #c.append(ET.Element("MechanicalObject",template="Vec3d",name="Particle", scale3d="10 10 10", rotation="90 0 90"))
+
+    mo = createMechanicalObject(o)
+    mo.set('template','Vec3d')
+    c.append(mo)
+    
+    c.append(ET.Element("PointModel", template= "Vec3d",name="ParticleModel", contactStiffness="0.1", contactFriction="0.01" ,contactResponse = "stick"))
+    c.append(ET.Element("RigidMapping",emplate = "Rigid,ExtVec3f", object1="instrumentstate", object2="MO"))
+    t.append(c)  
     return t
   
 def exportObstacle(o, scn):
@@ -195,6 +227,8 @@ def exportScene(scene,dir):
                     t = exportSoftBody(o, scene)
                 elif has_modifier(o,'COLLISION') or annotated_type == 'COLLISION':
                     t = exportObstacle(o, scene)
+                elif has_modifier(o,'HAPTIC') or annotated_type == 'HAPTIC':
+                    t = exportHaptic(o, scene)
                 elif o.rigid_body != None and o.rigid_body.enabled:
                     t = exportRigid(o, scene)
                 else:
@@ -317,8 +351,8 @@ def unregister():
     
 if __name__ == "__main__":
     register()
-    #bpy.ops.export.tosofa('INVOKE_DEFAULT')
-    bpy.ops.scene.runsofa('INVOKE_DEFAULT')
+    bpy.ops.export.tosofa('INVOKE_DEFAULT')
+    #bpy.ops.scene.runsofa('INVOKE_DEFAULT')
 
 
 
