@@ -69,7 +69,7 @@ def exportSoftBody(o, scn):
     c.append(exportTopology(o,scn))
     c.append(ET.Element("MechanicalObject",template="Vec3d",name="MOC"))
     c.extend([ ET.Element("PointModel",selfCollision='0'), ET.Element("LineModel",selfCollision='0'), ET.Element("TriangleModel",selfCollision='1') ])
-    c.append(ET.Element("BarycentricMapping",c,input="@../",output="@./"))
+    c.append(ET.Element("BarycentricMapping",input="@../",output="@./"))
     t.append(c)
     
     return t
