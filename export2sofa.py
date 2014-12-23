@@ -170,6 +170,28 @@ def exportEmptyHaptic(o,scn):
     t.append(ct)
     
     return t
+
+def exportCM(o,scn):
+    t = ET.Element("Node",name=o.name)
+    momain = createMechanicalObject(o)
+    t.append(momain)
+    for i in o.children:
+        if i.get('annotated_type') == 'COLLISIONMODEL':
+            v = ET.Element("Node",name = i.name)
+            og = exportVisual(i, scn,name = 'Visual', with_transform = False)
+            og.set('template', 'ExtVec3f')
+            v.append(og)
+            v.append(ET.Element("BarycentricMapping",template="Vec3d,ExtVec3f",object1="../MO",object2="Visual"))
+            t.append(v)
+        else:
+            c = ET.Element("Node",name = i.name)    
+            c.append(exportTopology(i,scn))
+            c.append(ET.Element("MechanicalObject",template="Vec3d",name="MOC"))
+            c.extend([ ET.Element("PointModel",selfCollision='0'), ET.Element("LineModel",selfCollision='0'), ET.Element("TriangleModel",selfCollision='1') ])
+            c.append(ET.Element("BarycentricMapping",input="@../",output="@./"))
+            t.append(c)
+    return t
+    
      
 def exportObstacle(o, scn):
     t = ET.Element("Node",name=o.name)
@@ -317,7 +339,10 @@ def exportScene(scene,dir):
             elif o.type == "EMPTY":
                 if has_modifier(o,'HAPTIC') or annotated_type == 'HAPTIC':
                     t = exportEmptyHaptic(o, scene)
-                root.append(t)
+                    root.append(t)
+                elif has_modifier(o,'CM') or annotated_type == 'CM':
+                    t = exportCM(o,scene)
+                    root.append(t)
     return root    
 
 def exportSceneToFile(C, filepath):
