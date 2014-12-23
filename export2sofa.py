@@ -107,7 +107,7 @@ def exportHaptic(o, scn):
 def exportEmptyHaptic(o,scn):
     t = ET.Element("Node", name = o.name)
     t.append(ET.Element("RequiredPlugin",name="Sensable Plugin",pluginName="Sensable"))
-    t.append(ET.Element("NewOmniDriver",name="Omni Driver",deviceName="Phantom 1",listening="true",tags="Omni",forceScale="0.5",scale="500", permanent="true", printLog="1"))
+    t.append(ET.Element("NewOmniDriver",name="Omni Driver",deviceName="Phantom 1",listening="true",tags="Omni1",forceScale="0.5",scale="500", permanent="true", printLog="1"))
     t.append(ET.Element("GraspingManager",name="graspingManager0",listening="1"))
     
     #Mechanical Object for Articulation
@@ -131,7 +131,7 @@ def exportEmptyHaptic(o,scn):
     cm.append(ET.Element("RigidMapping", template="Rigid3d,Vec3d", input="@../instrumentState", output="@Particle"))
     ct.append(cm)
     
-    ct.append(ET.Element("ArticulatedHierarchyContainer"))
+    t.append(ET.Element("ArticulatedHierarchyContainer"))
     #Articulation Hierarchy Containers
     ctns = ET.Element("Node", name="articulationCenters")
     #Container 1
@@ -156,7 +156,7 @@ def exportEmptyHaptic(o,scn):
     ctn3.append(a)
     ctns.append(ctn3)
     
-    ct.append(ctns)
+    t.append(ctns)
     
     #Children start here
     #index is a custom property of a child object if index is missing, then set index=1
