@@ -80,7 +80,6 @@ def exportHaptic(o, scn):
     t.append(ET.Element("NewOmniDriver",name="Omni Driver",deviceName="Phantom 1",listening="true",tags="Omni",forceScale="0.5",scale="500", permanent="true", printLog="1"))
     t.append(ET.Element("GraspingManager",name="graspingManager0",listening="1"))
     #Mechanical Object
-    #t.append(ET.Element("MechanicalObject",template="Rigid",name="instrumentstate", tags="Omni", position="1 0 0 0 0 0 1"))
     momain = createMechanicalObject(o)
     momain.set('template', 'Rigid')
     momain.set('name', 'instrumentstate')
@@ -90,22 +89,88 @@ def exportHaptic(o, scn):
     
     t.append(ET.Element("UniformMass", template="Rigid", name="mass", totalmass="0.05"))
     #Visual Model
-    t.append(exportVisual(o, scn, name = 'Visual', with_transform = True))
+    t.append(exportVisual(o, scn, name = 'Visual', with_transform = False))
     t.append(ET.Element("RigidMapping", template = "Rigid,ExtVec3f", object1="instrumentstate", object2="Visual"))
     #Collision Model
     c = ET.Element("Node",name="Collision")    
     c.append(exportTopology(o,scn))
-    #c.append(ET.Element("MechanicalObject",template="Vec3d",name="Particle", scale3d="10 10 10", rotation="90 0 90"))
-
+      
     mo = createMechanicalObject(o)
     mo.set('template','Vec3d')
     c.append(mo)
     
     c.append(ET.Element("PointModel", template= "Vec3d",name="ParticleModel", contactStiffness="0.1", contactFriction="0.01" ,contactResponse = "stick"))
-    c.append(ET.Element("RigidMapping",emplate = "Rigid,ExtVec3f", object1="instrumentstate", object2="MO"))
+    c.append(ET.Element("RigidMapping",template = "Rigid,ExtVec3f", object1="instrumentstate", object2="MO"))
     t.append(c)  
     return t
-  
+
+def exportEmptyHaptic(o,scn):
+    t = ET.Element("Node", name = o.name)
+    t.append(ET.Element("RequiredPlugin",name="Sensable Plugin",pluginName="Sensable"))
+    t.append(ET.Element("NewOmniDriver",name="Omni Driver",deviceName="Phantom 1",listening="true",tags="Omni",forceScale="0.5",scale="500", permanent="true", printLog="1"))
+    t.append(ET.Element("GraspingManager",name="graspingManager0",listening="1"))
+    
+    #Mechanical Object for Articulation
+    t.append(ET.Element("MechanicalObject", name = "Articulations", template="Vec1d", position="0 0 0 0"))
+    #
+    ct = ET.Element("Node", name = "Tool")
+    ct.append(ET.Element("MechanicalObject", template="Rigid3d", name = "instrumentState", tags="Omni1", position="0 0 0 0 0 0 1 0 0 0 0 0 0 1 0 0 0 0 0 0 1 "))
+    ct.append(ET.Element("UniformMass", template = "Rigid3d", name="mass", totolmass="0.05"))
+    ct.append(ET.Element("ArticulatedSystemMapping", input1="@../Articulations", output="@instrumentState"))
+    
+    #Collision Model
+    cm = ET.Element("Node", name = "CM")
+    mo =  createMechanicalObject(o)
+    mo.set('name','Particle')
+    mo.set('force', '0 0 0')
+    mo.set('externalForce','0 0 0')
+    mo.set('derivX', '0 0 0')
+    mo.set('resetScale','1')
+    cm.append(mo)
+    cm.append(ET.Element("TPointModel", template="Vec3d", name="GraspingToolModel", contactStiffness="2", contactResponse="stick"))
+    cm.append(ET.Element("RigidMapping", template="Rigid3d,Vec3d", input="@../instrumentState", output="@Particle"))
+    ct.append(cm)
+    
+    ct.append(ET.Element("ArticulatedHierarchyContainer"))
+    #Articulation Hierarchy Containers
+    ctns = ET.Element("Node", name="articulationCenters")
+    #Container 1
+    ctn1 = ET.Element("Node", name="articulationCenter1")
+    ctn1.append(ET.Element("ArticulationCenter", parentIndex="0", childIndex="2", posOnParent="0 0 0", posOnChild="0 0 0"))
+    a = ET.Element("Node", name="articulations")
+    a.append(ET.Element("Articulation", translation="0", rotation="1", rotationAxis="1 0 0", articulationIndex="0"))
+    ctn1.append(a)
+    ctns.append(ctn1)   
+    #Container 2
+    ctn2 = ET.Element("Node", name="articulationCenter2")
+    ctn2.append(ET.Element("ArticulationCenter", parentIndex="0", childIndex="3", posOnParent="0 0 0", posOnChild="0 0 0"))
+    a = ET.Element("Node", name="articulations")
+    a.append(ET.Element("Articulation", translation="0", rotation="1", rotationAxis="1 0 0", articulationIndex="1"))
+    ctn2.append(a)
+    ctns.append(ctn2)
+    #Container 3
+    ctn3 = ET.Element("Node", name="articulationCenter3")
+    ctn3.append(ET.Element("ArticulationCenter", parentIndex="0", childIndex="1", posOnParent="0 0 0", posOnChild="0 0 0"))
+    a = ET.Element("Node", name="articulations")
+    a.append(ET.Element("Articulation", translation="0", rotation="0", rotationAxis="1 0 0", articulationIndex="2"))
+    ctn3.append(a)
+    ctns.append(ctn3)
+    
+    ct.append(ctns)
+    
+    #Children start here
+    #index is a custom property of a child object if index is missing, then set index=1
+    for i in o.children:
+        child =  ET.Element("Node", name = i.name)
+        ci = i.get('index') or 1
+        child.append(exportVisual(i, scn, name = 'Visual', with_transform = True))
+        child.append(ET.Element("RigidMapping", input="@../instrumentState", output="@Visual", index=str(ci)))
+        ct.append(child)
+        
+    t.append(ct)
+    
+    return t
+     
 def exportObstacle(o, scn):
     t = ET.Element("Node",name=o.name)
     t.append(exportVisual(o, scn, name = 'Visual', with_transform = True))
@@ -249,6 +314,10 @@ def exportScene(scene,dir):
                     t.set("position", vector_to_string(o.location))
                     t.set("color", vector_to_string(o.data.color))
                     root.append(t)
+            elif o.type == "EMPTY":
+                if has_modifier(o,'HAPTIC') or annotated_type == 'HAPTIC':
+                    t = exportEmptyHaptic(o, scene)
+                root.append(t)
     return root    
 
 def exportSceneToFile(C, filepath):
