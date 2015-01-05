@@ -172,6 +172,10 @@ def exportEmptyHaptic(o,scn):
     return t
 
 def exportCM(o,scn):
+    """
+    This function generates a XML hierarchy for a simple obstacle
+    collision model.
+    """
     t = ET.Element("Node",name=o.name)
     momain = createMechanicalObject(o)
     t.append(momain)
