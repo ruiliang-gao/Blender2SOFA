@@ -44,6 +44,6 @@ for i in range(0,6):
     a.facetlist[i] = f
 
 b = TetGenIO();
-tetrahedralize("pq1.414a0.1", pointer(a), pointer(b), None, None)
+tetrahedralize("Qpq1.414a0.1", pointer(a), pointer(b), None, None)
 
 

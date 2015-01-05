@@ -155,8 +155,9 @@ class TetGenIO(Structure):
 
 
 
-
-libtetgen = cdll.LoadLibrary('./libtetgen.so')
+from os import path
+PATH = path.dirname(__file__);
+libtetgen = cdll.LoadLibrary(path.join(PATH,'libtetgen.so'))
 
 tetrahedralize = libtetgen.tetrahedralize
 tetrahedralize.argtypes = [ c_char_p, POINTER(TetGenIO), POINTER(TetGenIO), POINTER(TetGenIO), POINTER(TetGenIO) ]
