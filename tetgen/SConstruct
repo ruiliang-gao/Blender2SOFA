@@ -1,5 +1,5 @@
 source = ['tetgen.cxx','predicates.cxx']
-if ARGUMENTS.get('type','bin') == 'lib' :
-  Library('tetgen',source,CCFLAGS='-DTETLIBRARY')
-else:
-  Program('tetgen',source)
+#if ARGUMENTS.get('type','bin') == 'lib' :
+SharedLibrary('tetgen',source,CCFLAGS='-DTETLIBRARY')
+#else:
+Program('tetgen',source)

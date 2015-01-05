@@ -3,6 +3,7 @@ from ctypes import *
 p_int = POINTER(c_int)
 c_real = c_double
 p_real = POINTER(c_real)
+c_void = None
 
 class Polygon(Structure):
     _fields_ = [
@@ -43,10 +44,44 @@ class TetGenIO(Structure):
     GetVertexParamOnEdge = CFUNCTYPE(c_real, c_int, c_int)
     GetSteinerOnEdge = CFUNCTYPE(c_void, c_int, c_real, p_real)
     GetVertexParamOnFace = CFUNCTYPE(c_void, c_void_p, c_int, c_int, p_real)
-    GetEdgeSteinerParamOnFace(c_void, c_void_p, c_int, c_real, c_int, p_real)
+    GetEdgeSteinerParamOnFace = CFUNCTYPE(c_void, c_void_p, c_int, c_real, c_int, p_real)
     GetSteinerOnFace = CFUNCTYPE(c_void, c_void_p, c_int, p_real, p_real)
 
     TetSizeFunc = CFUNCTYPE(c_bool, p_real, p_real, p_real, p_real, p_real, c_real)
+
+    def __init__(self):
+        self.firstnumber = 0
+        self.mesh_dim = 3;
+        self.useindex = 0;
+        self.numberofpoints = 0
+        self.numberofpointattributes = 0
+        self.numberofpointmtrs = 0
+        
+        self.numberoftetrahedra = 0
+        self.numberofcorners = 0
+        self.numberoftetrahedronattributes = 0
+
+        self.numberoffacets = 0
+        self.numberofholes = 0
+
+        self.numberofregions = 0
+        self.numberoffacetconstraints = 0
+        self.numberofsegmentconstraints = 0
+
+        self.numberoftrifaces = 0
+        self.numberofedges = 0
+        self.numberofvpoints = 0
+        self.numberofvedges = 0
+        self.numberofvfacets = 0
+        self.numberofvcells = 0
+
+        self.goemhandle = None
+        self.getvertexparamonedge = self.GetVertexParamOnEdge()
+        self.getsteineronedge = self.GetSteinerOnEdge()
+        self.getvertexparamonface = self.GetVertexParamOnFace()
+        self.getedgesteinerparamonface = self.GetEdgeSteinerParamOnFace()
+        self.getsteineronface = self.GetSteinerOnFace()
+        self.tetunsitable = self.TetSizeFunc()
 
     _fields_ = [
             ('firstnumber', c_int),
@@ -55,6 +90,7 @@ class TetGenIO(Structure):
 
             ('pointlist', p_real),
             ('pointattributelist', p_real),
+            ('pointmtrlist', p_real),
             ('pointmarkerlist', p_int),
             ('pointparamlist',POINTER(PointParam)),
             ('numberofpoints',c_int),
@@ -67,7 +103,7 @@ class TetGenIO(Structure):
             ('neighborlist', p_int),
             ('numberoftetrahedra', c_int),
             ('numberofcorners', c_int),
-            ('numberoftetrahedronattributes',c_int)
+            ('numberoftetrahedronattributes',c_int),
 
             ('facetlist', POINTER(Facet)),
             ('facetmarkerlist', p_int),
@@ -116,3 +152,12 @@ class TetGenIO(Structure):
 
 
             ]
+
+
+
+
+libtetgen = cdll.LoadLibrary('./libtetgen.so')
+
+tetrahedralize = libtetgen.tetrahedralize
+tetrahedralize.argtypes = [ c_char_p, POINTER(TetGenIO), POINTER(TetGenIO), POINTER(TetGenIO), POINTER(TetGenIO) ]
+

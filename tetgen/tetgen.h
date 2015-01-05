@@ -2234,8 +2234,10 @@ void tetrahedralize(tetgenbehavior *b, tetgenio *in, tetgenio *out,
                     tetgenio *addin = NULL, tetgenio *bgmin = NULL);
 
 #ifdef TETLIBRARY
+extern "C" {
 void tetrahedralize(char *switches, tetgenio *in, tetgenio *out,
                     tetgenio *addin = NULL, tetgenio *bgmin = NULL);
+}
 #endif // #ifdef TETLIBRARY
 
 ///////////////////////////////////////////////////////////////////////////////
