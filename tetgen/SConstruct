@@ -1,0 +1,3 @@
+source = ['tetgen.cxx','predicates.cxx']
+Program('tetgen',source)
+Library('tetgen',source)

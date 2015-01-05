@@ -1,0 +1,5 @@
+syntax: glob
+tetgen/tetgen
+*.o
+*.dblite
+*.a
