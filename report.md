@@ -13,6 +13,9 @@ In order to model a soft body, start with a mesh or NURBS surface object.
 Set the custom property 'annotated_type' to 'SOFT_BODY'. 
 
 Other custom properties supported:
+
+|Cutom Property| Purpose |
+|--------------| ------------------------------------------|
 | youngModulus |  The stiffness of the simulated soft body |
 | poissonRaio  |  Compressability of the simulated soft body |
 
