@@ -32,19 +32,19 @@ For any model in the scene that doesn't have the property *annotated_type*, it w
 It supports texture mapping.
 
 ### Haptic tools
-There are two types of haptic tools:
+The way to model haptic tools is different according to the type of this haptic tool.
 
-A. Tools that only have one part:
+Type A. Tools that only have one part:
 
-	1. set the custom property *annotated_type* of a model to *HAPTIC*.
+1. set the custom property *annotated_type* of a model to *HAPTIC*.
 
-B. Tools that has more than one part:
+Type B. Tools that has more than one part:
 
-	1. Create an EMPTY object, and set the empty object's custom property *annotated_tyoe* to *HAPTIC*.
-	
-	2. Create different parts of this haptic tool as the children of the empty object.
-	
-	3. For each part of the haptic tool ( each child of the empty object), set the custom property *index*.
+1. Create an EMPTY object, and set the empty object's custom property *annotated_tyoe* to *HAPTIC*.
+
+2. Create different parts of this haptic tool as the children of the empty object.
+
+3. For each part of the haptic tool ( each child of the empty object), set the custom property *index*.
 
 Other custom properties supported:
 
