@@ -32,17 +32,25 @@ For any model in the scene that doesn't have the property *annotated_type*, it w
 It supports texture mapping.
 
 ### Haptic tools
-There are two ways to model haptic tools:
+There are two types of haptic tools:
 
-1. Set the custom property *annotated_type* of a model to *HAPTIC*. (For tools that only have one part)
+A. Tools that only have one part:
 
-2. Create an empty object, and set its custom property *annotated_tyoe* to *HAPTIC*.(For tool that has more than one part)
+	1. set the custom property *annotated_type* of a model to *HAPTIC*.
+
+B. Tools that has more than one part:
+
+	1. Create an EMPTY object, and set the empty object's custom property *annotated_tyoe* to *HAPTIC*.
+	
+	2. Create different parts of this haptic tool as the children of the empty object.
+	
+	3. For each part of the haptic tool ( each child of the empty object), set the custom property *index*.
 
 Other custom properties supported:
 
 |Cutom Property| Purpose |
 |--------------| ------------------------------------------|
-| index |  Identify different parts for the haptic tools. Default value is 1 (For parts that are fixed) |
+| index |  Identify different parts for the haptic tools. Default value is 1 (For type B only) |
 
 ### Lights
 There are two kinds of lights that are supported in the exportation:
