@@ -71,7 +71,9 @@
      typedef int intptr_t;
      typedef unsigned int uintptr_t;
 #  endif
+#define EXPORT __declspec(dllexport)
 #else // not Visual C++
+#define EXPORT 
 #  include <stdint.h>
 #endif
 
@@ -2235,6 +2237,7 @@ void tetrahedralize(tetgenbehavior *b, tetgenio *in, tetgenio *out,
 
 #ifdef TETLIBRARY
 extern "C" {
+EXPORT
 void tetrahedralize(char *switches, tetgenio *in, tetgenio *out,
                     tetgenio *addin = NULL, tetgenio *bgmin = NULL);
 }

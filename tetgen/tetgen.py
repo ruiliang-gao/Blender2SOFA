@@ -156,8 +156,16 @@ class TetGenIO(Structure):
 
 
 from os import path
+from sys import platform
+if platform == 'win32':
+    library_file = 'tetgen.dll'
+elif platform == 'unix':
+    library_file = 'libtetgen.so'
+else:
+    raise RuntimeError("Platform not supported");
+
 PATH = path.dirname(__file__);
-libtetgen = cdll.LoadLibrary(path.join(PATH,'libtetgen.so'))
+libtetgen = cdll.LoadLibrary(path.join(PATH, library_file))
 
 tetrahedralize = libtetgen.tetrahedralize
 tetrahedralize.argtypes = [ c_char_p, POINTER(TetGenIO), POINTER(TetGenIO), POINTER(TetGenIO), POINTER(TetGenIO) ]

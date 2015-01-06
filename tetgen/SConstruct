@@ -1,5 +1,6 @@
+env = Environment(TARGET_ARCH = ARGUMENTS.get('arch', None))
 source = ['tetgen.cxx','predicates.cxx']
-#if ARGUMENTS.get('type','bin') == 'lib' :
-SharedLibrary('tetgen',source,CCFLAGS='-DTETLIBRARY')
-#else:
-Program('tetgen',source)
+if ARGUMENTS.get('type','bin') == 'lib' :
+  env.SharedLibrary('tetgen',source,CCFLAGS='-DTETLIBRARY')
+else:
+  env.Program('tetgen',source)

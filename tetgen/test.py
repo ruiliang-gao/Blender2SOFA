@@ -16,10 +16,6 @@ a.pointlist = (c_real * 24)(
 	0, 2, 12,
 	)
 
-a.numberoffacets = 6;
-a.facetlist = (Facet * a.numberoffacets)()
-a.facetmarkrlist = (c_int * a.numberoffacets)(-1,-2,0,0,0,0)
-
 
 # VertexLists
 vertexlists = [
@@ -31,6 +27,7 @@ vertexlists = [
 	[4,8,5,1]
    ]
 
+facets = []
 for i in range(0,6):
     f = Facet()
     f.numberofholes = 0
@@ -41,9 +38,14 @@ for i in range(0,6):
     p.numberofvertices = len(v)
     p.vertexlist = (c_int * len(v))(*v)
     f.polygonlist = pointer(p)
-    a.facetlist[i] = f
+    facets.append(f)
+
+
+a.numberoffacets = len(facets);
+a.facetlist = (Facet * a.numberoffacets)(*facets)
+a.facetmarkrlist = (c_int * a.numberoffacets)(-1,-2,0,0,0,0)
 
 b = TetGenIO();
-tetrahedralize("Qpq1.414a0.1", pointer(a), pointer(b), None, None)
+tetrahedralize("pq1.414a0.1", pointer(a), pointer(b), None, None)
 
 
