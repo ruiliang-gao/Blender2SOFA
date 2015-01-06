@@ -28,11 +28,14 @@ resolution in the same tab.
 
 ### Decorative visual models
 For any model in the scene that doesn't have the property *annotated_type*, it will be exported as visual model only.
+
 It supports texture mapping.
 
 ### Haptic tools
 There are two ways to model haptic tools:
+
 1. Set the custom property *annotated_type* of a model to *HAPTIC*. (For tools that only have one part)
+
 2. Create an empty object, and set its custom property *annotated_tyoe* to *HAPTIC*.(For tool that has more than one part)
 
 Other custom properties supported:
@@ -43,7 +46,9 @@ Other custom properties supported:
 
 ### Lights
 There are two kinds of lights that are supported in the exportation:
+
 1. SPOT LIGHT
+
 2. POINT LIGHT 
 
 ### Obstacles
@@ -53,7 +58,12 @@ Set the custom property *annotated_type* to *COLLISION*.
 
 ### Obstacles with different collision model
 Steps to create a different collision model for an object.
+
 1. Add an EMPTY object to the scene.
+
 2. Create the visual model and collision model as the children of this empty object.
+
 3. Set this empty object's custom property *annotated_type* to *CM*.
+
 4. Set the collision model's custom property *annotated_type* to *COLLISIONMODEL*.
+
