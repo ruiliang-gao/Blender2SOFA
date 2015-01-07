@@ -1,4 +1,5 @@
 from ctypes import *
+from array import array
 
 p_int = POINTER(c_int)
 c_real = c_double
@@ -11,6 +12,25 @@ class Polygon(Structure):
             ('numberofvertices', c_int)
             ]
 
+    def get_vertices(self, v):
+        return self.vertexlist
+
+    def set_vertices(self, v):
+        """
+        Set the vertices using an iterable of integer type or
+        an array of integers. The array will not be copied
+        """
+        self.numberofvertices = len(v)
+        if isinstance(v, array):
+            self.vertexlist = (c_int * len(v)).from_buffer(v);
+        else:
+            self.vertexlist = (c_int * len(v))(*v)
+
+    vertices = property(get_vertices, set_vertices)
+
+    def __init__(self, vertices):
+        self.vertices = vertices
+
 class Facet(Structure):
     _fields_ = [
             ('polygonlist', POINTER(Polygon)),
@@ -18,6 +38,25 @@ class Facet(Structure):
             ('holelist', p_real),
             ('numberofholes', c_int)
             ]
+
+    def get_polygons(self):
+        return self.polygonlist
+
+    def set_polygons(self, polygons):
+        self.numberofpolygons = len(polygons)
+        self.polygonlist = (Polygon * len(polygons))(*polygons)
+
+    polygons = property(get_polygons, set_polygons)
+
+    def set_holes(self, holes):
+        self.numberofholes = len(holes)
+        self.holelist = (c_int * len(holes))(*holes);
+
+    def __init__(self, polygons, holes = None):
+        self.polygons = polygons
+        if holes != None:
+            self.holes = holes
+
 
 class VoroEdge(Structure):
     _fields_ = [
@@ -152,6 +191,38 @@ class TetGenIO(Structure):
 
 
             ]
+    
+    def get_points(self):
+        return self.pointlist
+
+    def set_points(self,points):
+        self.numberofpoints = len(points) / self.mesh_dim
+        if isinstance(points, array):
+            self.pointlist = (c_real * len(points)).from_buffer(points)
+        else:
+            self.pointlist = (c_real * len(points))(*points)
+    points = property(get_points, set_points)
+
+    def get_facets(self):
+        return self.facetlist
+
+    def set_facets(self,facets):
+        self.numberoffacets = len(facets)
+        self.facetlist = (Facet * len(facets))(*facets)
+
+    facets = property(get_facets, set_facets)
+
+    def get_facetmarkers(self):
+        return self.facetmarkrlist
+
+    def set_facetmarkers(self,fm):
+        assert(len(fm) == self.numberoffacets)
+        if isinstance(fm, array):
+            self.facetmarkrlist = (c_int * self.numberoffacets).from_buffer(fm)
+        else:
+            self.facetmarkrlist = (c_int * self.numberoffacets)(*fm)
+    facetmarkers = property(get_facetmarkers, set_facetmarkers)
+
 
 
 

@@ -4,17 +4,15 @@ a = TetGenIO()
 
 a.firstnumber = 1
 a.mesh_dim = 3
-a.numberofpoints = 8
-a.pointlist = (c_real * 24)(
-	0, 0, 0,
+a.points = array('d',[0, 0, 0,
 	2, 0, 0,
 	2, 2, 0,
 	0, 2, 0,
 	0, 0, 12,
 	2, 0, 12,
 	2, 2, 12,
-	0, 2, 12,
-	)
+	0, 2, 12])
+	
 
 
 # VertexLists
@@ -29,21 +27,15 @@ vertexlists = [
 
 facets = []
 for i in range(0,6):
-    f = Facet()
-    f.numberofholes = 0
-    f.holelist = None
-    f.numberofpolygons = 1
-    p = Polygon()
     v = vertexlists[i];
-    p.numberofvertices = len(v)
-    p.vertexlist = (c_int * len(v))(*v)
-    f.polygonlist = pointer(p)
+    p = Polygon(v)
+    f = Facet([ p ])
+    print(f.polygons)
     facets.append(f)
 
 
-a.numberoffacets = len(facets);
-a.facetlist = (Facet * a.numberoffacets)(*facets)
-a.facetmarkrlist = (c_int * a.numberoffacets)(-1,-2,0,0,0,0)
+a.facets = facets
+a.facetmarkers = array('i',[-1,-2,0,0,0,0])
 
 b = TetGenIO();
 tetrahedralize("pq1.414a0.1", pointer(a), pointer(b), None, None)
