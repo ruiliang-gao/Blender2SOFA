@@ -4,14 +4,14 @@ a = TetGenIO()
 
 a.firstnumber = 1
 a.mesh_dim = 3
-a.points = array('d',[0, 0, 0,
+a.points = np.array([0, 0, 0,
 	2, 0, 0,
 	2, 2, 0,
 	0, 2, 0,
 	0, 0, 12,
 	2, 0, 12,
 	2, 2, 12,
-	0, 2, 12])
+	0, 2, 12], dtype = np.float)
 	
 
 
@@ -35,9 +35,21 @@ for i in range(0,6):
 
 
 a.facets = facets
-a.facetmarkers = array('i',[-1,-2,0,0,0,0])
+a.facetmarkers = np.array([-1,-2,0,0,0,0],dtype = np.int)
 
 b = TetGenIO();
 tetrahedralize("pq1.414a0.1", pointer(a), pointer(b), None, None)
 
+tt = b.tetrahedra
+print(b.numberoftetrahedra)
+print(b.numberofcorners)
+for i in range(0,b.numberoftetrahedra):
+    print tt[i],
+    print "\n"
 
+tt = b.points
+print(b.numberoftetrahedra)
+print(b.numberofcorners)
+for i in range(0,b.numberofpoints):
+    print tt[i],
+    print "\n"

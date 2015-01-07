@@ -1,5 +1,7 @@
 from ctypes import *
-from array import array
+import numpy as np
+import numpy.ctypeslib as npc 
+
 
 p_int = POINTER(c_int)
 c_real = c_double
@@ -13,7 +15,7 @@ class Polygon(Structure):
             ]
 
     def get_vertices(self, v):
-        return self.vertexlist
+        return npc.as_array(self.vertexlist,shape=self.numberofvertices)
 
     def set_vertices(self, v):
         """
@@ -21,8 +23,8 @@ class Polygon(Structure):
         an array of integers. The array will not be copied
         """
         self.numberofvertices = len(v)
-        if isinstance(v, array):
-            self.vertexlist = (c_int * len(v)).from_buffer(v);
+        if isinstance(v, np.ndarray):
+            self.vertexlist = npc.as_ctypes(v);
         else:
             self.vertexlist = (c_int * len(v))(*v)
 
@@ -40,13 +42,18 @@ class Facet(Structure):
             ]
 
     def get_polygons(self):
-        return self.polygonlist
+        ArrayType = (Polygon * self.numberofpolygons)
+        return ArrayType.from_address(addressof(self.polygonlist))
 
     def set_polygons(self, polygons):
         self.numberofpolygons = len(polygons)
         self.polygonlist = (Polygon * len(polygons))(*polygons)
 
     polygons = property(get_polygons, set_polygons)
+
+    def get_holes(self):
+        ArrayType = (c_int * self.numberofholes)
+        return ArrayType.from_address(addressof(self.holelist))
 
     def set_holes(self, holes):
         self.numberofholes = len(holes)
@@ -193,18 +200,19 @@ class TetGenIO(Structure):
             ]
     
     def get_points(self):
-        return self.pointlist
+        return npc.as_array(self.pointlist,shape=(self.numberofpoints,self.mesh_dim))
 
     def set_points(self,points):
         self.numberofpoints = len(points) / self.mesh_dim
-        if isinstance(points, array):
-            self.pointlist = (c_real * len(points)).from_buffer(points)
+        if isinstance(points, np.ndarray):
+            self.pointlist = npc.as_ctypes(points)
         else:
             self.pointlist = (c_real * len(points))(*points)
     points = property(get_points, set_points)
 
     def get_facets(self):
-        return self.facetlist
+        ArrayType = (Facet * self.numberoffacets)
+        return ArrayType.from_address(addressof(self.facetlist))
 
     def set_facets(self,facets):
         self.numberoffacets = len(facets)
@@ -212,13 +220,31 @@ class TetGenIO(Structure):
 
     facets = property(get_facets, set_facets)
 
+    def get_tetrahedra(self):
+        if self.tetrahedronlist:
+            return npc.as_array(self.tetrahedronlist,shape=(self.numberoftetrahedra,self.numberofcorners))
+        else:
+            return None
+
+    def set_tetrahedra(self, th):
+        self.numberoftetrahedra = len(th) / self.numberofcorners
+        if isinstance(th, np.ndarray):
+            self.tetrahedronlist = npc.as_ctypes(th)
+        else:
+            self.tetrahedronlist = (c_int * len(th))(*th)
+
+    tetrahedra = property(get_tetrahedra, set_tetrahedra)
+
     def get_facetmarkers(self):
-        return self.facetmarkrlist
+        if self.facetmarkrlist :
+            return npc.as_array(self.facetmarkrlist,shape=self.numberoffacets)
+        else:
+            None
 
     def set_facetmarkers(self,fm):
         assert(len(fm) == self.numberoffacets)
-        if isinstance(fm, array):
-            self.facetmarkrlist = (c_int * self.numberoffacets).from_buffer(fm)
+        if isinstance(fm, np.ndarray):
+            self.facetmarkrlist = npc.as_ctypes(fm)
         else:
             self.facetmarkrlist = (c_int * self.numberoffacets)(*fm)
     facetmarkers = property(get_facetmarkers, set_facetmarkers)
