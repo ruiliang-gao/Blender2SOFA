@@ -53,7 +53,11 @@ def exportSoftBody(o, scn):
     # set n later
     t.append(ET.Element("SparseGridTopology",position="@Visual/Visual.position",quads="@Visual/Visual.quads",triangles="@Visual/Visual.triangles",n="10 10 10"))
     # set young modulus later
-    t.append(ET.Element("HexahedronFEMForceField",template="Vec3d",youngModulus=str(o.get('youngModulus')),poissonRatio=str(o.get('poissonRatio'))))
+    #t.append(ET.Element("HexahedronFEMForceField",template="Vec3d",youngModulus=str(o.get('youngModulus')),poissonRatio=str(o.get('poissonRatio'))))
+    h = ET.Element("HexahedronFEMForceField",template="Vec3d")
+    generateYoungModulus(o,h)
+    generatePoissonRatio(o,h)
+    t.append(h)
 
     for q in o.children:
         if q.name.startswith('BoxConstraint'):
@@ -187,6 +191,17 @@ def exportCM(o,scn):
             v.append(og)
             v.append(ET.Element("BarycentricMapping",template="Vec3d,ExtVec3f",object1="../MO",object2="Visual"))
             t.append(v)
+        elif i.get('annotated_type') == 'SPARSEGRID':
+            # set n later
+            s = ET.Element("SparseGridTopology",name = i.name)
+            generateTopology(i,s, scn)
+            # set young modulus later
+            t.append(s)
+            
+            h = ET.Element("HexahedronFEMForceField",template="Vec3d")
+            generateYoungModulus(i,h)
+            generatePoissonRatio(i,h)
+            t.append(h)
         else:
             c = ET.Element("Node",name = i.name)    
             c.append(exportTopology(i,scn))
@@ -196,7 +211,30 @@ def exportCM(o,scn):
             t.append(c)
     return t
     
-     
+def generateTopology(o, t, scn):
+    
+    m = o.to_mesh(scn, True, 'PREVIEW')
+    
+    position = [ vector_to_string(v.co) for v in m.vertices]
+    triangles = [ vector_to_string(f.vertices) for f in m.polygons if len(f.vertices) == 3 ]
+    quads     = [ vector_to_string(f.vertices) for f in m.polygons if len(f.vertices) == 4 ]
+
+    t.set("position", ' '.join(position))
+    t.set("triangles", ' '.join(triangles))
+    t.set("quads", ' '.join(quads))
+    
+    return t
+
+def generateYoungModulus(o, t):
+    if o.get('youngModulus') != None :
+        t.set("youngModulus", o.get('youngModulus'))
+    return t
+
+def generatePoissonRatio(o, t):
+    if o.get('poissonRatio') != None :
+        t.set("poissonRatio", o.get('poissonRatio'))
+    return t
+ 
 def exportObstacle(o, scn):
     t = ET.Element("Node",name=o.name)
     t.append(exportVisual(o, scn, name = 'Visual', with_transform = True))
@@ -220,16 +258,8 @@ def exportRigid(o, scn):
 from array import array
     
 def exportTopology(o,scn):
-    m = o.to_mesh(scn, True, 'PREVIEW')
-    
     t = ET.Element("MeshTopology",name='Topology')
-    position = [ vector_to_string(v.co) for v in m.vertices]
-    triangles = [ vector_to_string(f.vertices) for f in m.polygons if len(f.vertices) == 3 ]
-    quads     = [ vector_to_string(f.vertices) for f in m.polygons if len(f.vertices) == 4 ]
-
-    t.set("position", ' '.join(position))
-    t.set("triangles", ' '.join(triangles))
-    t.set("quads", ' '.join(quads))    
+    generateTopology(o,t,scn)
     return t    
     
 def exportVisual(o, scn, name = None,with_transform = True):
