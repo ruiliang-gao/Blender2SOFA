@@ -7,3 +7,6 @@ tetgen/tetgen
 *.so
 *.pyc
 *.swp
+tetgen\tetgen.pyproj
+tetgen\tetgen.exp
+tetgen\tetgen.sln
