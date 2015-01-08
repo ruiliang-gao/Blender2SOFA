@@ -16,6 +16,19 @@ import xml.etree.ElementTree as ET
 import os
 from mathutils import Vector
 from math import degrees
+from array import array
+from io import StringIO
+from .mesh2tetra import convert as convertMesh2Tetra
+
+def ndarray_to_flat_string(a):
+    b = StringIO()
+    f = a.reshape(a.size)
+    for i in f:
+        b.write(str(i))
+        b.write(' ')
+    s = b.getvalue()
+    b.close()
+    return s
 
 def vector_to_string(v):
     t = ""
@@ -34,6 +47,37 @@ def createMechanicalObject(o):
     t.set("rotation", vector_to_string(vector_degrees(o.rotation_euler)))
     t.set("scale3d", vector_to_string(o.scale))
     return t
+    
+
+def exportVolumetric(o, scn):
+    points, tetrahedra = convertMesh2Tetra(o, scn)
+    t = ET.Element("Node", name = o.name)
+
+    t.append(ET.Element("EulerImplicitSolver"))
+    t.append(ET.Element("CGLinearSolver",template="GraphScattered"))
+
+    c =  ET.Element('TetrahedronSetTopologyContainer', name="topo")
+    c.set('points', ndarray_to_flat_string(points))
+    c.set('tetrahedra', ndarray_to_flat_string(tetrahedra))
+    
+    mo = createMechanicalObject(o)
+    
+    #mo.set('position','@topo.points')
+    t.append(c)
+    t.append(mo)
+    t.append(ET.Element('TetrahedronSetTopologyModifier'))
+    t.append(ET.Element('TetrahedronSetTopologyAlgorithms', template = 'Vec3d'))
+    t.append(ET.Element('TetrahedronSetGeometryAlgorithms', template = 'Vec3d'))
+    
+    # set massDensity later
+    t.append(ET.Element("DiagonalMass"))
+    # set youngModulus and poissonRatio later, and method=large
+    t.append(ET.Element('TetrahedralCorotationalFEMForceField'))
+    
+    t.append(exportVisual(o, scn, name = "Visual"))
+    t.append(ET.Element("BarycentricMapping",template="Vec3d,ExtVec3f",object1="MO",object2="Visual"))
+    return t
+
     
 def exportSoftBody(o, scn):
     t = ET.Element("Node",name=o.name)
@@ -126,7 +170,7 @@ def exportRigid(o, scn):
     t.append(ET.Element("RigidMapping",template='Rigid,ExtVec3f',object1="MO",object2="Visual"))
     return t
 
-from array import array
+
     
 def exportTopology(o,scn):
     m = o.to_mesh(scn, True, 'PREVIEW')
@@ -222,6 +266,7 @@ def exportScene(scene,dir):
     for o in scene.objects: 
         if not o.hide_render and o.parent == None:
             annotated_type = o.get('annotated_type')
+            print(annotated_type, o.name)
             if o.type == 'MESH' or o.type == 'SURFACE':
                 if has_modifier(o,'SOFT_BODY') or annotated_type == 'SOFT_BODY':
                     t = exportSoftBody(o, scene)
@@ -231,6 +276,8 @@ def exportScene(scene,dir):
                     t = exportHaptic(o, scene)
                 elif o.rigid_body != None and o.rigid_body.enabled:
                     t = exportRigid(o, scene)
+                elif annotated_type == 'VOLUMETRIC':
+                    t = exportVolumetric(o, scene)
                 else:
                     t = exportVisual(o, scene)
                 
@@ -250,6 +297,7 @@ def exportScene(scene,dir):
                     t.set("color", vector_to_string(o.data.color))
                     root.append(t)
     return root    
+
 
 def exportSceneToFile(C, filepath):
     dir = os.path.dirname(filepath)
@@ -353,6 +401,8 @@ if __name__ == "__main__":
     register()
     bpy.ops.export.tosofa('INVOKE_DEFAULT')
     #bpy.ops.scene.runsofa('INVOKE_DEFAULT')
+
+
 
 
 

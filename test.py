@@ -1,5 +1,27 @@
 from .tetgen import *
+from bpy import context as C
+import numpy as N
 
+def mesh_test():
+    a = TetGenIO()
+    a.firstnumber = 0
+    a.mesh_dim = 3
+    m = C.object.to_mesh(C.scene, True, 'PREVIEW')
+    position =  N.empty((len(m.vertices),3))
+    for i, v in enumerate(m.vertices):
+        position[i][0] = v.co[0]
+        position[i][1] = v.co[1]
+        position[i][2] = v.co[2]
+    a.points = position
+    a.facets = [ Facet([ Polygon(f.vertices) ]) for f in m.polygons ]
+    
+    b = TetGenIO()
+    tetrahedralize(b"", pointer(a), pointer(b), None, None)
+    
+    return b
+    
+    
+    
 def sample_test():
 	a = TetGenIO()
 
@@ -54,3 +76,4 @@ def sample_test():
 	for i in range(0,b.numberofpoints):
 		print(tt[i])
 		print("\n")
+

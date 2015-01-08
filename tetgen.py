@@ -203,9 +203,9 @@ class TetGenIO(Structure):
         return npc.as_array(self.pointlist,shape=(self.numberofpoints,self.mesh_dim))
 
     def set_points(self,points):
-        self.numberofpoints = int(len(points) / self.mesh_dim)
+        self.numberofpoints = int(points.size / self.mesh_dim)
         if isinstance(points, np.ndarray):
-            self.pointlist = npc.as_ctypes(points)
+            self.pointlist = npc.as_ctypes(points.reshape(points.size))
         else:
             self.pointlist = (c_real * len(points))(*points)
     points = property(get_points, set_points)
