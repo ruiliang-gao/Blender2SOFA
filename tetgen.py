@@ -203,7 +203,7 @@ class TetGenIO(Structure):
         return npc.as_array(self.pointlist,shape=(self.numberofpoints,self.mesh_dim))
 
     def set_points(self,points):
-        self.numberofpoints = len(points) / self.mesh_dim
+        self.numberofpoints = int(len(points) / self.mesh_dim)
         if isinstance(points, np.ndarray):
             self.pointlist = npc.as_ctypes(points)
         else:
@@ -262,7 +262,7 @@ else:
     raise RuntimeError("Platform not supported");
 
 PATH = path.dirname(__file__);
-libtetgen = cdll.LoadLibrary(path.join(PATH, library_file))
+libtetgen = cdll.LoadLibrary(path.join(PATH, 'tetgen', library_file))
 
 tetrahedralize = libtetgen.tetrahedralize
 tetrahedralize.argtypes = [ c_char_p, POINTER(TetGenIO), POINTER(TetGenIO), POINTER(TetGenIO), POINTER(TetGenIO) ]
