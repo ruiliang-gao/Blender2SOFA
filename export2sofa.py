@@ -210,6 +210,48 @@ def exportCM(o,scn):
             c.append(ET.Element("BarycentricMapping",input="@../",output="@./"))
             t.append(c)
     return t
+
+def exportCloth(o, scn):
+    t = ET.Element("Node",name=o.name)
+    t.append(ET.Element("EulerImplicitSolver", name = "cg_odesolver", printLog="0"))
+    t.append(ET.Element("CGLinearSolver", template="GraphScattered", name = "linear solver", iterations="25",  tolerance="1e-009",  threshold="1e-009"))
+    
+    tp = ET.Element("TriangleSetTopologyContainer", name = "Container")
+    generateTopologyContainer(o,tp,scn)
+    t.append(tp)
+    
+    t.append(ET.Element("TriangleSetTopologyModifier", name = "Modifier"))
+    t.append(ET.Element("TriangleSetTopologyAlgorithms", template="Vec3d", name="TopoAlgo"))
+    t.append(ET.Element("TriangleSetGeometryAlgorithms", template="Vec3d", name="GeomAlgo"))
+    
+    momain = createMechanicalObject(o)
+    t.append(momain)
+    
+    t.append(ET.Element("DiagonalMass", template="Vec3d", name="diagonalMass1",  massDensity="0.15"))
+    
+    tfff=ET.Element("TriangularFEMForceField", template="Vec3d", name="FEM",  method="large" )
+    generatePoissonRatio(o,tfff)
+    generateYoungModulus(o,tfff)
+    t.append(tfff)
+    
+    t.append(ET.Element("TriangularBendingSprings", template="Vec3d", name="FEM-Bend",  stiffness="300",  damping="1"))
+    t.append(ET.Element("TTriangleModel", template="Vec3d", name="tTriangleModel1"))
+    
+    og = exportVisual(o, scn,name = 'Visual', with_transform = False)
+    og.set('template', 'ExtVec3f')
+    t.append(og)
+    t.append(ET.Element("BarycentricMapping",template="Vec3d,ExtVec3f",object1="MO",object2="Visual"))
+    return t
+    
+def generateTopologyContainer(o, t, scn):
+    m = o.to_mesh(scn, True, 'PREVIEW')
+    position = [ vector_to_string(v.co) for v in m.vertices ]
+    edges = [ vector_to_string(e.vertices) for e in m.edges ]
+    triangles = [ vector_to_string(f.vertices) for f in m.polygons if len(f.vertices) == 3 ]
+    t.set("position", ' '.join(position))
+    t.set("edges", ' '.join(edges))
+    t.set("triangles", ' '.join(triangles))   
+    return t
     
 def generateTopology(o, t, scn):
     
@@ -350,6 +392,8 @@ def exportScene(scene,dir):
                     t = exportObstacle(o, scene)
                 elif has_modifier(o,'HAPTIC') or annotated_type == 'HAPTIC':
                     t = exportHaptic(o, scene)
+                elif has_modifier(o,'CLOTH') or annotated_type == 'CLOTH':
+                    t = exportCloth(o, scene)
                 elif o.rigid_body != None and o.rigid_body.enabled:
                     t = exportRigid(o, scene)
                 else:
