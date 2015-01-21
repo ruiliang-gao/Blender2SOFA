@@ -48,13 +48,15 @@ def createMechanicalObject(o):
     t.set("scale3d", vector_to_string(o.scale))
     return t
     
+def addSolvers(t):
+    t.append(ET.Element("EulerImplicitSolver", vdamping = "0.0"))
+    t.append(ET.Element("CGLinearSolver",template="GraphScattered"))
 
 def exportVolumetric(o, scn):
     points, tetrahedra = convertMesh2Tetra(o, scn)
     t = ET.Element("Node", name = o.name)
 
-    t.append(ET.Element("EulerImplicitSolver"))
-    t.append(ET.Element("CGLinearSolver",template="GraphScattered"))
+    addSolvers(t)
 
     c =  ET.Element('TetrahedronSetTopologyContainer', name="topo")
     c.set('points', ndarray_to_flat_string(points))
@@ -81,11 +83,11 @@ def exportVolumetric(o, scn):
     
 def exportSoftBody(o, scn):
     t = ET.Element("Node",name=o.name)
-    t.append(ET.Element("EulerImplicitSolver"))
-    t.append(ET.Element("CGLinearSolver",template="GraphScattered"))
-    
+ 
+    addSolvers(t)
+       
     t.append(createMechanicalObject(o))
-    t.append(ET.Element("UniformMass",template="Vec3d"))
+    t.append(ET.Element("UniformMass",template="Vec3d", mass=str(o.get('mass') or 1)))
  
     v = ET.Element("Node",name="Visual")
     og = exportVisual(o, scn,name = 'Visual', with_transform = False)
@@ -97,7 +99,9 @@ def exportSoftBody(o, scn):
     # set n later
     t.append(ET.Element("SparseGridTopology",position="@Visual/Visual.position",quads="@Visual/Visual.quads",triangles="@Visual/Visual.triangles",n="10 10 10"))
     # set young modulus later
-    t.append(ET.Element("HexahedronFEMForceField",template="Vec3d",youngModulus=str(o.get('youngModulus')),poissonRatio=str(o.get('poissonRatio'))))
+    t.append(ET.Element("HexahedronFEMForceField",template="Vec3d", method="large" ,youngModulus=str(o.get('youngModulus')),poissonRatio=str(o.get('poissonRatio'))))
+
+    t.append(ET.fromstring('<UncoupledConstraintCorrection />'))
 
     for q in o.children:
         if q.name.startswith('BoxConstraint'):
@@ -159,6 +163,7 @@ def exportObstacle(o, scn):
         , ET.Element("LineModel",moving='0',simulated='0')
         , ET.Element("TTriangleModel",moving='0',simulated='0') ])
     t.append(ET.Element("BarycentricMapping",template="Vec3d,ExtVec3f",object1="MO",object2="Visual"))
+    t.append(ET.fromstring('<UncoupledConstraintCorrection />'))
     return t
     
 def exportRigid(o, scn):
@@ -256,11 +261,19 @@ def exportScene(scene,dir):
             root.append(ET.Element("include", href=i))
             
     # for late alarmDistance="0.1"  contactDistance="0.0005"  attractDistance="0.01"
-    root.append(ET.Element("DefaultPipeline"))
+    root.append(ET.fromstring('<LCPConstraintSolver tolerance="1e-3" initial_guess="false" build_lcp="0"  printLog="0" mu="1000"/>'))
+    root.append(ET.fromstring('<FreeMotionAnimationLoop printLog = "0"/>'))
+ 
+    root.append(ET.Element("CollisionPipeline", depth="15"))
     root.append(ET.Element("BruteForceDetection"))
-    root.append(ET.Element("MinProximityIntersection",useSurfaceNormals="1",contactDistance="0.001",alarmDistance="1"))
+    root.append(ET.Element("MinProximityIntersection",useSurfaceNormals="1",contactDistance="0.001",alarmDistance="0.5"))
     root.append(ET.Element("DefaultContactManager"))
     
+    root.append(ET.fromstring('<CollisionResponse name="Response" response="FrictionContact"  printLog="1"/>'))
+    
+    addSolvers(root)    
+    #root.append(ET.fromstring(''))
+
     root.append(ET.Element("LightManager"))
     root.append(ET.Element("OglSceneFrame"))
     for o in scene.objects: 
