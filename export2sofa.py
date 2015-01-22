@@ -36,7 +36,7 @@ def createMechanicalObject(o):
     return t
     
 def exportSoftBody(o, scn):
-    t = ET.Element("Node",name=o.name)
+    t = ET.Element("Node",name=fixName(o.name))
     t.append(ET.Element("EulerImplicitSolver"))
     t.append(ET.Element("CGLinearSolver",template="GraphScattered"))
     
@@ -79,7 +79,7 @@ def exportSoftBody(o, scn):
     return t
 
 def exportHaptic(o, scn):
-    t = ET.Element("Node",name=o.name)
+    t = ET.Element("Node",name=fixName(o.name))
     t.append(ET.Element("RequiredPlugin",name="Sensable Plugin",pluginName="Sensable"))
     t.append(ET.Element("NewOmniDriver",name="Omni Driver",deviceName="Phantom 1",listening="true",tags="Omni",forceScale="0.5",scale="500", permanent="true", printLog="1"))
     t.append(ET.Element("GraspingManager",name="graspingManager0",listening="1"))
@@ -109,7 +109,7 @@ def exportHaptic(o, scn):
     return t
 
 def exportEmptyHaptic(o,scn):
-    t = ET.Element("Node", name = o.name)
+    t = ET.Element("Node", name = fixName(o.name))
     t.append(ET.Element("RequiredPlugin",name="Sensable Plugin",pluginName="Sensable"))
     t.append(ET.Element("NewOmniDriver",name="Omni Driver",deviceName="Phantom 1",listening="true",tags="Omni1",forceScale="0.5",scale="500", permanent="true", printLog="1"))
     t.append(ET.Element("GraspingManager",name="graspingManager0",listening="1"))
@@ -180,7 +180,7 @@ def exportCM(o,scn):
     This function generates a XML hierarchy for a simple obstacle
     collision model.
     """
-    t = ET.Element("Node",name=o.name)
+    t = ET.Element("Node",name= fixName(o.name))
     momain = createMechanicalObject(o)
     t.append(momain)
     for i in o.children:
@@ -212,7 +212,7 @@ def exportCM(o,scn):
     return t
 
 def exportCloth(o, scn):
-    t = ET.Element("Node",name=o.name)
+    t = ET.Element("Node",name=fixName(o.name))
     t.append(ET.Element("EulerImplicitSolver", name = "cg_odesolver", printLog="0"))
     t.append(ET.Element("CGLinearSolver", template="GraphScattered", name = "linear solver", iterations="25",  tolerance="1e-009",  threshold="1e-009"))
     
@@ -241,6 +241,49 @@ def exportCloth(o, scn):
     og.set('template', 'ExtVec3f')
     t.append(og)
     t.append(ET.Element("BarycentricMapping",template="Vec3d,ExtVec3f",object1="MO",object2="Visual"))
+    return t
+
+C = bpy.context
+
+def pointInsideSphere(v,s):
+    center = s.location
+    radius = max(s.scale)
+    distance = (v - center).length
+    if (distance < radius):
+        return True
+    else:
+        return False
+    
+def verticesInsideSphere(o, s):
+    m = o.to_mesh(C.scene, True, 'PREVIEW')
+    vindex = []
+    for v in m.vertices:
+        if pointInsideSphere((o.matrix_world*v.co), s):
+            vindex.append(v.index)
+    #print(vindex)
+    return vindex
+    
+def matchVertices(o1, o2, s):
+    v1 = verticesInsideSphere(o1, s)
+    v2 = verticesInsideSphere(o2, s)
+    #print(list(o1.data.vertices))
+    v3 = []   
+    for i in v1:
+        distance = []
+        minindex = -1
+        for j in v2:
+            #print(i)
+            #print(j)
+            dist = (o1.matrix_world*o1.data.vertices[i].co - o2.matrix_world*o2.data.vertices[j].co).length
+            distance.append(dist)
+            if dist == min(distance):
+                minindex = j
+        v3.append(minindex)
+    return v3
+                
+def exportAttachConstraint(o, o1, o2, scn):
+    
+    t = ET.Element("AttachConstraint", object1=fixName(o1.name), object2=fixName(o2.name), twoWay="true", radius="0.1", indices1=vector_to_string(verticesInsideSphere(o1, o)), indices2=vector_to_string(matchVertices(o1,o2,o)))  
     return t
     
 def generateTopologyContainer(o, t, scn):
@@ -278,7 +321,7 @@ def generatePoissonRatio(o, t):
     return t
  
 def exportObstacle(o, scn):
-    t = ET.Element("Node",name=o.name)
+    t = ET.Element("Node",name=fixName(o.name))
     t.append(exportVisual(o, scn, name = 'Visual', with_transform = True))
     t.append(exportTopology(o,scn))
     t.append(createMechanicalObject(o))
@@ -289,7 +332,7 @@ def exportObstacle(o, scn):
     return t
     
 def exportRigid(o, scn):
-    t = ET.Element("Node",name=o.name)
+    t = ET.Element("Node",name=fixName(o.name))
     t.append(exportVisual(o, scn, name = 'Visual', with_transform = False))
     mo = createMechanicalObject(o)
     mo.set('template','Rigid')
@@ -304,13 +347,16 @@ def exportTopology(o,scn):
     generateTopology(o,t,scn)
     return t    
     
+def fixName(name):
+    return name.replace(".","_")    
+    
 def exportVisual(o, scn, name = None,with_transform = True):
 
     m = o.to_mesh(scn, True, 'RENDER')
     
     o.rotation_mode = "ZYX"
     
-    t = ET.Element("OglModel",name=name or o.name)
+    t = ET.Element("OglModel",name=name or fixName(o.name))
     
     if with_transform :
         t.set("translation", vector_to_string(o.location))
@@ -379,12 +425,17 @@ def exportScene(scene,dir):
     root.append(ET.Element("BruteForceDetection"))
     root.append(ET.Element("MinProximityIntersection",useSurfaceNormals="1",contactDistance="0.001",alarmDistance="1"))
     root.append(ET.Element("DefaultContactManager"))
-    
+    root.append(ET.Element("EulerImplicit", name="cg_odesolver", printLog="false"))
+    root.append(ET.Element("CGLinearSolver", iterations="25", name="linear solver", tolerance="1.0e-9", threshold="1.0e-9"))
     root.append(ET.Element("LightManager"))
     root.append(ET.Element("OglSceneFrame"))
-    for o in scene.objects: 
+    l = list(scene.objects)
+    l.reverse()
+    for o in l: 
         if not o.hide_render and o.parent == None:
             annotated_type = o.get('annotated_type')
+            print(fixName(o.name))
+            print(annotated_type)
             if o.type == 'MESH' or o.type == 'SURFACE':
                 if has_modifier(o,'SOFT_BODY') or annotated_type == 'SOFT_BODY':
                     t = exportSoftBody(o, scene)
@@ -396,13 +447,17 @@ def exportScene(scene,dir):
                     t = exportCloth(o, scene)
                 elif o.rigid_body != None and o.rigid_body.enabled:
                     t = exportRigid(o, scene)
+                elif has_modifier(o,'ATTACHCONSTRAINT') or annotated_type == 'ATTACHCONSTRAINT':
+                    o1 = bpy.data.objects[o.get('object1')]
+                    o2 = bpy.data.objects[o.get('object2')]
+                    t = exportAttachConstraint(o, o1, o2, scene)
                 else:
                     t = exportVisual(o, scene)
                 
                 root.append(t) 
             elif o.type == "LAMP":
                 if o.data.type == 'SPOT':
-                    t = ET.Element("SpotLight", name=o.name)
+                    t = ET.Element("SpotLight", name=fixName(o.name))
                     o.rotation_mode = "QUATERNION"
                     t.set("position", vector_to_string(o.location))
                     t.set("color", vector_to_string(o.data.color))
@@ -410,7 +465,7 @@ def exportScene(scene,dir):
                     t.set("direction",vector_to_string(direction))
                     root.append(t)
                 elif o.data.type == 'POINT':
-                    t = ET.Element("PositionalLight", name=o.name)
+                    t = ET.Element("PositionalLight", name=fixName(o.name))
                     t.set("position", vector_to_string(o.location))
                     t.set("color", vector_to_string(o.data.color))
                     root.append(t)
@@ -420,6 +475,12 @@ def exportScene(scene,dir):
                     root.append(t)
                 elif has_modifier(o,'CM') or annotated_type == 'CM':
                     t = exportCM(o,scene)
+                    root.append(t)
+            elif o.type == "META":
+                if  has_modifier(o,'ATTACHCONSTRAINT') or annotated_type == 'ATTACHCONSTRAINT':
+                    o1 = bpy.data.objects[o.get('object1')]
+                    o2 = bpy.data.objects[o.get('object2')]
+                    t = exportAttachConstraint(o, o1, o2, scene)
                     root.append(t)
     return root    
 
