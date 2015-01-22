@@ -14,7 +14,7 @@ bl_info = {
 import bpy
 import xml.etree.ElementTree as ET
 import os
-from mathutils import Vector
+from mathutils import Vector, Euler, Quaternion
 from math import degrees
 from array import array
 from io import StringIO
@@ -37,14 +37,22 @@ def vector_to_string(v):
     return t
 
 
-def vector_degrees(v):
+def rotation_to_XYZ_euler(o):
+    if o.rotation_mode == 'XYZ':
+        v = o.rotation_euler
+    else:
+        if o.rotation_mode == 'QUATERNION':
+            q = o.rotation_quaternion
+        else:
+            q = Euler(o.rotation_euler, o.rotation_mode)
+        v = q.to_euler('XYZ')
+
     return Vector(map(degrees,v))
 
 def createMechanicalObject(o):
-    o.rotation_mode = "ZYX"
     t = ET.Element("MechanicalObject",template="Vec3d",name="MO")
     t.set("translation", vector_to_string(o.location))
-    t.set("rotation", vector_to_string(vector_degrees(o.rotation_euler)))
+    t.set("rotation", vector_to_string(rotation_to_XYZ_euler(o)))
     t.set("scale3d", vector_to_string(o.scale))
     return t
     
@@ -193,14 +201,12 @@ def exportTopology(o,scn):
 def exportVisual(o, scn, name = None,with_transform = True):
 
     m = o.to_mesh(scn, True, 'RENDER')
-    
-    o.rotation_mode = "ZYX"
-    
+        
     t = ET.Element("OglModel",name=name or o.name)
     
     if with_transform :
         t.set("translation", vector_to_string(o.location))
-        t.set("rotation", vector_to_string(vector_degrees(o.rotation_euler)))
+        t.set("rotation", vector_to_string(rotation_to_XYZ_euler(o)))
         t.set("scale3d", vector_to_string(o.scale))
 
     position = [ vector_to_string(v.co) for v in m.vertices]
