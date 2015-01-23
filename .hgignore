@@ -1,0 +1,12 @@
+syntax: glob
+tetgen/tetgen
+*.o
+*.os
+*.dblite
+*.a
+*.so
+*.pyc
+*.swp
+tetgen\tetgen.pyproj
+tetgen\tetgen.exp
+tetgen\tetgen.sln
