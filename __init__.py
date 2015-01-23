@@ -61,7 +61,7 @@ def addSolvers(t):
 
 def exportVolumetric(o, scn):
     points, tetrahedra = convertMesh2Tetra(o, scn)
-    t = ET.Element("Node", name = o.name)
+    t = ET.Element("Node", name = fixName(o.name))
 
     addSolvers(t)
 
@@ -82,6 +82,7 @@ def exportVolumetric(o, scn):
     t.append(ET.Element("DiagonalMass"))
     # set youngModulus and poissonRatio later, and method=large
     t.append(ET.Element('TetrahedralCorotationalFEMForceField'))
+    t.append(ET.fromstring('<UncoupledConstraintCorrection />'))
     
     t.append(exportVisual(o, scn, name = "Visual"))
     t.append(ET.Element("BarycentricMapping",template="Vec3d,ExtVec3f",object1="MO",object2="Visual"))
@@ -259,31 +260,33 @@ def exportCM(o,scn):
 
 def exportCloth(o, scn):
     t = ET.Element("Node",name=fixName(o.name))
-    t.append(ET.Element("EulerImplicitSolver", name = "cg_odesolver", printLog="0"))
-    t.append(ET.Element("CGLinearSolver", template="GraphScattered", name = "linear solver", iterations="25",  tolerance="1e-009",  threshold="1e-009"))
+    t.append(ET.Element("EulerImplicitSolver", printLog="0"))
+    t.append(ET.Element("CGLinearSolver", template="GraphScattered", iterations="25",  tolerance="1e-009",  threshold="1e-009"))
     
-    tp = ET.Element("TriangleSetTopologyContainer", name = "Container")
+    tp = ET.Element("TriangleSetTopologyContainer")
     generateTopologyContainer(o,tp,scn)
     t.append(tp)
     
-    t.append(ET.Element("TriangleSetTopologyModifier", name = "Modifier"))
-    t.append(ET.Element("TriangleSetTopologyAlgorithms", template="Vec3d", name="TopoAlgo"))
-    t.append(ET.Element("TriangleSetGeometryAlgorithms", template="Vec3d", name="GeomAlgo"))
+    t.append(ET.Element("TriangleSetTopologyModifier",))
+    t.append(ET.Element("TriangleSetTopologyAlgorithms", template="Vec3d" ))
+    t.append(ET.Element("TriangleSetGeometryAlgorithms", template="Vec3d"))
     
     momain = createMechanicalObject(o)
     t.append(momain)
     
-    t.append(ET.Element("DiagonalMass", template="Vec3d", name="diagonalMass1",  massDensity="0.15"))
+    t.append(ET.Element("DiagonalMass", template="Vec3d", massDensity="0.15"))
     
-    tfff=ET.Element("TriangularFEMForceField", template="Vec3d", name="FEM",  method="large" )
+    tfff=ET.Element("TriangularFEMForceField", template="Vec3d",  method="large" )
     generatePoissonRatio(o,tfff)
     generateYoungModulus(o,tfff)
     t.append(tfff)
     
-    t.append(ET.Element("TriangularBendingSprings", template="Vec3d", name="FEM-Bend",  stiffness="300",  damping="1"))
-    t.append(ET.Element("TTriangleModel", template="Vec3d", name="tTriangleModel1"))
+    t.append(ET.Element("TriangularBendingSprings", template="Vec3d",  stiffness="300",  damping="1"))
+    t.append(ET.Element("TriangleSet"))
     
-    og = exportVisual(o, scn,name = 'Visual', with_transform = False)
+    t.append(ET.fromstring('<UncoupledConstraintCorrection />'))
+
+    og = exportVisual(o, scn,name = 'Visual', with_transform = True)
     og.set('template', 'ExtVec3f')
     t.append(og)
     t.append(ET.Element("BarycentricMapping",template="Vec3d,ExtVec3f",object1="MO",object2="Visual"))
