@@ -633,16 +633,3 @@ if __name__ == "__main__":
     bpy.ops.export.tosofa('INVOKE_DEFAULT')
     #bpy.ops.scene.runsofa('INVOKE_DEFAULT')
 
-
-
-
-
-
-
-
-
-<<<<<<< local
-=======
-
-
->>>>>>> other
