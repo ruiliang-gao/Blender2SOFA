@@ -283,7 +283,8 @@ def exportCloth(o, scn):
     
     t.append(ET.Element("TriangularBendingSprings", template="Vec3d",  stiffness="300",  damping="1"))
     t.append(ET.Element("TriangleSet"))
-    
+    t.append(ET.Element("TTriangleModel", template="Vec3d"))
+
     t.append(ET.fromstring('<UncoupledConstraintCorrection />'))
 
     og = exportVisual(o, scn,name = 'Visual', with_transform = True)
