@@ -290,7 +290,7 @@ def exportCloth(o, scn):
     og = exportVisual(o, scn,name = 'Visual', with_transform = True)
     og.set('template', 'ExtVec3f')
     t.append(og)
-    t.append(ET.Element("BarycentricMapping",template="Vec3d,ExtVec3f",object1="MO",object2="Visual"))
+    t.append(ET.Element("IdentityMapping",template="Vec3d,ExtVec3f",object1="MO",object2="Visual"))
     return t
 
 def pointInsideSphere(v,s):
