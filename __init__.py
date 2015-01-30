@@ -493,7 +493,7 @@ def exportScene(scene,dir):
                     t = exportHaptic(o, scene)
                 elif has_modifier(o,'CLOTH') or annotated_type == 'CLOTH':
                     t = exportCloth(o, scene)
-                elif o.rigid_body != None and o.rigid_body.enabled:
+                elif o.rigid_body != None and o.rigid_body.enabled or annotated_type == 'RIGID':
                     t = exportRigid(o, scene)
                 elif has_modifier(o,'ATTACHCONSTRAINT') or annotated_type == 'ATTACHCONSTRAINT':
                     o1 = bpy.data.objects[o.get('object1')]
