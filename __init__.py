@@ -44,7 +44,7 @@ def rotation_to_XYZ_euler(o):
         if o.rotation_mode == 'QUATERNION':
             q = o.rotation_quaternion
         else:
-            q = Euler(o.rotation_euler, o.rotation_mode)
+            q = Euler(o.rotation_euler, o.rotation_mode).to_quaternion()
         v = q.to_euler('XYZ')
     return Vector(map(degrees,v))
 
@@ -231,31 +231,33 @@ def exportCM(o,scn):
     momain = createMechanicalObject(o)
     t.append(momain)
     for i in o.children:
-        if i.get('annotated_type') == 'COLLISIONMODEL':
-            v = ET.Element("Node",name = i.name)
-            og = exportVisual(i, scn,name = 'Visual', with_transform = False)
-            og.set('template', 'ExtVec3f')
-            v.append(og)
-            v.append(ET.Element("BarycentricMapping",template="Vec3d,ExtVec3f",object1="../MO",object2="Visual"))
-            t.append(v)
-        elif i.get('annotated_type') == 'SPARSEGRID':
-            # set n later
-            s = ET.Element("SparseGridTopology",name = i.name)
-            generateTopology(i,s, scn)
-            # set young modulus later
-            t.append(s)
+        if not i.hide_render:
+            annotated_type = i.get('annotated_type')
+            if annotated_type == 'COLLISIONMODEL':
+                c = ET.Element("Node",name = i.name)    
+                c.append(exportTopology(i,scn))
+                c.append(createMechanicalObject(i))
+                c.extend([ ET.Element("PointModel",selfCollision='0'), ET.Element("LineModel",selfCollision='0'), ET.Element("TriangleModel",selfCollision='1') ])
+                #c.append(ET.Element("BarycentricMapping",input="@../",output="@./"))
+                t.append(c)
+            elif annotated_type == 'SPARSEGRID':
+                # set n later
+                s = ET.Element("SparseGridTopology",name = i.name)
+                generateTopology(i,s, scn)
+                # set young modulus later
+                t.append(s)
             
-            h = ET.Element("HexahedronFEMForceField",template="Vec3d")
-            generateYoungModulus(i,h)
-            generatePoissonRatio(i,h)
-            t.append(h)
-        else:
-            c = ET.Element("Node",name = i.name)    
-            c.append(exportTopology(i,scn))
-            c.append(ET.Element("MechanicalObject",template="Vec3d",name="MOC"))
-            c.extend([ ET.Element("PointModel",selfCollision='0'), ET.Element("LineModel",selfCollision='0'), ET.Element("TriangleModel",selfCollision='1') ])
-            c.append(ET.Element("BarycentricMapping",input="@../",output="@./"))
-            t.append(c)
+                h = ET.Element("HexahedronFEMForceField",template="Vec3d")
+                generateYoungModulus(i,h)
+                generatePoissonRatio(i,h)
+                t.append(h)
+            else:
+                v = ET.Element("Node",name = i.name)
+                og = exportVisual(i, scn,name = 'Visual', with_transform = False)
+                og.set('template', 'ExtVec3f')
+                v.append(og)
+                #v.append(ET.Element("BarycentricMapping",template="Vec3d,ExtVec3f",object1="../MO",object2="Visual"))
+                t.append(v)
     return t
 
 def exportCloth(o, scn):
@@ -360,12 +362,12 @@ def generateTopology(o, t, scn):
 
 def generateYoungModulus(o, t):
     if o.get('youngModulus') != None :
-        t.set("youngModulus", o.get('youngModulus'))
+        t.set("youngModulus", str(o.get('youngModulus')))
     return t
 
 def generatePoissonRatio(o, t):
     if o.get('poissonRatio') != None :
-        t.set("poissonRatio", o.get('poissonRatio'))
+        t.set("poissonRatio", str(o.get('poissonRatio')))
     return t
  
 def exportObstacle(o, scn):
