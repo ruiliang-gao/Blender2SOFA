@@ -12,7 +12,7 @@ class SofaPropertyPanel(bpy.types.Panel):
         obj = context.object
 
         row = layout.row()
-        row.label(text="SOFA Properties", icon='WORLD_DATA')
+        row.label(text="Object Properties", icon='OBJECT_DATAMODE')
 
         l = [ ('SOFT_BODY', "Soft Body", 'MOD_SOFT'), 
                 ('CLOTH',"Cloth",'MOD_CLOTH'),('COLLISION',"Obstacle",'MOD_EDGESPLIT'),
@@ -27,6 +27,18 @@ class SofaPropertyPanel(bpy.types.Panel):
                 
             else:
                 row.operator("my.button", text=t, icon=i).kind = n
+        
+        row = layout.row()
+        row.label(text="Scene Properties", icon='SCENE_DATA')
+                
+        row = layout.row(align=True)
+        row.prop(bpy.context.scene, '["mu"]')
+        
+        row = layout.row(align=True)
+        row.prop(bpy.context.scene, '["alarmDistance"]')
+        
+        row = layout.row(align=True)
+        row.prop(bpy.context.scene, '["constactDistance"]')
         
 #   Button
 class OBJECT_OT_Button(bpy.types.Operator):
