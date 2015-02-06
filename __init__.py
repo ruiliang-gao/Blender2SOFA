@@ -18,7 +18,7 @@ from mathutils import Vector, Euler, Quaternion
 from math import degrees
 from array import array
 from io import StringIO
-from .mesh2tetra import convert as convertMesh2Tetra
+#from .mesh2tetra import convert as convertMesh2Tetra
 
 def ndarray_to_flat_string(a):
     b = StringIO()
@@ -284,6 +284,8 @@ def exportCloth(o, scn):
     t.append(ET.Element("TriangularBendingSprings", template="Vec3d",  stiffness="300",  damping="1"))
     t.append(ET.Element("TriangleSet"))
     t.append(ET.Element("TTriangleModel", template="Vec3d"))
+    t.append(ET.Element("TPointModel", template="Vec3d"))
+    t.append(ET.Element("TLineModel", template="Vec3d"))
 
     t.append(ET.fromstring('<UncoupledConstraintCorrection />'))
 
@@ -634,6 +636,6 @@ def unregister():
     
 if __name__ == "__main__":
     register()
-    bpy.ops.export.tosofa('INVOKE_DEFAULT')
-    #bpy.ops.scene.runsofa('INVOKE_DEFAULT')
+    #bpy.ops.export.tosofa('INVOKE_DEFAULT')
+    bpy.ops.scene.runsofa('INVOKE_DEFAULT')
 
