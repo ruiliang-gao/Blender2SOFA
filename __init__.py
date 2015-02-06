@@ -465,6 +465,12 @@ def exportScene(scene,dir):
     if scene.get('includes') != None :
         for i in scene['includes'].split(';') :
             root.append(ET.Element("include", href=i))
+ 
+    # parameters required for it to run cholesystectomy
+    # alarmDistance
+    # constactDistance
+    # mu
+    
             
     # for late alarmDistance="0.1"  contactDistance="0.0005"  attractDistance="0.01"
     root.append(ET.fromstring('<LCPConstraintSolver tolerance="1e-3" initial_guess="false" build_lcp="0"  printLog="0" mu="1000"/>'))
@@ -473,7 +479,7 @@ def exportScene(scene,dir):
     root.append(ET.Element("CollisionPipeline", depth="15"))
     root.append(ET.Element("BruteForceDetection"))
     root.append(ET.Element("MinProximityIntersection",useSurfaceNormals="1",contactDistance="0.001",alarmDistance="0.5"))
-    root.append(ET.Element("DefaultContactManager"))    
+    #root.append(ET.Element("DefaultContactManager"))    
     root.append(ET.fromstring('<CollisionResponse name="Response" response="FrictionContact"  printLog="1"/>'))
     
     addSolvers(root)
