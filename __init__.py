@@ -467,18 +467,29 @@ def exportScene(scene,dir):
             root.append(ET.Element("include", href=i))
  
     # parameters required for it to run cholesystectomy
-    # alarmDistance
+    # alarmDistance   
     # constactDistance
     # mu
     
             
     # for late alarmDistance="0.1"  contactDistance="0.0005"  attractDistance="0.01"
-    root.append(ET.fromstring('<LCPConstraintSolver tolerance="1e-3" initial_guess="false" build_lcp="0"  printLog="0" mu="1000"/>'))
+    lcp = ET.Element("LCPConstraintSolver", tolerance="1e-3", initial_guess="false", build_lcp="0",  printLog="0" )
+    if scene.get('mu') != None :
+        lcp.set("mu",str(scene.get('mu')))
+    root.append(lcp)
+    
     root.append(ET.fromstring('<FreeMotionAnimationLoop printLog = "0"/>'))
  
     root.append(ET.Element("CollisionPipeline", depth="15"))
     root.append(ET.Element("BruteForceDetection"))
-    root.append(ET.Element("MinProximityIntersection",useSurfaceNormals="1",contactDistance="0.001",alarmDistance="0.5"))
+    
+    mpi = ET.Element("MinProximityIntersection",useSurfaceNormals="1")
+    if scene.get('alarmDistance'):
+        mpi.set("alarmDistance",str(scene.get('alarmDistance')))
+    if scene.get('constactDistance'):
+        mpi.set("constactDistance", str(scene.get('constactDistance')))
+    root.append(mpi)
+    
     #root.append(ET.Element("DefaultContactManager"))    
     root.append(ET.fromstring('<CollisionResponse name="Response" response="FrictionContact"  printLog="1"/>'))
     
