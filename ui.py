@@ -12,113 +12,60 @@ class SofaPropertyPanel(bpy.types.Panel):
         obj = context.object
 
         row = layout.row()
-        row.label(text="SOFA Properties", icon='WORLD_DATA')
+        row.label(text="Object Properties", icon='OBJECT_DATAMODE')
 
-        row = layout.row()
-        if(obj.get("annotated_type") =='SOFT_BODY'):
-            row.operator("my.button", text="Soft Body", icon='X').number = 1
-        else:
-            row.operator("my.button", text="Soft Body", icon='MOD_SOFT').number = 1
+        l = [ ('SOFT_BODY', "Soft Body", 'MOD_SOFT'), 
+                ('CLOTH',"Cloth",'MOD_CLOTH'),('COLLISION',"Obstacle",'MOD_EDGESPLIT'),
+            ('ATTACHCONSTRAINT',"Attach Constraint",'CONSTRAINT_DATA'), ('SPHERECONSTRAINT',"Sphere Constraint",'CONSTRAINT'),
+            ('VOLUMETRIC',"Volumetic",'SNAP_VOLUME'), ('HAPTIC',"Haptic",'MODIFIER'), ('RIGID',"Rigid",'MESH_ICOSPHERE')]
+            
+        for index,(n,t,i) in enumerate(l) :
+            
+            row = layout.row()
+            if(obj.get("annotated_type") == n):
+                row.operator("tips.setannotatedtype", text=t, icon='X').kind = n
+                
+            else:
+                row.operator("tips.setannotatedtype", text=t, icon=i).kind = n
         
         row = layout.row()
-        if(obj.get("annotated_type") =='CLOTH'):
-            row.operator("my.button", text="Cloth", icon='X').number = 2
-        else:
-            row.operator("my.button", text="Cloth", icon='MOD_CLOTH').number = 2
+        row.label(text="Scene Properties", icon='SCENE_DATA')
+                
+        row = layout.row(align=True)
+        row.prop(bpy.context.scene, '["mu"]')
         
-        row = layout.row()
-        if(obj.get("annotated_type") =='COLLISION'):
-            row.operator("my.button", text="Obstacle", icon='X').number = 3
-        else:
-            row.operator("my.button", text="Obstacle", icon='MOD_EDGESPLIT').number = 3
+        row = layout.row(align=True)
+        row.prop(bpy.context.scene, '["alarmDistance"]')
         
-        row = layout.row()
-        if(obj.get("annotated_type") =='ATTACHCONSTRAINT'):
-            row.operator("my.button", text="Attach Constraint", icon='X').number = 4
-        else:
-            row.operator("my.button", text="Attach Constraint", icon='CONSTRAINT_DATA').number = 4
-        
-        row = layout.row()
-        if(obj.get("annotated_type") =='SPHERECONSTRAINT'):
-            row.operator("my.button", text="Sphere Constraint", icon='X').number = 5
-        else:
-            row.operator("my.button", text="Sphere Constraint", icon='CONSTRAINT').number = 5
-        
-        row = layout.row()
-        if(obj.get("annotated_type") =='VOLUMETRIC'):
-            row.operator("my.button", text="Volumetic", icon='X').number = 6
-        else:
-            row.operator("my.button", text="Volumetic", icon='SNAP_VOLUME').number = 6
-        
-        row = layout.row()
-        if(obj.get("annotated_type") =='HAPTIC'):
-            row.operator("my.button", text="Haptic", icon='X').number = 7
-        else:
-            row.operator("my.button", text="Haptic", icon='MODIFIER').number = 7
-        
-        row = layout.row()
-        if(obj.get("annotated_type") =='RIGID'):
-            row.operator("my.button", text="Rigid", icon='X').number = 8
-        else:
-            row.operator("my.button", text="Rigid", icon='MESH_ICOSPHERE').number = 8
+        row = layout.row(align=True)
+        row.prop(bpy.context.scene, '["constactDistance"]')
         
 #   Button
-class OBJECT_OT_Button(bpy.types.Operator):
-    bl_idname = "my.button"
-    bl_label = "Button"
+class SetAnnotatedTypeButton(bpy.types.Operator):
+    bl_idname = "tips.setannotatedtype"
+    bl_label = "Set Annotated Type"
     number = bpy.props.IntProperty()
-    loc = bpy.props.StringProperty()
+    kind = bpy.props.StringProperty()
  
     def execute(self, context):
-        if self.loc:
-            words = self.loc.split()
-            self.number = int(words[1])
-        print("Button %d" % (self.number))
+        
         
         o = bpy.context.object
-        
-        if (self.number == 1 ):
-            if(o.get("annotated_type") =='SOFT_BODY'):
-                del o["annotated_type"]
-            else:
-                o['annotated_type'] = 'SOFT_BODY'
-        elif (self.number == 2):
-            if(o.get("annotated_type") =='CLOTH'):
-                del o["annotated_type"]
-            else:
-                o['annotated_type'] = 'CLOTH'
-        elif (self.number == 3):
-            if(o.get("annotated_type") =='COLLISION'):
-                del o["annotated_type"]
-            else:
-                o['annotated_type'] = 'COLLISION'
-        elif (self.number == 4):
-            if(o.get("annotated_type") =='ATTACHCONSTRAINT'):
-                del o["annotated_type"]
-            else:
-                o['annotated_type'] = 'ATTACHCONSTRAINT'
-        elif (self.number == 5):
-            if(o.get("annotated_type") =='SPHERECONSTRAINT'):
-                del o["annotated_type"]
-            else:
-                o['annotated_type'] = 'SPHERECONSTRAINT'
-        elif (self.number == 6):
-            if(o.get("annotated_type") =='VOLUMETRIC'):
-                del o["annotated_type"]
-            else:
-                o['annotated_type'] = 'VOLUMETRIC'
-        elif (self.number == 7):
-            if(o.get("annotated_type") =='HAPTIC'):
-                del o["annotated_type"]
-            else:
-                o['annotated_type'] = 'HAPTIC'
-        elif (self.number == 8):
-            if(o.get("annotated_type") =='RIGID'):
-                del o["annotated_type"]
-            else:
-                o['annotated_type'] = 'RIGID'
-            
+       
+        if(o.get("annotated_type") ==self.kind):
+            del o["annotated_type"]
+        else:
+            o['annotated_type'] = self.kind
+      
         return{'FINISHED'}    
 
-bpy.utils.register_class(OBJECT_OT_Button)
-bpy.utils.register_class(SofaPropertyPanel)
+def register():
+    bpy.utils.register_class(SetAnnotatedTypeButton)
+    bpy.utils.register_class(SofaPropertyPanel)
+
+def unregister():
+    bpy.utils.unregister_class(SetAnnotatedTypeButton)
+    bpy.utils.unregister_class(SofaPropertyPanel)
+
+if __name__ == "__main__":
+    register()

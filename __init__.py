@@ -19,6 +19,8 @@ from math import degrees
 from array import array
 from io import StringIO
 from .mesh2tetra import convert as convertMesh2Tetra
+from .ui import register as uiRegister
+from .ui import unregister as uiUnregister
 
 def ndarray_to_flat_string(a):
     b = StringIO()
@@ -83,6 +85,11 @@ def exportVolumetric(o, scn):
     # set youngModulus and poissonRatio later, and method=large
     t.append(ET.Element('TetrahedralCorotationalFEMForceField'))
     t.append(ET.fromstring('<UncoupledConstraintCorrection />'))
+
+    t.append(ET.Element("TriangleSet"))
+    t.append(ET.Element("TTriangleModel", template="Vec3d"))
+    t.append(ET.Element("TPointModel", template="Vec3d"))
+    t.append(ET.Element("TLineModel", template="Vec3d"))
     
     t.append(exportVisual(o, scn, name = "Visual"))
     t.append(ET.Element("BarycentricMapping",template="Vec3d,ExtVec3f",object1="MO",object2="Visual"))
@@ -286,6 +293,8 @@ def exportCloth(o, scn):
     t.append(ET.Element("TriangularBendingSprings", template="Vec3d",  stiffness="300",  damping="1"))
     t.append(ET.Element("TriangleSet"))
     t.append(ET.Element("TTriangleModel", template="Vec3d"))
+    t.append(ET.Element("TPointModel", template="Vec3d"))
+    t.append(ET.Element("TLineModel", template="Vec3d"))
 
     t.append(ET.fromstring('<UncoupledConstraintCorrection />'))
 
@@ -465,15 +474,32 @@ def exportScene(scene,dir):
     if scene.get('includes') != None :
         for i in scene['includes'].split(';') :
             root.append(ET.Element("include", href=i))
+ 
+    # parameters required for it to run cholesystectomy
+    # alarmDistance   
+    # constactDistance
+    # mu
+    
             
     # for late alarmDistance="0.1"  contactDistance="0.0005"  attractDistance="0.01"
-    root.append(ET.fromstring('<LCPConstraintSolver tolerance="1e-3" initial_guess="false" build_lcp="0"  printLog="0" mu="1000"/>'))
+    lcp = ET.Element("LCPConstraintSolver", tolerance="1e-3", initial_guess="false", build_lcp="0",  printLog="0" )
+    if scene.get('mu') != None :
+        lcp.set("mu",str(scene.get('mu')))
+    root.append(lcp)
+    
     root.append(ET.fromstring('<FreeMotionAnimationLoop printLog = "0"/>'))
  
     root.append(ET.Element("CollisionPipeline", depth="15"))
     root.append(ET.Element("BruteForceDetection"))
-    root.append(ET.Element("MinProximityIntersection",useSurfaceNormals="1",contactDistance="0.001",alarmDistance="0.5"))
-    root.append(ET.Element("DefaultContactManager"))    
+    
+    mpi = ET.Element("MinProximityIntersection",useSurfaceNormals="1")
+    if scene.get('alarmDistance'):
+        mpi.set("alarmDistance",str(scene.get('alarmDistance')))
+    if scene.get('constactDistance'):
+        mpi.set("constactDistance", str(scene.get('constactDistance')))
+    root.append(mpi)
+    
+    #root.append(ET.Element("DefaultContactManager"))    
     root.append(ET.fromstring('<CollisionResponse name="Response" response="FrictionContact"  printLog="1"/>'))
     
     addSolvers(root)
@@ -621,6 +647,8 @@ def register():
     addon_keymaps.append((km, kmi))
     #kmi.properties.total = 4
 
+    uiRegister()
+
 
 def unregister():
     bpy.utils.unregister_class(ExportToSofa)
@@ -632,10 +660,11 @@ def unregister():
     addon_keymaps.clear()
         
     bpy.utils.unregister_class(RunSofaOperator)
-    
+
+    uiUnregister()    
     
 if __name__ == "__main__":
     register()
-    bpy.ops.export.tosofa('INVOKE_DEFAULT')
-    #bpy.ops.scene.runsofa('INVOKE_DEFAULT')
+    #bpy.ops.export.tosofa('INVOKE_DEFAULT')
+    bpy.ops.scene.runsofa('INVOKE_DEFAULT')
 
