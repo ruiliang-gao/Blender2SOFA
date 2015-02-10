@@ -6,6 +6,12 @@ class SofaPropertyPanel(bpy.types.Panel):
     bl_space_type = 'VIEW_3D'
     bl_region_type = 'TOOLS'
     
+    s = bpy.context.scene
+        
+    s['mu']= 6
+    s['alarmDistance']= 14
+    s['constactDistance']= 1991
+    
     def draw(self, context):
         layout = self.layout
 
@@ -30,6 +36,7 @@ class SofaPropertyPanel(bpy.types.Panel):
         
         row = layout.row()
         row.label(text="Scene Properties", icon='SCENE_DATA')
+        
                 
         row = layout.row(align=True)
         row.prop(bpy.context.scene, '["mu"]')
@@ -48,16 +55,15 @@ class OBJECT_OT_Button(bpy.types.Operator):
     kind = bpy.props.StringProperty()
  
     def execute(self, context):
-        
-        
+               
         o = bpy.context.object
-       
+        
         if(o.get("annotated_type") ==self.kind):
             del o["annotated_type"]
         else:
-            o['annotated_type'] = self.kind
-      
-        return{'FINISHED'}    
+            o['annotated_type'] = self.kind         
 
+        return{'FINISHED'}
+        
 bpy.utils.register_class(OBJECT_OT_Button)
 bpy.utils.register_class(SofaPropertyPanel)
