@@ -29,10 +29,10 @@ class SofaPropertyPanel(bpy.types.Panel):
             
             row = layout.row()
             if(obj.get("annotated_type") == n):
-                row.operator("my.button", text=t, icon='X').kind = n
+                row.operator("tips.setannotatedtype", text=t, icon='X').kind = n
                 
             else:
-                row.operator("my.button", text=t, icon=i).kind = n
+                row.operator("tips.setannotatedtype", text=t, icon=i).kind = n
         
         row = layout.row()
         row.label(text="Scene Properties", icon='SCENE_DATA')
@@ -48,9 +48,9 @@ class SofaPropertyPanel(bpy.types.Panel):
         row.prop(bpy.context.scene, '["constactDistance"]')
         
 #   Button
-class OBJECT_OT_Button(bpy.types.Operator):
-    bl_idname = "my.button"
-    bl_label = "Button"
+class SetAnnotatedTypeButton(bpy.types.Operator):
+    bl_idname = "tips.setannotatedtype"
+    bl_label = "Set Annotated Type"
     number = bpy.props.IntProperty()
     kind = bpy.props.StringProperty()
  
@@ -65,5 +65,13 @@ class OBJECT_OT_Button(bpy.types.Operator):
 
         return{'FINISHED'}
         
-bpy.utils.register_class(OBJECT_OT_Button)
-bpy.utils.register_class(SofaPropertyPanel)
+def register():
+    bpy.utils.register_class(SetAnnotatedTypeButton)
+    bpy.utils.register_class(SofaPropertyPanel)
+
+def unregister():
+    bpy.utils.unregister_class(SetAnnotatedTypeButton)
+    bpy.utils.unregister_class(SofaPropertyPanel)
+
+if __name__ == "__main__":
+    register()
