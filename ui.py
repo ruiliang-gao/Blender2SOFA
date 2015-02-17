@@ -1,51 +1,84 @@
 import bpy
 
+SOFA_SCENE_PROPERTIES = {
+    'mu': 0.001,
+    'alarmDistance': 0.1,
+    'contactDistance': 0.5,
+    'includes': '',
+    'displayFlags': 'visualModels'
+}
+
+OBJECT_LIST = [ 
+    ('SOFT_BODY', "Soft Body", 'MOD_SOFT'), 
+    ('CLOTH',"Cloth",'MOD_CLOTH'),
+    ('COLLISION',"Obstacle",'MOD_EDGESPLIT'),
+    ('ATTACHCONSTRAINT',"Attach Constraint",'CONSTRAINT_DATA'), 
+    ('SPHERECONSTRAINT',"Sphere Constraint",'CONSTRAINT'),
+    ('VOLUMETRIC',"Volumetic",'SNAP_VOLUME'), 
+    ('HAPTIC',"Haptic",'MODIFIER'), ('RIGID',"Rigid",'MESH_ICOSPHERE')
+]
+
+class MakeSofaSceneOperator(bpy.types.Operator):
+    bl_label = "Make SOFA scene"
+    bl_idname = "sofa.makescene"
+
+    @classmethod
+    def poll(cls,context):
+        return context.scene != None
+
+    def execute(self,context):
+        s = context.scene
+        s['mu']= 6
+        s['alarmDistance']= 14
+        s['contactDistance']= 1991
+        s['sofa'] = True
+        s['includes'] = ''
+        s['displayFlags'] = 'visualModels'
+        return { 'FINISHED' }
+
+
 class SofaPropertyPanel(bpy.types.Panel):
     """Creates a Panel in the Object properties window"""
     bl_label = "SOFA Properties"
     bl_space_type = 'VIEW_3D'
     bl_region_type = 'TOOLS'
     
-    s = bpy.context.scene
         
-    s['mu']= 6
-    s['alarmDistance']= 14
-    s['constactDistance']= 1991
     
     def draw(self, context):
         layout = self.layout
 
         obj = context.object
 
-        row = layout.row()
-        row.label(text="Object Properties", icon='OBJECT_DATAMODE')
-
-        l = [ ('SOFT_BODY', "Soft Body", 'MOD_SOFT'), 
-                ('CLOTH',"Cloth",'MOD_CLOTH'),('COLLISION',"Obstacle",'MOD_EDGESPLIT'),
-            ('ATTACHCONSTRAINT',"Attach Constraint",'CONSTRAINT_DATA'), ('SPHERECONSTRAINT',"Sphere Constraint",'CONSTRAINT'),
-            ('VOLUMETRIC',"Volumetic",'SNAP_VOLUME'), ('HAPTIC',"Haptic",'MODIFIER'), ('RIGID',"Rigid",'MESH_ICOSPHERE')]
-            
-        for index,(n,t,i) in enumerate(l) :
-            
+        if obj != None: 
             row = layout.row()
-            if(obj.get("annotated_type") == n):
-                row.operator("tips.setannotatedtype", text=t, icon='X').kind = n
+            row.label(text="Object Properties", icon='OBJECT_DATAMODE')
+
+            
+            for index,(n,t,i) in enumerate(OBJECT_LIST) :
+            
+                row = layout.row()
+                if(obj.get("annotated_type") == n):
+                    row.operator("tips.setannotatedtype", text=t, icon='X').kind = n
                 
+                else:
+                    row.operator("tips.setannotatedtype", text=t, icon=i).kind = n
+
+        s = context.scene
+        if s != None:        
+
+            if s.get('sofa') != None:
+                row = layout.row()
+                row.label(text="Scene Properties", icon='SCENE_DATA')
+        
+                for i in [ 'mu' , 'alarmDistance', 'contactDistance' ]:
+                    row = layout.row(align=True)
+                    row.prop(s, '["' + i + '"]') 
+
             else:
-                row.operator("tips.setannotatedtype", text=t, icon=i).kind = n
-        
-        row = layout.row()
-        row.label(text="Scene Properties", icon='SCENE_DATA')
-        
-                
-        row = layout.row(align=True)
-        row.prop(bpy.context.scene, '["mu"]')
-        
-        row = layout.row(align=True)
-        row.prop(bpy.context.scene, '["alarmDistance"]')
-        
-        row = layout.row(align=True)
-        row.prop(bpy.context.scene, '["constactDistance"]')
+                layout.row();
+                layout.operator("sofa.makescene")
+
         
 #   Button
 class SetAnnotatedTypeButton(bpy.types.Operator):
@@ -56,7 +89,7 @@ class SetAnnotatedTypeButton(bpy.types.Operator):
  
     def execute(self, context):
                
-        o = bpy.context.object
+        o = context.object
         
         if(o.get("annotated_type") ==self.kind):
             del o["annotated_type"]
@@ -68,10 +101,12 @@ class SetAnnotatedTypeButton(bpy.types.Operator):
 def register():
     bpy.utils.register_class(SetAnnotatedTypeButton)
     bpy.utils.register_class(SofaPropertyPanel)
+    bpy.utils.register_class(MakeSofaSceneOperator)
 
 def unregister():
     bpy.utils.unregister_class(SetAnnotatedTypeButton)
     bpy.utils.unregister_class(SofaPropertyPanel)
+    bpy.utils.unregister_class(MakeSofaSceneOperator)
 
 if __name__ == "__main__":
     register()

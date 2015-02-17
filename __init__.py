@@ -18,9 +18,9 @@ from mathutils import Vector, Euler, Quaternion
 from math import degrees
 from array import array
 from io import StringIO
-from .mesh2tetra import convert as convertMesh2Tetra
-from .ui import register as uiRegister
-from .ui import unregister as uiUnregister
+from export2sofa.mesh2tetra import convert as convertMesh2Tetra
+from export2sofa.ui import register as uiRegister
+from export2sofa.ui import unregister as uiUnregister
 
 def ndarray_to_flat_string(a):
     b = StringIO()
