@@ -8,15 +8,16 @@ SOFA_SCENE_PROPERTIES = {
     'displayFlags': 'visualModels'
 }
 
-OBJECT_LIST = [ 
-    ('SOFT_BODY', "Soft Body", 'MOD_SOFT'), 
-    ('CLOTH',"Cloth",'MOD_CLOTH'),
-    ('COLLISION',"Obstacle",'MOD_EDGESPLIT'),
-    ('ATTACHCONSTRAINT',"Attach Constraint",'CONSTRAINT_DATA'), 
-    ('SPHERECONSTRAINT',"Sphere Constraint",'CONSTRAINT'),
-    ('VOLUMETRIC',"Volumetic",'SNAP_VOLUME'), 
-    ('HAPTIC',"Haptic",'MODIFIER'), ('RIGID',"Rigid",'MESH_ICOSPHERE')
-]
+OBJECT_LIST = { 
+    'SOFT_BODY': ( "Soft Body", 'MOD_SOFT', {}), 
+    'CLOTH' : ("Cloth",'MOD_CLOTH', {}),
+    'COLLISION': ("Obstacle",'MOD_EDGESPLIT', {}),
+    'ATTACHCONSTRAINT': ("Attach Constraint",'CONSTRAINT_DATA', {}), 
+    'SPHERECONSTRAINT': ("Sphere Constraint",'CONSTRAINT', {}),
+    'VOLUMETRIC': ("Volumetic",'SNAP_VOLUME', { 'carvable': False, 'youngModulus': 3000 } ), 
+    'HAPTIC':("Haptic",'MODIFIER', {}), 
+    'RIGID':("Rigid",'MESH_ICOSPHERE', {})
+}
 
 class MakeSofaSceneOperator(bpy.types.Operator):
     bl_label = "Make SOFA scene"
@@ -53,12 +54,18 @@ class SofaPropertyPanel(bpy.types.Panel):
         if obj != None: 
             row = layout.row()
             row.label(text="Object Properties", icon='OBJECT_DATAMODE')
+            antype = obj.get("annotated_type")
+
+            if antype in OBJECT_LIST:
+                (t,i,p) = OBJECT_LIST[antype]
+                for e in p:
+                    row.prop(obj, '["'+ e + '"]')
 
             
-            for index,(n,t,i) in enumerate(OBJECT_LIST) :
-            
+            for index,n in enumerate(OBJECT_LIST) :
+                (t,i,p) = OBJECT_LIST[n]
                 row = layout.row()
-                if(obj.get("annotated_type") == n):
+                if(antype == n):
                     row.operator("tips.setannotatedtype", text=t, icon='X').kind = n
                 
                 else:
@@ -94,7 +101,10 @@ class SetAnnotatedTypeButton(bpy.types.Operator):
         if(o.get("annotated_type") ==self.kind):
             del o["annotated_type"]
         else:
-            o['annotated_type'] = self.kind         
+            o['annotated_type'] = self.kind
+            (t,i,p) = OBJECT_LIST[self.kind]
+            for e in p:
+                o[e] = p[e]
 
         return{'FINISHED'}
         

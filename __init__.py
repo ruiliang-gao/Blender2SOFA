@@ -67,13 +67,13 @@ def exportVolumetric(o, scn):
 
     addSolvers(t)
 
-    c =  ET.Element('TetrahedronSetTopologyContainer', name="topo")
+    c =  ET.Element('TetrahedronSetTopologyContainer', name="topotetra")
     c.set('points', ndarray_to_flat_string(points))
     c.set('tetrahedra', ndarray_to_flat_string(tetrahedra))
     
     mo = createMechanicalObject(o)
     
-    #mo.set('position','@topo.points')
+    mo.set('position','@topotetra.position')
     t.append(c)
     t.append(mo)
     t.append(ET.Element('TetrahedronSetTopologyModifier'))
@@ -84,15 +84,36 @@ def exportVolumetric(o, scn):
     t.append(ET.Element("DiagonalMass"))
     # set youngModulus and poissonRatio later, and method=large
     t.append(ET.Element('TetrahedralCorotationalFEMForceField'))
-    t.append(ET.fromstring('<UncoupledConstraintCorrection />'))
+    t.append(ET.fromstring('<UncoupledConstraintCorrection compliance="0.001   0.00003 0 0   0.00003 0   0.00003" />'))
 
-    t.append(ET.Element("TriangleSet"))
-    t.append(ET.Element("TTriangleModel", template="Vec3d"))
-    t.append(ET.Element("TPointModel", template="Vec3d"))
-    t.append(ET.Element("TLineModel", template="Vec3d"))
-    
-    t.append(exportVisual(o, scn, name = "Visual"))
-    t.append(ET.Element("BarycentricMapping",template="Vec3d,ExtVec3f",object1="MO",object2="Visual"))
+    n = ET.Element('Node', name="triangle-surface")
+    t.append(n)
+    ts = ET.Element("TriangleSet", tags="SuturingSurface", group= "2") 
+
+    if o.get('carvable'):
+
+        n.append(ET.Element("TriangleSetTopologyContainer",name="topotri"))
+        n.append(ET.Element("TriangleSetTopologyModifier",))
+        n.append(ET.Element("TriangleSetTopologyAlgorithms", template="Vec3d" ))
+        n.append(ET.Element("TriangleSetGeometryAlgorithms", template="Vec3d"))
+
+        n.append(ET.Element('Tetra2TriangleTopologicalMapping', object1="../../topotetra", object2="topotri"))
+
+
+        n.append(ET.Element("OglModel", name="Visual"))
+        n.append(ET.Element("IdentityMapping",object1="../MO",object2="Visual"))
+        n.append(ts)
+        n.append(ET.Element("TTriangleModel", template="Vec3d"))
+        n.append(ET.Element("TPointModel", template="Vec3d"))
+        n.append(ET.Element("TLineModel", template="Vec3d"))
+    else:
+        n.append(exportVisual(o, scn, name = "Visual"))
+        n.append(ET.Element("BarycentricMapping",template="Vec3d,ExtVec3f",object1="../MO",object2="Visual"))
+        t.append(ts)
+        t.append(ET.Element("TTriangleModel", template="Vec3d"))
+        t.append(ET.Element("TPointModel", template="Vec3d"))
+        t.append(ET.Element("TLineModel", template="Vec3d"))
+
     return t
 
 def exportSoftBody(o, scn):
