@@ -9,13 +9,13 @@ SOFA_SCENE_PROPERTIES = {
 }
 
 OBJECT_LIST = { 
-    'SOFT_BODY': ( "Soft Body", 'MOD_SOFT', {}), 
-    'CLOTH' : ("Cloth",'MOD_CLOTH', {}),
+    'SOFT_BODY': ( "Soft Body", 'MOD_SOFT', {'resX':10, 'resY':10, 'resZ':10, 'youngModulus':300, 'poissonRatio':0.45, 'damping':0.1, 'friction':0.01, 'contactStiffness':500}), 
+    'CLOTH' : ("Cloth",'MOD_CLOTH', {'youngModulus':300, 'poissonRatio':0.45, 'bendingStiffness':300, 'stretchDamping':0.1, 'bendingDamping':0.1}),
     'COLLISION': ("Obstacle",'MOD_EDGESPLIT', {}),
-    'ATTACHCONSTRAINT': ("Attach Constraint",'CONSTRAINT_DATA', {}), 
+    'ATTACHCONSTRAINT': ("Attach Constraint",'CONSTRAINT_DATA', {'stiffness':1000}), 
     'SPHERECONSTRAINT': ("Sphere Constraint",'CONSTRAINT', {}),
-    'VOLUMETRIC': ("Volumetic",'SNAP_VOLUME', { 'carvable': False, 'youngModulus': 3000 } ), 
-    'HAPTIC':("Haptic",'MODIFIER', {}), 
+    'VOLUMETRIC': ("Volumetic",'SNAP_VOLUME', { 'carvable': False, 'youngModulus': 300 , 'poissonRatio':0.45, 'damping': 0.1, 'friction': 0.01, 'contactStiffness':500} ), 
+    'HAPTIC':("Haptic",'MODIFIER', {'scale':300, 'forceScale': 0.1}), 
     'RIGID':("Rigid",'MESH_ICOSPHERE', {})
 }
 
@@ -29,12 +29,10 @@ class MakeSofaSceneOperator(bpy.types.Operator):
 
     def execute(self,context):
         s = context.scene
-        s['mu']= 6
-        s['alarmDistance']= 14
-        s['contactDistance']= 1991
-        s['sofa'] = True
-        s['includes'] = ''
-        s['displayFlags'] = 'visualModels'
+        s['sofa']=True
+        for prop in SOFA_SCENE_PROPERTIES:
+            val = SOFA_SCENE_PROPERTIES[prop]
+            s[prop]= val
         return { 'FINISHED' }
 
 
@@ -55,21 +53,20 @@ class SofaPropertyPanel(bpy.types.Panel):
             row = layout.row()
             row.label(text="Object Properties", icon='OBJECT_DATAMODE')
             antype = obj.get("annotated_type")
-
-            if antype in OBJECT_LIST:
-                (t,i,p) = OBJECT_LIST[antype]
-                for e in p:
-                    row.prop(obj, '["'+ e + '"]')
-
             
-            for index,n in enumerate(OBJECT_LIST) :
+            for n in OBJECT_LIST:
                 (t,i,p) = OBJECT_LIST[n]
                 row = layout.row()
                 if(antype == n):
                     row.operator("tips.setannotatedtype", text=t, icon='X').kind = n
+                    for e in p:
+                        row = layout.row()
+                        row.prop(obj, '["'+ e + '"]')
                 
                 else:
                     row.operator("tips.setannotatedtype", text=t, icon=i).kind = n
+                    
+                    
 
         s = context.scene
         if s != None:        
