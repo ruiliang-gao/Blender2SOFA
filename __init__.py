@@ -403,12 +403,17 @@ def generatePoissonRatio(o, t):
 def exportObstacle(o, scn):
     t = ET.Element("Node",name=fixName(o.name))
     t.append(exportVisual(o, scn, name = 'Visual', with_transform = True))
-    t.append(exportTopology(o,scn))
-    t.append(createMechanicalObject(o))
-    t.extend([ ET.Element("PointModel",moving='0',simulated='0')
-        , ET.Element("LineModel",moving='0',simulated='0')
-        , ET.Element("TTriangleModel",moving='0',simulated='0') ])
-    t.append(ET.Element("BarycentricMapping",template="Vec3d,ExtVec3f",object1="MO",object2="Visual"))
+    if len(o.data.vertices) < 200:
+        t.append(exportTopology(o,scn))
+        t.append(createMechanicalObject(o))
+        t.extend([ ET.Element("PointModel",moving='0',simulated='0')
+            , ET.Element("LineModel",moving='0',simulated='0')
+            , ET.Element("TTriangleModel",moving='0',simulated='0') ])
+    else:
+        t.append(ET.Element("SparseGridTopology",position="@Visual.position",quads="@Visual.quads",triangles="@Visual.triangles",n="10 10 10"))
+        t.append(createMechanicalObject(o))
+        t.append(ET.Element('TSphereModel'))
+    #t.append(ET.Element("BarycentricMapping",template="Vec3d,ExtVec3f",object1="MO",object2="Visual"))
     t.append(ET.fromstring('<UncoupledConstraintCorrection />'))
     return t
     
@@ -495,14 +500,7 @@ def exportScene(scene,dir):
     if scene.get('includes') != None :
         for i in scene['includes'].split(';') :
             root.append(ET.Element("include", href=i))
- 
-    # parameters required for it to run cholesystectomy
-    # alarmDistance   
-    # constactDistance
-    # mu
-    
-            
-    # for late alarmDistance="0.1"  contactDistance="0.0005"  attractDistance="0.01"
+             
     lcp = ET.Element("LCPConstraintSolver", tolerance="1e-3", initial_guess="false", build_lcp="0",  printLog="0" )
     if scene.get('mu') != None :
         lcp.set("mu",str(scene.get('mu')))
@@ -516,14 +514,14 @@ def exportScene(scene,dir):
     mpi = ET.Element("MinProximityIntersection",useSurfaceNormals="1")
     if scene.get('alarmDistance'):
         mpi.set("alarmDistance",str(scene.get('alarmDistance')))
-    if scene.get('constactDistance'):
-        mpi.set("constactDistance", str(scene.get('constactDistance')))
+    if scene.get('contactDistance'):
+        mpi.set("contactDistance", str(scene.get('contactDistance')))
     root.append(mpi)
     
     #root.append(ET.Element("DefaultContactManager"))    
     root.append(ET.fromstring('<CollisionResponse name="Response" response="FrictionContact"  printLog="1"/>'))
     
-    addSolvers(root)
+    #addSolvers(root)
     root.append(ET.Element("LightManager"))
     root.append(ET.Element("OglSceneFrame"))
     l = list(scene.objects)
