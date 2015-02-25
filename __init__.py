@@ -90,6 +90,8 @@ def exportVolumetric(o, scn):
     t.append(n)
     ts = ET.Element("TriangleSet", tags="SuturingSurface", group= "2") 
 
+    addConstraints(o, t)
+
     if o.get('carvable'):
 
         n.append(ET.Element("TriangleSetTopologyContainer",name="topotri"))
@@ -99,8 +101,9 @@ def exportVolumetric(o, scn):
 
         n.append(ET.Element('Tetra2TriangleTopologicalMapping', object1="../../topotetra", object2="topotri"))
 
-
-        n.append(ET.Element("OglModel", name="Visual"))
+        ogl = ET.Element("OglModel", name="Visual", genTex3d = "1");
+        addMaterial(o.data, ogl);
+        n.append(ogl)
         n.append(ET.Element("IdentityMapping",object1="../MO",object2="Visual"))
         n.append(ts)
         n.append(ET.Element("TTriangleModel", template="Vec3d"))
@@ -115,6 +118,17 @@ def exportVolumetric(o, scn):
         t.append(ET.Element("TLineModel", template="Vec3d"))
 
     return t
+
+def addConstraints(o, t):
+    for q in o.children:
+        if q.name.startswith('BoxConstraint'):
+            tl = q.matrix_world * Vector(q.bound_box[0])
+            br = q.matrix_world * Vector(q.bound_box[6])
+            t.append(ET.Element("BoxConstraint",box=vector_to_string(tl)+ ' ' + vector_to_string(br)))
+        elif q.name.startswith('SphereConstraint'):
+            n = q.name.replace('.', '_')
+            t.append(ET.Element("SphereROI",name=n,centers=vector_to_string(q.location),radii=str(max(q.scale))))
+            t.append(ET.Element("FixedConstraint", indices="@%s.indices" % n))
 
 def exportSoftBody(o, scn):
     t = ET.Element("Node",name=fixName(o.name)) 
@@ -137,16 +151,8 @@ def exportSoftBody(o, scn):
     generatePoissonRatio(o,h)
     t.append(h)
     t.append(ET.fromstring('<UncoupledConstraintCorrection />'))
-    for q in o.children:
-        if q.name.startswith('BoxConstraint'):
-            tl = q.matrix_world * Vector(q.bound_box[0])
-            br = q.matrix_world * Vector(q.bound_box[6])
-            t.append(ET.Element("BoxConstraint",box=vector_to_string(tl)+ ' ' + vector_to_string(br)))
-        elif q.name.startswith('SphereConstraint'):
-            n = q.name.replace('.', '_')
-            t.append(ET.Element("SphereROI",name=n,centers=vector_to_string(q.location),radii=str(max(q.scale))))
-            t.append(ET.Element("FixedConstraint", indices="@%s.indices" % n))
-            
+    addConstraints(o, t)
+                
     c = ET.Element("Node",name="Collision")    
     c.append(exportTopology(o,scn))
     c.append(ET.Element("MechanicalObject",template="Vec3d",name="MOC"))
@@ -403,7 +409,7 @@ def generatePoissonRatio(o, t):
 def exportObstacle(o, scn):
     t = ET.Element("Node",name=fixName(o.name))
     t.append(exportVisual(o, scn, name = 'Visual', with_transform = True))
-    if len(o.data.vertices) < 200:
+    if True or len(o.data.vertices) < 200:
         t.append(exportTopology(o,scn))
         t.append(createMechanicalObject(o))
         t.extend([ ET.Element("PointModel",moving='0',simulated='0')
@@ -433,6 +439,25 @@ def exportTopology(o,scn):
     
 def fixName(name):
     return name.replace(".","_")    
+
+def addMaterial(m, t):
+    if len(m.materials) >= 1 :
+        mat = m.materials[0]
+        
+        d = vector_to_string(mat.diffuse_color*mat.diffuse_intensity) 
+        a = vector_to_string(mat.diffuse_color*mat.ambient) 
+        s = vector_to_string(mat.specular_color*mat.specular_intensity)  
+        e = vector_to_string(mat.diffuse_color*mat.emit) 
+        ss = mat.specular_hardness
+        text = "Default Diffuse 1 %s 1 Ambient 1 %s 1 Specular 1 %s 1 Emissive 1 %s 1 Shininess 1 %d " % (d,a,s,e,ss)
+        
+        t.set("material", text)
+        if len(mat.texture_slots) >= 1 and mat.texture_slots[0] != None :
+            tex = mat.texture_slots[0].texture
+            if tex.type == 'IMAGE' :
+                t.set("texturename", bpy.path.abspath(tex.image.filepath))
+                t.set("material","")
+
     
 def exportVisual(o, scn, name = None,with_transform = True):
 
@@ -462,22 +487,7 @@ def exportVisual(o, scn, name = None,with_transform = True):
         texcoords = [ vector_to_string(uvl[mapping[i]].uv) for i in range(0,len(m.vertices))]
         t.set("texcoords", ' '.join(texcoords))
 
-    if len(m.materials) >= 1 :
-        mat = m.materials[0]
-        
-        d = vector_to_string(mat.diffuse_color*mat.diffuse_intensity) 
-        a = vector_to_string(mat.diffuse_color*mat.ambient) 
-        s = vector_to_string(mat.specular_color*mat.specular_intensity)  
-        e = vector_to_string(mat.diffuse_color*mat.emit) 
-        ss = mat.specular_hardness
-        text = "Default Diffuse 1 %s 1 Ambient 1 %s 1 Specular 1 %s 1 Emissive 1 %s 1 Shininess 1 %d " % (d,a,s,e,ss)
-        
-        t.set("material", text)
-        if len(mat.texture_slots) >= 1 and mat.texture_slots[0] != None :
-            tex = mat.texture_slots[0].texture
-            if tex.type == 'IMAGE' :
-                t.set("texturename", bpy.path.abspath(tex.image.filepath))
-                t.set("material","")
+    addMaterial(m, t);
     return t
     
 
@@ -511,7 +521,7 @@ def exportScene(scene,dir):
     root.append(ET.Element("CollisionPipeline", depth="15"))
     root.append(ET.Element("BruteForceDetection"))
     
-    mpi = ET.Element("MinProximityIntersection",useSurfaceNormals="1")
+    mpi = ET.Element("MinProximityIntersection",useSurfaceNormals="0")
     if scene.get('alarmDistance'):
         mpi.set("alarmDistance",str(scene.get('alarmDistance')))
     if scene.get('contactDistance'):

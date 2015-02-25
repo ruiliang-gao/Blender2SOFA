@@ -16,5 +16,5 @@ def convert(o, scn):
     a.facets = [ Facet([ Polygon(f.vertices) ]) for f in m.polygons ]
     
     b = TetGenIO()
-    tetrahedralize(b"", pointer(a), pointer(b), None, None)
+    tetrahedralize(b"q1.414a0.1", pointer(a), pointer(b), None, None)
     return ( b.points, b.tetrahedra )
