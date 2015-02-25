@@ -1,16 +1,16 @@
 import bpy
 
 SOFA_SCENE_PROPERTIES = {
-    'mu': 0.001,
-    'alarmDistance': 0.1,
-    'contactDistance': 0.5,
-    'includes': '',
-    'displayFlags': 'visualModels'
+    'mu': { 'default' : 0.001, 'min' : 0.001, 'max' : 0.1, 'step' : 0.001, 'precision': 3 },
+    'alarmDistance': { 'default': 0.1, 'min' : 0.0001, 'max' : 1.0, 'step' : 0.001, 'precision': 3},
+    'contactDistance': { 'default': 0.01, 'min': 0.0001, 'max' : 1.0, 'step': 0.001, 'precision': 3},
+    'includes': { 'default': '' },
+    'displayFlags': { 'default': 'visualModels'},
 }
 
-OBJECT_LIST = { 
+OBJECT_LIST = {
     'SOFT_BODY': ( "Soft Body", 'MOD_SOFT', {'resX':10, 'resY':10, 'resZ':10, 'youngModulus':300, 'poissonRatio':0.45, 'rayleighStiffness':0, 'contactFriction':0.01, 'contactStiffness':500}), 
-    'CLOTH' : ("Cloth",'MOD_CLOTH', {'youngModulus':300, 'poissonRatio':0.45, 'bendingStiffness':300, 'stretchDamping':0.1, 'bendingDamping':0.1}),
+    'CLOTH' : ("Cloth",'MOD_CLOTH', {'youngModulus':300, 'poissonRatio': { 'default': 0.45, 'min': 0.0, 'max' : 0.5, 'step': 0.001 }, 'bendingStiffness':300, 'stretchDamping':0.1, 'bendingDamping':0.1}),
     'COLLISION': ("Obstacle",'MOD_EDGESPLIT', {}),
     'ATTACHCONSTRAINT': ("Attach Constraint",'CONSTRAINT_DATA', {'stiffness':1000}), 
     'SPHERECONSTRAINT': ("Sphere Constraint",'CONSTRAINT', {}),
@@ -30,9 +30,11 @@ class MakeSofaSceneOperator(bpy.types.Operator):
     def execute(self,context):
         s = context.scene
         s['sofa']=True
+        s["_RNA_UI"] = s.get("_RNA_UI", {})
         for prop in SOFA_SCENE_PROPERTIES:
             val = SOFA_SCENE_PROPERTIES[prop]
-            s[prop]= val
+            s["_RNA_UI"][prop]= val
+            s[prop] = val['default']
         return { 'FINISHED' }
 
 
@@ -75,7 +77,7 @@ class SofaPropertyPanel(bpy.types.Panel):
                 row = layout.row()
                 row.label(text="Scene Properties", icon='SCENE_DATA')
         
-                for i in [ 'mu' , 'alarmDistance', 'contactDistance' ]:
+                for i in SOFA_SCENE_PROPERTIES:
                     row = layout.row(align=True)
                     row.prop(s, '["' + i + '"]') 
 
@@ -100,8 +102,13 @@ class SetAnnotatedTypeButton(bpy.types.Operator):
         else:
             o['annotated_type'] = self.kind
             (t,i,p) = OBJECT_LIST[self.kind]
+            o["_RNA_UI"] = o.get("_RNA_UI", {})
             for e in p:
-                o[e] = p[e]
+                if isinstance(p[e], dict):
+                    o["_RNA_UI"][e] = p[e]
+                    o[e] = p[e]['default']
+                else:
+                    o[e] = p[e]
 
         return{'FINISHED'}
         
