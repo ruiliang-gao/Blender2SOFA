@@ -231,18 +231,35 @@ def exportHaptic(o, scn):
     return t
 
 def exportEmptyHaptic(o,scn):
-    t = ET.Element("Node", name = fixName(o.name))
-    t.append(ET.Element("RequiredPlugin",name="Sensable Plugin",pluginName="Sensable"))
-    t.append(ET.Element("NewOmniDriver",name="Omni Driver",deviceName="Phantom 1",listening="true",tags="Omni1",forceScale="0.5",scale="500", permanent="true", printLog="1"))
-    t.append(ET.Element("GraspingManager",name="graspingManager0",listening="1"))
-    
-    #Mechanical Object for Articulation
-    t.append(ET.Element("MechanicalObject", name = "Articulations", template="Vec1d", position="0 0 0 0"))
-    #
-    ct = ET.Element("Node", name = "Tool")
-    ct.append(ET.Element("MechanicalObject", template="Rigid3d", name = "instrumentState", tags="Omni1", position="0 0 0 0 0 0 1 0 0 0 0 0 0 1 0 0 0 0 0 0 1 "))
-    ct.append(ET.Element("UniformMass", template = "Rigid3d", name="mass", totolmass="0.05"))
-    ct.append(ET.Element("ArticulatedSystemMapping", input1="@../Articulations", output="@instrumentState"))
+    n = fixName(o.name)
+    t = ET.Element("Node", name = n)
+    omniTag = n + "__omni"
+
+    ## Omni driver wrapper
+    rl = ET.Element("Node", name="RigidLayer")
+    rl.append(ET.Element("RequiredPlugin",name="Sensable Plugin",pluginName="Sensable"))
+    rl.append(ET.Element("MechanicalObject", name="ToolRealPosition", tags=omniTag, template="Rigid"))
+    rl.append(ET.Element("NewOmniDriver",
+                         deviceName = str(o.get('deviceName','')), 
+                         tags= omniTag, scale = str(o.get("scale", 300)),
+                         permanent="true", listening="true", alignOmniWithCamera="true",
+                         forceScale = str(o.get("forceScale", 0.01))));
+    nt = ET.Element("Node",name = "Tool");
+    nt.append(ET.Element("MechanicalObject", template="Rigid", name="RealPosition"))
+    nt.append(ET.Element("SubsetMapping", indices="0"));
+    rl.append(nt);
+    t.append(rl)
+
+    addSolvers(t);
+
+    # State of the tool
+    t.append(ET.Element("MechanicalObject", name = "instrumentState", 
+                        template="Rigid3d",
+                        position="0 0 0 0 0 0 1 0 0 0 0 0 0 1 0 0 0 0 0 0 1"))
+    t.append(ET.Element("UniformMass", template = "Rigid3d", name="mass", totolmass="0.05"))
+    t.append(ET.Element("LCPForceFeedback", activate="true", tags=omniTag, forceCoef="0.1"))
+
+
     
     #Collision Model
     cm = ET.Element("Node", name = "CM")
@@ -255,46 +272,17 @@ def exportEmptyHaptic(o,scn):
     cm.append(mo)
     cm.append(ET.Element("TPointModel", template="Vec3d", name="GraspingToolModel", contactStiffness="2", contactResponse="stick"))
     cm.append(ET.Element("RigidMapping", template="Rigid3d,Vec3d", input="@../instrumentState", output="@Particle"))
-    ct.append(cm)
+    t.append(cm)
     
-    t.append(ET.Element("ArticulatedHierarchyContainer"))
-    #Articulation Hierarchy Containers
-    ctns = ET.Element("Node", name="articulationCenters")
-    #Container 1
-    ctn1 = ET.Element("Node", name="articulationCenter1")
-    ctn1.append(ET.Element("ArticulationCenter", parentIndex="0", childIndex="2", posOnParent="0 0 0", posOnChild="0 0 0"))
-    a = ET.Element("Node", name="articulations")
-    a.append(ET.Element("Articulation", translation="0", rotation="1", rotationAxis="1 0 0", articulationIndex="0"))
-    ctn1.append(a)
-    ctns.append(ctn1)   
-    #Container 2
-    ctn2 = ET.Element("Node", name="articulationCenter2")
-    ctn2.append(ET.Element("ArticulationCenter", parentIndex="0", childIndex="3", posOnParent="0 0 0", posOnChild="0 0 0"))
-    a = ET.Element("Node", name="articulations")
-    a.append(ET.Element("Articulation", translation="0", rotation="1", rotationAxis="1 0 0", articulationIndex="1"))
-    ctn2.append(a)
-    ctns.append(ctn2)
-    #Container 3
-    ctn3 = ET.Element("Node", name="articulationCenter3")
-    ctn3.append(ET.Element("ArticulationCenter", parentIndex="0", childIndex="1", posOnParent="0 0 0", posOnChild="0 0 0"))
-    a = ET.Element("Node", name="articulations")
-    a.append(ET.Element("Articulation", translation="0", rotation="0", rotationAxis="1 0 0", articulationIndex="2"))
-    ctn3.append(a)
-    ctns.append(ctn3)
-    
-    t.append(ctns)
     
     #Children start here
     #index is a custom property of a child object if index is missing, then set index=1
     for i in o.children:
         child =  ET.Element("Node", name = i.name)
-        ci = i.get('index') or 1
         child.append(exportVisual(i, scn, name = 'Visual', with_transform = True))
-        child.append(ET.Element("RigidMapping", input="@../instrumentState", output="@Visual", index=str(ci)))
-        ct.append(child)
+        child.append(ET.Element("RigidMapping", input="@../instrumentState", output="@Visual", index=str(i.get('index', 0))))
+        t.append(child)
         
-    t.append(ct)
-    
     return t
 
 def exportCM(o,scn):
@@ -577,6 +565,9 @@ def exportScene(scene,dir):
     
     #root.append(ET.Element("DefaultContactManager"))    
     root.append(ET.fromstring('<CollisionResponse name="Response" response="FrictionContact"  printLog="1"/>'))
+    #root.append(ET.Element("GraspingManager",name="graspingManager0",listening="1"))
+    root.append(ET.Element("RequiredPlugin", pluginName="SofaSutoring"))
+    root.append(ET.Element("SuturingManager", attachStiffness="200000", sutureKey="["))
     
     #addSolvers(root)
     root.append(ET.Element("LightManager"))
