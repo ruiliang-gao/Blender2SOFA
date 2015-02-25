@@ -9,12 +9,12 @@ SOFA_SCENE_PROPERTIES = {
 }
 
 OBJECT_LIST = { 
-    'SOFT_BODY': ( "Soft Body", 'MOD_SOFT', {'resX':10, 'resY':10, 'resZ':10, 'youngModulus':300, 'poissonRatio':0.45, 'damping':0.1, 'friction':0.01, 'contactStiffness':500}), 
+    'SOFT_BODY': ( "Soft Body", 'MOD_SOFT', {'resX':10, 'resY':10, 'resZ':10, 'youngModulus':300, 'poissonRatio':0.45, 'rayleighStiffness':0, 'contactFriction':0.01, 'contactStiffness':500}), 
     'CLOTH' : ("Cloth",'MOD_CLOTH', {'youngModulus':300, 'poissonRatio':0.45, 'bendingStiffness':300, 'stretchDamping':0.1, 'bendingDamping':0.1}),
     'COLLISION': ("Obstacle",'MOD_EDGESPLIT', {}),
     'ATTACHCONSTRAINT': ("Attach Constraint",'CONSTRAINT_DATA', {'stiffness':1000}), 
     'SPHERECONSTRAINT': ("Sphere Constraint",'CONSTRAINT', {}),
-    'VOLUMETRIC': ("Volumetic",'SNAP_VOLUME', { 'carvable': False, 'youngModulus': 300 , 'poissonRatio':0.45, 'damping': 0.1, 'friction': 0.01, 'contactStiffness':500} ), 
+    'VOLUMETRIC': ("Volumetic",'SNAP_VOLUME', { 'carvable': False, 'youngModulus': 300 , 'poissonRatio':0.45, 'damping': 0.1, 'contactFriction': 0.01, 'contactStiffness':500} ), 
     'HAPTIC':("Haptic",'MODIFIER', {'scale':300, 'forceScale': 0.1}), 
     'RIGID':("Rigid",'MESH_ICOSPHERE', {})
 }
