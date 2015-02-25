@@ -82,8 +82,14 @@ def exportVolumetric(o, scn):
     
     # set massDensity later
     t.append(ET.Element("DiagonalMass"))
+    
     # set youngModulus and poissonRatio later, and method=large
-    t.append(ET.Element('TetrahedralCorotationalFEMForceField'))
+    tetrahedralCorotationalFEMForceField = ET.Element('TetrahedralCorotationalFEMForceField')
+    generateYoungModulus(o,tetrahedralCorotationalFEMForceField)
+    generatePoissonRatio(o,tetrahedralCorotationalFEMForceField)
+    tetrahedralCorotationalFEMForceField.set("damping", str(o.get('damping')))
+    t.append(tetrahedralCorotationalFEMForceField)
+    
     t.append(ET.fromstring('<UncoupledConstraintCorrection compliance="0.001   0.00003 0 0   0.00003 0   0.00003" />'))
 
     n = ET.Element('Node', name="triangle-surface")
@@ -106,16 +112,41 @@ def exportVolumetric(o, scn):
         n.append(ogl)
         n.append(ET.Element("IdentityMapping",object1="../MO",object2="Visual"))
         n.append(ts)
-        n.append(ET.Element("TTriangleModel", template="Vec3d"))
-        n.append(ET.Element("TPointModel", template="Vec3d"))
-        n.append(ET.Element("TLineModel", template="Vec3d"))
+        
+        triangleModel = ET.Element("TTriangleModel", template="Vec3d")
+        triangleModel.set("contactStiffness", str(o.get('contactStiffness')))
+        triangleModel.set("contactFriction", str(o.get('contactFriction')))
+        n.append(triangleModel)
+        
+        pointModel = ET.Element("TPointModel", template="Vec3d")
+        pointModel.set("contactStiffness", str(o.get('contactStiffness')))
+        pointModel.set("contactFriction", str(o.get('contactFriction')))
+        n.append(pointModel)
+        
+        lineModel = ET.Element("TLineModel", template="Vec3d")
+        lineModel.set("contactStiffness", str(o.get('contactStiffness')))
+        lineModel.set("contactFriction", str(o.get('contactFriction')))
+        n.append(lineModel)
+        
     else:
         n.append(exportVisual(o, scn, name = "Visual"))
         n.append(ET.Element("BarycentricMapping",template="Vec3d,ExtVec3f",object1="../MO",object2="Visual"))
         t.append(ts)
-        t.append(ET.Element("TTriangleModel", template="Vec3d"))
-        t.append(ET.Element("TPointModel", template="Vec3d"))
-        t.append(ET.Element("TLineModel", template="Vec3d"))
+        
+        triangleModel = ET.Element("TTriangleModel", template="Vec3d")
+        triangleModel.set("contactStiffness", str(o.get('contactStiffness')))
+        triangleModel.set("contactFriction", str(o.get('contactFriction')))
+        t.append(triangleModel)
+        
+        pointModel = ET.Element("TPointModel", template="Vec3d")
+        pointModel.set("contactStiffness", str(o.get('contactStiffness')))
+        pointModel.set("contactFriction", str(o.get('contactFriction')))
+        t.append(pointModel)
+        
+        lineModel = ET.Element("TLineModel", template="Vec3d")
+        lineModel.set("contactStiffness", str(o.get('contactStiffness')))
+        lineModel.set("contactFriction", str(o.get('contactFriction')))
+        t.append(lineModel)
 
     return t
 
@@ -143,20 +174,27 @@ def exportSoftBody(o, scn):
     t.append(v)
 
     # set n later
-    t.append(ET.Element("SparseGridTopology",position="@Visual/Visual.position",quads="@Visual/Visual.quads",triangles="@Visual/Visual.triangles",n="10 10 10"))
-    # set young modulus later
+    sparseGridTopology = ET.Element("SparseGridTopology",position="@Visual/Visual.position",quads="@Visual/Visual.quads",triangles="@Visual/Visual.triangles",n="10 10 10")
+    sparseGridTopology.set("n",str(o.get('resX')) + ' ' + str(o.get('resY')) + ' ' + str(o.get('resZ')) )
+    t.append(sparseGridTopology)
+   
+   # set young modulus later
     #t.append(ET.Element("HexahedronFEMForceField",template="Vec3d",youngModulus=str(o.get('youngModulus')),poissonRatio=str(o.get('poissonRatio'))))
     h = ET.Element("HexahedronFEMForceField",template="Vec3d", method="large")
     generateYoungModulus(o,h)
     generatePoissonRatio(o,h)
+    h.set("rayleighStiffness", str(o.get('rayleighStiffness')))
     t.append(h)
+    
     t.append(ET.fromstring('<UncoupledConstraintCorrection />'))
     addConstraints(o, t)
                 
     c = ET.Element("Node",name="Collision")    
     c.append(exportTopology(o,scn))
     c.append(ET.Element("MechanicalObject",template="Vec3d",name="MOC"))
-    c.extend([ ET.Element("PointModel",selfCollision='0'), ET.Element("LineModel",selfCollision='0'), ET.Element("TriangleModel",selfCollision='1') ])
+    c.extend([ ET.Element("PointModel",selfCollision='0', contactFriction = str(o.get('contactFriction')), contactStiffness = str(o.get('contactStiffness'))), 
+               ET.Element("LineModel",selfCollision='0', contactFriction = str(o.get('contactFriction')), contactStiffness = str(o.get('contactStiffness'))), 
+               ET.Element("TriangleModel",selfCollision='1', contactFriction = str(o.get('contactFriction')), contactStiffness = str(o.get('contactStiffness'))) ])
     c.append(ET.Element("BarycentricMapping",input="@../",output="@./"))
     t.append(c)
     return t
@@ -164,7 +202,10 @@ def exportSoftBody(o, scn):
 def exportHaptic(o, scn):
     t = ET.Element("Node",name=fixName(o.name))
     t.append(ET.Element("RequiredPlugin",name="Sensable Plugin",pluginName="Sensable"))
-    t.append(ET.Element("NewOmniDriver",name="Omni Driver",deviceName="Phantom 1",listening="true",tags="Omni",forceScale="0.5",scale="500", permanent="true", printLog="1"))
+    newOmniDriver = ET.Element("NewOmniDriver",name="Omni Driver",deviceName="Phantom 1",listening="true",tags="Omni", permanent="true", printLog="1")
+    newOmniDriver.set("forceScale", str(o.get('forceScale')))
+    newOmniDriver.set("scale", str(o.get('scale')))
+    t.append(newOmniDriver)
     t.append(ET.Element("GraspingManager",name="graspingManager0",listening="1"))
     #Mechanical Object
     momain = createMechanicalObject(o)
@@ -315,9 +356,13 @@ def exportCloth(o, scn):
     tfff=ET.Element("TriangularFEMForceField", template="Vec3d",  method="large" )
     generatePoissonRatio(o,tfff)
     generateYoungModulus(o,tfff)
+    tfff.set("damping", str(o.get('stretchDamping')))
     t.append(tfff)
     
-    t.append(ET.Element("TriangularBendingSprings", template="Vec3d",  stiffness="300",  damping="1"))
+    triangularBendingSprings = ET.Element("TriangularBendingSprings", template="Vec3d")
+    triangularBendingSprings.set("stiffness", str(o.get('bendingStiffness')))
+    triangularBendingSprings.set("damping", str(o.get('bendingDamping')))
+    t.append(triangularBendingSprings)
     t.append(ET.Element("TriangleSet"))
     t.append(ET.Element("TTriangleModel", template="Vec3d"))
     t.append(ET.Element("TPointModel", template="Vec3d"))
@@ -369,7 +414,9 @@ def matchVertices(o1, o2, s, scn):
                 
 def exportAttachConstraint(o, o1, o2, scn):
     
-    t = ET.Element("AttachConstraint", object1=fixName(o1.name), object2=fixName(o2.name), twoWay="true", radius="0.1", indices1=vector_to_string(verticesInsideSphere(o1, o, scn)), indices2=vector_to_string(matchVertices(o1,o2,o, scn)))  
+    attachConstraint = ET.Element("AttachConstraint", object1=fixName(o1.name), object2=fixName(o2.name), twoWay="true", radius="0.1", indices1=vector_to_string(verticesInsideSphere(o1, o, scn)), indices2=vector_to_string(matchVertices(o1,o2,o, scn)))  
+    attachConstraint.set("stiffness",o.get('stiffness'))
+    t.append(attachConstraint)
     return t
     
 def generateTopologyContainer(o, t, scn):
