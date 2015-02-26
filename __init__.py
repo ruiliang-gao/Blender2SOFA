@@ -259,6 +259,9 @@ def exportEmptyHaptic(o,scn):
     t.append(ET.Element("UniformMass", template = "Rigid3d", name="mass", totalmass="0.05"))
     t.append(ET.Element("LCPForceFeedback", activate=str(o.get('forceFeedback',"false")), tags=omniTag, forceCoef="0.1"))
 
+    t.append(ET.Element("RestShapeSpringsForceField", 
+            template="Rigid",stiffness="10000000",angularStiffness="2000000",
+            external_rest_shape="RigidLayer/Tool/RealPosition", points = "0"))
 
     
     #Collision Model
