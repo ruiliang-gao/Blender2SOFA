@@ -202,7 +202,7 @@ def exportSoftBody(o, scn):
 def exportHaptic(o, scn):
     t = ET.Element("Node",name=fixName(o.name))
     t.append(ET.Element("RequiredPlugin",name="Sensable Plugin",pluginName="Sensable"))
-    newOmniDriver = ET.Element("NewOmniDriver",name="Omni Driver",deviceName="Phantom 1",listening="true",tags="Omni", permanent="true", printLog="1")
+    newOmniDriver = ET.Element("NewOmniDriver",name="Omni Driver",deviceName=o.get('deviceName',''),listening="true",tags="Omni", permanent="true", printLog="1")
     newOmniDriver.set("forceScale", str(o.get('forceScale')))
     newOmniDriver.set("scale", str(o.get('scale')))
     t.append(newOmniDriver)
@@ -281,24 +281,25 @@ def exportEmptyHaptic(o,scn):
     #t.append(cm)
     
     for i in o.children:
-        child = ET.Element("Node", name= fixName(i.name) + "__CM")
-        child.append(exportTopology(i, scn))
-        mo = createMechanicalObject(i)
-        mo.set('name', 'CM');
-        child.append(mo)
-        pm = ET.Element("TPointModel",
-                             template="Vec3d",  
-                             contactStiffness="0.01", bothSide="true",
-                             group="1"
-                             )
+        if(i.get('index', 0) != 0): 
+            child = ET.Element("Node", name= fixName(i.name) + "__CM")
+            child.append(exportTopology(i, scn))
+            mo = createMechanicalObject(i)
+            mo.set('name', 'CM');
+            child.append(mo)
+            pm = ET.Element("TPointModel",
+                                 template="Vec3d",  
+                                 contactStiffness="0.01", bothSide="true",
+                                 group="1"
+                                 )
     
-        toolFunction = o.get('toolFunction', 'Grasp');
-        if toolFunction == 'Carve': pm.set('tags', 'CravingTool')
-        elif toolFunction == 'Suture': pm.set('tags', 'SuturingTool')
-        elif toolFunction == 'Grasp': pm.set('contactResponse', 'stick')
-        child.append(pm)
-        child.append(ET.Element("RigidMapping", input="@../instrumentState",output="@CM",index=str(i.get('index', 0))))
-        t.append(child)
+            toolFunction = o.get('toolFunction', 'Grasp');
+            if toolFunction == 'Carve': pm.set('tags', 'CarvingTool')
+            elif toolFunction == 'Suture': pm.set('tags', 'SuturingTool')
+            elif toolFunction == 'Grasp': pm.set('contactResponse', 'stick')
+            child.append(pm)
+            child.append(ET.Element("RigidMapping", input="@../instrumentState",output="@CM",index=str(i.get('index', 0))))
+            t.append(child)
     
     #Children start here
     #index is a custom property of a child object if index is missing, then set index=1
