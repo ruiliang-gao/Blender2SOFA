@@ -256,33 +256,60 @@ def exportEmptyHaptic(o,scn):
     t.append(ET.Element("MechanicalObject", name = "instrumentState", 
                         template="Rigid3d",
                         position="0 0 0 0 0 0 1 0 0 0 0 0 0 1 0 0 0 0 0 0 1"))
-    t.append(ET.Element("UniformMass", template = "Rigid3d", name="mass", totolmass="0.05"))
-    t.append(ET.Element("LCPForceFeedback", activate="true", tags=omniTag, forceCoef="0.1"))
+    t.append(ET.Element("UniformMass", template = "Rigid3d", name="mass", totalmass="0.05"))
+    t.append(ET.Element("LCPForceFeedback", activate=str(o.get('forceFeedback',"false")), tags=omniTag, forceCoef="0.1"))
 
 
     
     #Collision Model
-    cm = ET.Element("Node", name = "CM")
-    mo =  createMechanicalObject(o)
-    mo.set('name','Particle')
-    mo.set('force', '0 0 0')
-    mo.set('externalForce','0 0 0')
-    mo.set('derivX', '0 0 0')
-    mo.set('resetScale','1')
-    cm.append(mo)
-    cm.append(ET.Element("TPointModel", template="Vec3d", name="GraspingToolModel", contactStiffness="2", contactResponse="stick"))
-    cm.append(ET.Element("RigidMapping", template="Rigid3d,Vec3d", input="@../instrumentState", output="@Particle"))
-    t.append(cm)
+    #cm = ET.Element("Node", name = "CM")
+    #mo =  createMechanicalObject(o)
+    #mo.set('name','Particle')
+    #cm.append(mo)
+    #pm = ET.Element("TPointModel",
+    #                     template="Vec3d",  
+    #                     contactStiffness="0.01", bothSide="true",
+    #                     #contactResponse="stick"
+    #                     )
     
+    #toolFunction = o.get('toolFunction', 'Grasp');
+    #if toolFunction == 'Carve': pm.set('tags', 'CravingTool')
+    #elif toolFunction == 'Suture': pm.set('tags', 'SuturingTool')
+
+    #cm.append(pm)
+    #cm.append(ET.Element("RigidMapping", template="Rigid3d,Vec3d", input="@../instrumentState", output="@Particle"))
+    #t.append(cm)
+    
+    for i in o.children:
+        child = ET.Element("Node", name= fixName(i.name) + "__CM")
+        child.append(exportTopology(i, scn))
+        mo = createMechanicalObject(i)
+        mo.set('name', 'CM');
+        child.append(mo)
+        pm = ET.Element("TPointModel",
+                             template="Vec3d",  
+                             contactStiffness="0.01", bothSide="true",
+                             group="1"
+                             )
+    
+        toolFunction = o.get('toolFunction', 'Grasp');
+        if toolFunction == 'Carve': pm.set('tags', 'CravingTool')
+        elif toolFunction == 'Suture': pm.set('tags', 'SuturingTool')
+        elif toolFunction == 'Grasp': pm.set('contactResponse', 'stick')
+        child.append(pm)
+        child.append(ET.Element("RigidMapping", input="@../instrumentState",output="@CM",index=str(i.get('index', 0))))
+        t.append(child)
     
     #Children start here
     #index is a custom property of a child object if index is missing, then set index=1
     for i in o.children:
-        child =  ET.Element("Node", name = i.name)
+        child =  ET.Element("Node", name = fixName(i.name))
         child.append(exportVisual(i, scn, name = 'Visual', with_transform = True))
         child.append(ET.Element("RigidMapping", input="@../instrumentState", output="@Visual", index=str(i.get('index', 0))))
         t.append(child)
-        
+ 
+    t.append(ET.Element("UncoupleConstraintCorrection"))   
+    #t.append(ET.fromstring('<UncoupledConstraintCorrection compliance="0.001   0.00003 0 0   0.00003 0   0.00003" />'))
     return t
 
 def exportCM(o,scn):
@@ -563,12 +590,17 @@ def exportScene(scene,dir):
         mpi.set("contactDistance", str(scene.get('contactDistance')))
     root.append(mpi)
     
+    root.append(ET.Element("CollisionGroup"))
+
     #root.append(ET.Element("DefaultContactManager"))    
     root.append(ET.fromstring('<CollisionResponse name="Response" response="FrictionContact"  printLog="1"/>'))
-    #root.append(ET.Element("GraspingManager",name="graspingManager0",listening="1"))
-    root.append(ET.Element("RequiredPlugin", pluginName="SofaSutoring"))
+    root.append(ET.Element("GraspingManager",name="graspingManager0",listening="1"))
+    root.append(ET.Element("RequiredPlugin", pluginName="SofaSuturing"))
     root.append(ET.Element("SuturingManager", attachStiffness="200000", sutureKey="["))
-    
+    root.append(ET.Element("RequiredPlugin", pluginName="SofaCarving"))
+    root.append(ET.Element("CarvingManager"))
+
+  
     #addSolvers(root)
     root.append(ET.Element("LightManager"))
     root.append(ET.Element("OglSceneFrame"))

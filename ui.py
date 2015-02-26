@@ -15,7 +15,7 @@ OBJECT_LIST = {
     'ATTACHCONSTRAINT': ("Attach Constraint",'CONSTRAINT_DATA', {'stiffness':1000}), 
     'SPHERECONSTRAINT': ("Sphere Constraint",'CONSTRAINT', {}),
     'VOLUMETRIC': ("Volumetic",'SNAP_VOLUME', { 'carvable': False, 'youngModulus': 300 , 'poissonRatio':0.45, 'damping': 0.1, 'contactFriction': 0.01, 'contactStiffness':500} ), 
-    'HAPTIC':("Haptic",'MODIFIER', {'scale':300, 'forceScale': 0.1}), 
+    'HAPTIC':("Haptic",'MODIFIER', {'scale':300, 'forceScale': 0.1, 'forceFeedback' : False, 'toolFunction': 'Grasp'}), 
     'RIGID':("Rigid",'MESH_ICOSPHERE', {})
 }
 
@@ -50,6 +50,9 @@ class SofaPropertyPanel(bpy.types.Panel):
         layout = self.layout
 
         obj = context.object
+
+        row = layout.row()
+        row.operator("scene.runsofa")
 
         if obj != None: 
             row = layout.row()
