@@ -432,11 +432,9 @@ def matchVertices(o1, o2, s, scn):
     return v3
                 
 def exportAttachConstraint(o, o1, o2, scn):
-    
     attachConstraint = ET.Element("AttachConstraint", object1=fixName(o1.name), object2=fixName(o2.name), twoWay="true", radius="0.1", indices1=vector_to_string(verticesInsideSphere(o1, o, scn)), indices2=vector_to_string(matchVertices(o1,o2,o, scn)))  
-    attachConstraint.set("stiffness",o.get('stiffness'))
-    t.append(attachConstraint)
-    return t
+    attachConstraint.set("stiffness",str(o.get('stiffness')))
+    return attachConstraint
     
 def generateTopologyContainer(o, t, scn):
     m = o.to_mesh(scn, True, 'PREVIEW')
