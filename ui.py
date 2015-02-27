@@ -12,7 +12,7 @@ OBJECT_LIST = {
     'SOFT_BODY': ( "Soft Body", 'MOD_SOFT', {'resX':10, 'resY':10, 'resZ':10, 'youngModulus':300, 'poissonRatio':0.45, 'rayleighStiffness':0, 'contactFriction':0.01, 'contactStiffness':500}), 
     'CLOTH' : ("Cloth",'MOD_CLOTH', {'youngModulus':300, 'poissonRatio': { 'default': 0.45, 'min': 0.0, 'max' : 0.5, 'step': 0.001 }, 'bendingStiffness':300, 'stretchDamping':0.1, 'bendingDamping':0.1}),
     'COLLISION': ("Obstacle",'MOD_EDGESPLIT', {}),
-    'ATTACHCONSTRAINT': ("Attach Constraint",'CONSTRAINT_DATA', {'stiffness':1000}), 
+    'ATTACHCONSTRAINT': ("Attach Constraint",'CONSTRAINT_DATA', {'stiffness':1000, 'object1':'', 'object2':''}), 
     'SPHERECONSTRAINT': ("Sphere Constraint",'CONSTRAINT', {}),
     'VOLUMETRIC': ("Volumetic",'SNAP_VOLUME', { 'carvable': False, 'youngModulus': 300 , 'poissonRatio':0.45, 'damping': 0.1, 'contactFriction': 0.01, 'contactStiffness':500} ), 
     'HAPTIC':("Haptic",'MODIFIER', {'scale':300, 'forceScale': 0.1, 'forceFeedback' : False, 'toolFunction': 'Grasp', 'deviceName': ''}), 
@@ -99,10 +99,43 @@ class SetAnnotatedTypeButton(bpy.types.Operator):
     def execute(self, context):
                
         o = context.object
-        
-        if(o.get("annotated_type") ==self.kind):
+        type = o.get("annotated_type")
+        #if the object type is already this kind of type
+        if( type==self.kind):
+            #delete the type and related properties
             del o["annotated_type"]
-        else:
+            (t,i,p) = OBJECT_LIST[self.kind]
+            for e in p:
+                if o.get(e):
+                        del o[e]
+                elif o.get(e) == 0 :
+                    del o[e]
+                elif o.get(e) == "" :
+                    del o[e]
+        #if the object type is other types
+        elif (type != None):
+            #delete previous properties
+            (text,icon,properties) = OBJECT_LIST[type]
+            for prop in properties:
+                if o.get(prop):
+                        del o[prop]
+                elif o.get(prop) == 0 :
+                    del o[prop]
+                elif o.get(prop) == "" :
+                    del o[prop]
+            #set the current type and related properties
+            o['annotated_type'] = self.kind
+            (t,i,p) = OBJECT_LIST[self.kind]
+            o["_RNA_UI"] = o.get("_RNA_UI", {})
+            for e in p:
+                if isinstance(p[e], dict):
+                    o["_RNA_UI"][e] = p[e]
+                    o[e] = p[e]['default']
+                else:
+                    o[e] = p[e]
+        #if the object doesn't have any type
+        else :
+            #assign the type and related properties for it
             o['annotated_type'] = self.kind
             (t,i,p) = OBJECT_LIST[self.kind]
             o["_RNA_UI"] = o.get("_RNA_UI", {})

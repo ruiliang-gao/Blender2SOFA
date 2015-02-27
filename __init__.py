@@ -624,9 +624,12 @@ def exportScene(scene,dir):
                     t = exportCloth(o, scene)
                 elif o.rigid_body != None and o.rigid_body.enabled or annotated_type == 'RIGID':
                     t = exportRigid(o, scene)
-                elif has_modifier(o,'ATTACHCONSTRAINT') or annotated_type == 'ATTACHCONSTRAINT':
-                    o1 = bpy.data.objects[o.get('object1')]
-                    o2 = bpy.data.objects[o.get('object2')]
+                elif  has_modifier(o,'ATTACHCONSTRAINT') or annotated_type == 'ATTACHCONSTRAINT':
+                    if (isinstance(o.get('object1'),str) and isinstance(o.get('object2'),str)):
+                        o1 = bpy.data.objects[o.get('object1')]
+                        o2 = bpy.data.objects[o.get('object2')]
+                    else:
+                        continue
                     t = exportAttachConstraint(o, o1, o2, scene)
                 elif annotated_type == 'VOLUMETRIC':
                     t = exportVolumetric(o, scene)
@@ -657,8 +660,11 @@ def exportScene(scene,dir):
                     root.append(t)
             elif o.type == "META":
                 if  has_modifier(o,'ATTACHCONSTRAINT') or annotated_type == 'ATTACHCONSTRAINT':
-                    o1 = bpy.data.objects[o.get('object1')]
-                    o2 = bpy.data.objects[o.get('object2')]
+                    if (isinstance(o.get('object1'),str) and isinstance(o.get('object2'),str)):
+                        o1 = bpy.data.objects[o.get('object1')]
+                        o2 = bpy.data.objects[o.get('object2')]
+                    else:
+                        continue
                     t = exportAttachConstraint(o, o1, o2, scene)
                     root.append(t)
     return root    
