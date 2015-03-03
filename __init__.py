@@ -561,7 +561,7 @@ def has_modifier(o,name_of_modifier):
             return True    
     return False
 
-def exportScene(scene,dir):
+def exportScene(scene,dir, setting):
     root= ET.Element("Node")
     root.set("name", "root")
     if scene.use_gravity :
@@ -606,7 +606,12 @@ def exportScene(scene,dir):
     #addSolvers(root)
     root.append(ET.Element("LightManager"))
     root.append(ET.Element("OglSceneFrame"))
-    l = list(scene.objects)
+    if (setting == True):
+        print("Use Selected")
+        print(scene)
+        l = list(bpy.context.selected_objects)
+    else:
+        l = list(scene.objects)
     l.reverse()
     for o in l: 
         if not o.hide_render and o.parent == None:
@@ -669,10 +674,10 @@ def exportScene(scene,dir):
                     root.append(t)
     return root    
 
-def exportSceneToFile(C, filepath):
+def exportSceneToFile(C, filepath, setting):
     dir = os.path.dirname(filepath)
     
-    root = exportScene(C.scene, dir)                    
+    root = exportScene(C.scene, dir, setting)                    
             
     ET.ElementTree(root).write(filepath)
 
@@ -699,14 +704,19 @@ class ExportToSofa(Operator, ExportHelper):
             default="*.scn",
             options={'HIDDEN'},
             )
-
+            
+    use_setting = BoolProperty(
+            name="Selection Only",
+            description="Export Selected Objects Only",
+            default=False,
+            )
 
     @classmethod
     def poll(cls, context):
         return context.scene is not None
  
     def execute(self, context):
-        return exportSceneToFile(context, self.filepath)
+        return exportSceneToFile(context, self.filepath, self.use_setting)
 
 
 
