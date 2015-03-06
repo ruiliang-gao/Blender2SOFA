@@ -669,12 +669,12 @@ def exportScene(scene,dir, selection, separate):
                         continue
                     t = exportAttachConstraint(o, o1, o2, scene)
         
-        if (t != None):
-            if (separate):
-                ET.ElementTree(t).write(dir+"/"+name+".xml")
-                root.append(ET.Element("include", href=name+".xml"))
-            else:
-                root.append(t)
+            if (t != None):
+                if (separate):
+                    ET.ElementTree(t).write(dir+"/"+name+".xml")
+                    root.append(ET.Element("include", href=name+".xml"))
+                else:
+                    root.append(t)
         
     return root    
 
@@ -768,9 +768,10 @@ def register():
     wm = bpy.context.window_manager
     km = wm.keyconfigs.addon.keymaps.new(name='Object Mode', space_type='EMPTY')
 
+    kmi = km.keymap_items.new(RunSofaOperator.bl_idname, 'M', 'PRESS', ctrl=True,shift=True)
+    addon_keymaps.append((km, kmi))
     kmi = km.keymap_items.new(RunSofaOperator.bl_idname, 'F5', 'PRESS')
     addon_keymaps.append((km, kmi))
-    #kmi.properties.total = 4
 
     uiRegister()
 
