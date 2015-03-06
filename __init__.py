@@ -561,120 +561,7 @@ def has_modifier(o,name_of_modifier):
             return True    
     return False
 
-def exportScene(scene,dir, selection):
-    root= ET.Element("Node")
-    root.set("name", "root")
-    if scene.use_gravity :
-        root.set("gravity",vector_to_string(scene.gravity))
-    else:
-        root.set("gravity","0 0 0")
-    
-    if scene.get('displayFlags') != None :
-        root.append(ET.Element("VisualStyle",displayFlags=scene['displayFlags']))
-    if scene.get('includes') != None :
-        for i in scene['includes'].split(';') :
-            root.append(ET.Element("include", href=i))
-             
-    lcp = ET.Element("LCPConstraintSolver", tolerance="1e-3", initial_guess="false", build_lcp="0",  printLog="0" )
-    if scene.get('mu') != None :
-        lcp.set("mu",str(scene.get('mu')))
-    root.append(lcp)
-    
-    root.append(ET.fromstring('<FreeMotionAnimationLoop printLog = "0"/>'))
- 
-    root.append(ET.Element("CollisionPipeline", depth="15"))
-    root.append(ET.Element("BruteForceDetection"))
-    
-    mpi = ET.Element("MinProximityIntersection",useSurfaceNormals="0")
-    if scene.get('alarmDistance'):
-        mpi.set("alarmDistance",str(scene.get('alarmDistance')))
-    if scene.get('contactDistance'):
-        mpi.set("contactDistance", str(scene.get('contactDistance')))
-    root.append(mpi)
-    
-    root.append(ET.Element("CollisionGroup"))
-
-    #root.append(ET.Element("DefaultContactManager"))    
-    root.append(ET.fromstring('<CollisionResponse name="Response" response="FrictionContact"  printLog="1"/>'))
-    root.append(ET.Element("GraspingManager",name="graspingManager0",listening="1"))
-    root.append(ET.Element("RequiredPlugin", pluginName="SofaSuturing"))
-    root.append(ET.Element("SuturingManager", attachStiffness="200000", sutureKey="["))
-    root.append(ET.Element("RequiredPlugin", pluginName="SofaCarving"))
-    root.append(ET.Element("CarvingManager"))
-
-  
-    #addSolvers(root)
-    root.append(ET.Element("LightManager"))
-    root.append(ET.Element("OglSceneFrame"))
-    if (selection == True):
-        print("Use Selected")
-        print(scene)
-        l = list(bpy.context.selected_objects)
-    else:
-        l = list(scene.objects)
-    l.reverse()
-    for o in l: 
-        if not o.hide_render and o.parent == None:
-            annotated_type = o.get('annotated_type')
-            print(fixName(o.name))
-            print(annotated_type)
-            if o.type == 'MESH' or o.type == 'SURFACE':
-                if has_modifier(o,'SOFT_BODY') or annotated_type == 'SOFT_BODY':
-                    t = exportSoftBody(o, scene)
-                elif has_modifier(o,'COLLISION') or annotated_type == 'COLLISION':
-                    t = exportObstacle(o, scene)
-                elif has_modifier(o,'HAPTIC') or annotated_type == 'HAPTIC':
-                    t = exportHaptic(o, scene)
-                elif has_modifier(o,'CLOTH') or annotated_type == 'CLOTH':
-                    t = exportCloth(o, scene)
-                elif o.rigid_body != None and o.rigid_body.enabled or annotated_type == 'RIGID':
-                    t = exportRigid(o, scene)
-                elif  has_modifier(o,'ATTACHCONSTRAINT') or annotated_type == 'ATTACHCONSTRAINT':
-                    if (isinstance(o.get('object1'),str) and isinstance(o.get('object2'),str)):
-                        o1 = bpy.data.objects[o.get('object1')]
-                        o2 = bpy.data.objects[o.get('object2')]
-                    else:
-                        continue
-                    t = exportAttachConstraint(o, o1, o2, scene)
-                elif annotated_type == 'VOLUMETRIC':
-                    t = exportVolumetric(o, scene)
-                else:
-                    t = exportVisual(o, scene)
-                
-                root.append(t) 
-            elif o.type == "LAMP":
-                if o.data.type == 'SPOT':
-                    t = ET.Element("SpotLight", name=fixName(o.name))
-                    o.rotation_mode = "QUATERNION"
-                    t.set("position", vector_to_string(o.location))
-                    t.set("color", vector_to_string(o.data.color))
-                    direction = o.rotation_quaternion * Vector((0,0,-1))
-                    t.set("direction",vector_to_string(direction))
-                    root.append(t)
-                elif o.data.type == 'POINT':
-                    t = ET.Element("PositionalLight", name=fixName(o.name))
-                    t.set("position", vector_to_string(o.location))
-                    t.set("color", vector_to_string(o.data.color))
-                    root.append(t)
-            elif o.type == "EMPTY":
-                if has_modifier(o,'HAPTIC') or annotated_type == 'HAPTIC':
-                    t = exportEmptyHaptic(o, scene)
-                    root.append(t)
-                elif has_modifier(o,'CM') or annotated_type == 'CM':
-                    t = exportCM(o,scene)
-                    root.append(t)
-            elif o.type == "META":
-                if  has_modifier(o,'ATTACHCONSTRAINT') or annotated_type == 'ATTACHCONSTRAINT':
-                    if (isinstance(o.get('object1'),str) and isinstance(o.get('object2'),str)):
-                        o1 = bpy.data.objects[o.get('object1')]
-                        o2 = bpy.data.objects[o.get('object2')]
-                    else:
-                        continue
-                    t = exportAttachConstraint(o, o1, o2, scene)
-                    root.append(t)
-    return root    
-
-def exportSceneSeperately(scene,dir, selection):
+def exportScene(scene,dir, selection, separate):
     root= ET.Element("Node")
     root.set("name", "root")
     if scene.use_gravity :
@@ -732,23 +619,18 @@ def exportSceneSeperately(scene,dir, selection):
             name = fixName(o.name)
             print(fixName(o.name))
             print(annotated_type)
+            t = None
             if o.type == 'MESH' or o.type == 'SURFACE':
-                
                 if has_modifier(o,'SOFT_BODY') or annotated_type == 'SOFT_BODY':
-                    t = exportSoftBody(o, scene)                    
-                    ET.ElementTree(t).write(dir+"/"+name+".xml")
+                    t = exportSoftBody(o, scene)
                 elif has_modifier(o,'COLLISION') or annotated_type == 'COLLISION':
                     t = exportObstacle(o, scene)
-                    ET.ElementTree(t).write(dir+"/"+name+".xml")
                 elif has_modifier(o,'HAPTIC') or annotated_type == 'HAPTIC':
                     t = exportHaptic(o, scene)
-                    ET.ElementTree(t).write(dir+"/"+name+".xml")
                 elif has_modifier(o,'CLOTH') or annotated_type == 'CLOTH':
                     t = exportCloth(o, scene)
-                    ET.ElementTree(t).write(dir+"/"+name+".xml")
                 elif o.rigid_body != None and o.rigid_body.enabled or annotated_type == 'RIGID':
                     t = exportRigid(o, scene)
-                    ET.ElementTree(t).write(dir+"/"+name+".xml")
                 elif  has_modifier(o,'ATTACHCONSTRAINT') or annotated_type == 'ATTACHCONSTRAINT':
                     if (isinstance(o.get('object1'),str) and isinstance(o.get('object2'),str)):
                         o1 = bpy.data.objects[o.get('object1')]
@@ -756,14 +638,11 @@ def exportSceneSeperately(scene,dir, selection):
                     else:
                         continue
                     t = exportAttachConstraint(o, o1, o2, scene)
-                    ET.ElementTree(t).write(dir+"/"+name+".xml")
                 elif annotated_type == 'VOLUMETRIC':
                     t = exportVolumetric(o, scene)
-                    ET.ElementTree(t).write(dir+"/"+name+".xml")
                 else:
                     t = exportVisual(o, scene)
-                    ET.ElementTree(t).write(dir+"/"+name+".xml")
-                root.append(ET.Element("include", href=name+".xml"))
+                 
             elif o.type == "LAMP":
                 if o.data.type == 'SPOT':
                     t = ET.Element("SpotLight", name=fixName(o.name))
@@ -772,21 +651,15 @@ def exportSceneSeperately(scene,dir, selection):
                     t.set("color", vector_to_string(o.data.color))
                     direction = o.rotation_quaternion * Vector((0,0,-1))
                     t.set("direction",vector_to_string(direction))
-                    ET.ElementTree(t).write(dir+"/"+name+".xml")
                 elif o.data.type == 'POINT':
                     t = ET.Element("PositionalLight", name=fixName(o.name))
                     t.set("position", vector_to_string(o.location))
                     t.set("color", vector_to_string(o.data.color))
-                    ET.ElementTree(t).write(dir+"/"+name+".xml")
-                root.append(ET.Element("include", href=name+".xml"))
             elif o.type == "EMPTY":
                 if has_modifier(o,'HAPTIC') or annotated_type == 'HAPTIC':
                     t = exportEmptyHaptic(o, scene)
-                    ET.ElementTree(t).write(dir+"/"+name+".xml")
                 elif has_modifier(o,'CM') or annotated_type == 'CM':
                     t = exportCM(o,scene)
-                    ET.ElementTree(t).write(dir+"/"+name+".xml")
-                root.append(ET.Element("include", href=name+".xml"))
             elif o.type == "META":
                 if  has_modifier(o,'ATTACHCONSTRAINT') or annotated_type == 'ATTACHCONSTRAINT':
                     if (isinstance(o.get('object1'),str) and isinstance(o.get('object2'),str)):
@@ -795,17 +668,22 @@ def exportSceneSeperately(scene,dir, selection):
                     else:
                         continue
                     t = exportAttachConstraint(o, o1, o2, scene)
-                    ET.ElementTree(t).write(dir+"/"+name+".xml")
+        
+        if (t != None):
+            if (separate):
+                ET.ElementTree(t).write(dir+"/"+name+".xml")
                 root.append(ET.Element("include", href=name+".xml"))
+            else:
+                root.append(t)
+        
     return root    
+
 
 def exportSceneToFile(C, filepath, selection, separate):
     dir = os.path.dirname(filepath)
     
-    if(separate == False):
-        root = exportScene(C.scene, dir, selection)
-    else:
-        root = exportSceneSeperately(C.scene, dir, selection)
+    root = exportScene(C.scene, dir, selection, separate)
+    
     ET.ElementTree(root).write(filepath)
 
     return {'FINISHED'}
