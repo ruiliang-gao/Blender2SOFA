@@ -561,7 +561,7 @@ def has_modifier(o,name_of_modifier):
             return True    
     return False
 
-def exportScene(scene,dir, setting):
+def exportScene(scene,dir, selection):
     root= ET.Element("Node")
     root.set("name", "root")
     if scene.use_gravity :
@@ -606,7 +606,7 @@ def exportScene(scene,dir, setting):
     #addSolvers(root)
     root.append(ET.Element("LightManager"))
     root.append(ET.Element("OglSceneFrame"))
-    if (setting == True):
+    if (selection == True):
         print("Use Selected")
         print(scene)
         l = list(bpy.context.selected_objects)
@@ -674,7 +674,7 @@ def exportScene(scene,dir, setting):
                     root.append(t)
     return root    
 
-def exportSceneSeperately(scene,dir, setting):
+def exportSceneSeperately(scene,dir, selection):
     root= ET.Element("Node")
     root.set("name", "root")
     if scene.use_gravity :
@@ -719,7 +719,7 @@ def exportSceneSeperately(scene,dir, setting):
     #addSolvers(root)
     root.append(ET.Element("LightManager"))
     root.append(ET.Element("OglSceneFrame"))
-    if (setting == True):
+    if (selection == True):
         print("Use Selected")
         print(scene)
         l = list(bpy.context.selected_objects)
@@ -799,20 +799,13 @@ def exportSceneSeperately(scene,dir, setting):
                 root.append(ET.Element("include", href=name+".xml"))
     return root    
 
-def exportSceneToFile(C, filepath, setting=False):
+def exportSceneToFile(C, filepath, selection, separate):
     dir = os.path.dirname(filepath)
     
-    root = exportScene(C.scene, dir, setting)                    
-            
-    ET.ElementTree(root).write(filepath)
-
-    return {'FINISHED'}
-
-def exportSceneToFileSeparately(C, filepath, setting=False):
-    dir = os.path.dirname(filepath)
-    
-    root = exportSceneSeperately(C.scene, dir, setting)                    
-            
+    if(separate == False):
+        root = exportScene(C.scene, dir, selection)
+    else:
+        root = exportSceneSeperately(C.scene, dir, selection)
     ET.ElementTree(root).write(filepath)
 
     return {'FINISHED'}
@@ -838,9 +831,15 @@ class ExportToSofa(Operator, ExportHelper):
             options={'HIDDEN'},
             )
             
-    use_setting = BoolProperty(
+    use_selection = BoolProperty(
             name="Selection Only",
             description="Export Selected Objects Only",
+            default=False,
+            )
+    
+    export_separate = BoolProperty(
+            name="Export to Separate Files",
+            description="Export Objects into Separate Files and Include all in one *.scn File",
             default=False,
             )
 
@@ -849,34 +848,7 @@ class ExportToSofa(Operator, ExportHelper):
         return context.scene is not None
  
     def execute(self, context):
-        return exportSceneToFile(context, self.filepath, self.use_setting)
-
-class ExportToSofaSeparately(Operator, ExportHelper):
-    """Export to Sofa XML scene format"""
-    bl_idname = "export.tosofaseparate"  # important since its how bpy.ops.import_test.some_data is constructed
-    bl_label = "Export To Sofa XML Separately"
-
-    # ExportHelper mixin class uses this
-    filename_ext = ".scn"
-
-    filter_glob = StringProperty(
-            default="*.scn",
-            options={'HIDDEN'},
-            )
-            
-    use_setting = BoolProperty(
-            name="Selection Only",
-            description="Export Selected Objects Only",
-            default=False,
-            )
-
-    @classmethod
-    def poll(cls, context):
-        return context.scene is not None
- 
-    def execute(self, context):
-        return exportSceneToFileSeparately(context, self.filepath, self.use_setting)
-
+        return exportSceneToFile(context, self.filepath, self.use_selection, self.export_separate)
 
 
 from subprocess import Popen
@@ -895,7 +867,7 @@ class RunSofaOperator(bpy.types.Operator):
             fn = mktemp(suffix='.scn')
         else:
             fn = bpy.data.filepath + '.scn'
-        exportSceneToFile(context, fn, False)
+        exportSceneToFile(context, fn, False, False)
         Popen(fn,shell=True)
         return {'FINISHED'}
 
@@ -910,7 +882,6 @@ addon_keymaps = []
 
 def register():
     bpy.utils.register_class(ExportToSofa)
-    bpy.utils.register_class(ExportToSofaSeparately)
     bpy.types.INFO_MT_file_export.append(menu_func_export)
 
     bpy.utils.register_class(RunSofaOperator)
@@ -928,7 +899,6 @@ def register():
 
 def unregister():
     bpy.utils.unregister_class(ExportToSofa)
-    bpy.utils.unregister_class(ExportToSofaSeparately)
     bpy.types.INFO_MT_file_export.remove(menu_func_export)
 
     # handle the keymap
