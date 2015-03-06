@@ -618,7 +618,7 @@ def exportScene(scene,dir, setting):
             annotated_type = o.get('annotated_type')
             print(fixName(o.name))
             print(annotated_type)
-            if o.type == 'MESH' or o.type == 'SURFACE':
+            if o.type == 'MESH' or o.type == 'SURFACE' or o.type == 'CURVE':
                 if has_modifier(o,'SOFT_BODY') or annotated_type == 'SOFT_BODY':
                     t = exportSoftBody(o, scene)
                 elif has_modifier(o,'COLLISION') or annotated_type == 'COLLISION':
