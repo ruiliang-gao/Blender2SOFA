@@ -113,40 +113,14 @@ def exportVolumetric(o, scn):
         n.append(ET.Element("IdentityMapping",object1="../MO",object2="Visual"))
         n.append(ts)
         
-        triangleModel = ET.Element("TTriangleModel", template="Vec3d")
-        triangleModel.set("contactStiffness", str(o.get('contactStiffness')))
-        triangleModel.set("contactFriction", str(o.get('contactFriction')))
-        n.append(triangleModel)
-        
-        pointModel = ET.Element("TPointModel", template="Vec3d")
-        pointModel.set("contactStiffness", str(o.get('contactStiffness')))
-        pointModel.set("contactFriction", str(o.get('contactFriction')))
-        n.append(pointModel)
-        
-        lineModel = ET.Element("TLineModel", template="Vec3d")
-        lineModel.set("contactStiffness", str(o.get('contactStiffness')))
-        lineModel.set("contactFriction", str(o.get('contactFriction')))
-        n.append(lineModel)
+        n.extend(collisionModelParts(o))
         
     else:
         n.append(exportVisual(o, scn, name = "Visual"))
         n.append(ET.Element("BarycentricMapping",template="Vec3d,ExtVec3f",object1="../MO",object2="Visual"))
         t.append(ts)
         
-        triangleModel = ET.Element("TTriangleModel", template="Vec3d")
-        triangleModel.set("contactStiffness", str(o.get('contactStiffness')))
-        triangleModel.set("contactFriction", str(o.get('contactFriction')))
-        t.append(triangleModel)
-        
-        pointModel = ET.Element("TPointModel", template="Vec3d")
-        pointModel.set("contactStiffness", str(o.get('contactStiffness')))
-        pointModel.set("contactFriction", str(o.get('contactFriction')))
-        t.append(pointModel)
-        
-        lineModel = ET.Element("TLineModel", template="Vec3d")
-        lineModel.set("contactStiffness", str(o.get('contactStiffness')))
-        lineModel.set("contactFriction", str(o.get('contactFriction')))
-        t.append(lineModel)
+        n.extend(collisionModelParts(o))
 
     return t
 
@@ -160,6 +134,18 @@ def addConstraints(o, t):
             n = q.name.replace('.', '_')
             t.append(ET.Element("SphereROI",name=n,centers=vector_to_string(q.location),radii=str(max(q.scale))))
             t.append(ET.Element("FixedConstraint", indices="@%s.indices" % n))
+
+def collisionModelParts(o, obstacle = False):
+    if obstacle:
+        M = "0"
+    else:
+        M = "1"
+
+    return [ 
+        ET.Element("PointModel",selfCollision='0', contactFriction = str(o.get('contactFriction')), contactStiffness = str(o.get('contactStiffness')), group=str(o.get('collisionGroup','1')), moving = M, simulated = M ), 
+        ET.Element("LineModel",selfCollision='0', contactFriction = str(o.get('contactFriction')), contactStiffness = str(o.get('contactStiffness')), group=str(o.get('collisionGroup','1')), moving = M, simulated = M), 
+        ET.Element("TriangleModel",selfCollision='0', contactFriction = str(o.get('contactFriction')), contactStiffness = str(o.get('contactStiffness')), group=str(o.get('collisionGroup','1')), moving = M, simulated = M) 
+    ]
 
 def exportSoftBody(o, scn):
     t = ET.Element("Node",name=fixName(o.name)) 
@@ -192,9 +178,7 @@ def exportSoftBody(o, scn):
     c = ET.Element("Node",name="Collision")    
     c.append(exportTopology(o,scn))
     c.append(ET.Element("MechanicalObject",template="Vec3d",name="MOC"))
-    c.extend([ ET.Element("PointModel",selfCollision='0', contactFriction = str(o.get('contactFriction')), contactStiffness = str(o.get('contactStiffness'))), 
-               ET.Element("LineModel",selfCollision='0', contactFriction = str(o.get('contactFriction')), contactStiffness = str(o.get('contactStiffness'))), 
-               ET.Element("TriangleModel",selfCollision='1', contactFriction = str(o.get('contactFriction')), contactStiffness = str(o.get('contactStiffness'))) ])
+    c.extend(collisionModelParts(o))
     c.append(ET.Element("BarycentricMapping",input="@../",output="@./"))
     t.append(c)
     return t
@@ -286,14 +270,14 @@ def exportEmptyHaptic(o,scn):
     for i in o.children:
         if(i.get('index', 0) != 0): 
             child = ET.Element("Node", name= fixName(i.name) + "__CM")
-            child.append(exportTopology(i, scn))
+            #child.append(exportTopology(i, scn))
             mo = createMechanicalObject(i)
             mo.set('name', 'CM');
             child.append(mo)
             pm = ET.Element("TPointModel",
                                  template="Vec3d",  
                                  contactStiffness="0.01", bothSide="true",
-                                 group="1"
+                                 group="0"
                                  )
     
             toolFunction = o.get('toolFunction', 'Grasp');
@@ -331,7 +315,7 @@ def exportCM(o,scn):
                 c = ET.Element("Node",name = i.name)    
                 c.append(exportTopology(i,scn))
                 c.append(createMechanicalObject(i))
-                c.extend([ ET.Element("PointModel",selfCollision='0'), ET.Element("LineModel",selfCollision='0'), ET.Element("TriangleModel",selfCollision='1') ])
+                c.extend(collisionModelParts(o))
                 #c.append(ET.Element("BarycentricMapping",input="@../",output="@./"))
                 t.append(c)
             elif annotated_type == 'SPARSEGRID':
@@ -382,10 +366,8 @@ def exportCloth(o, scn):
     triangularBendingSprings.set("stiffness", str(o.get('bendingStiffness')))
     triangularBendingSprings.set("damping", str(o.get('bendingDamping')))
     t.append(triangularBendingSprings)
-    t.append(ET.Element("TriangleSet"))
-    t.append(ET.Element("TTriangleModel", template="Vec3d"))
-    t.append(ET.Element("TPointModel", template="Vec3d"))
-    t.append(ET.Element("TLineModel", template="Vec3d"))
+
+    t.extend(collisionModelParts(o))
 
     t.append(ET.fromstring('<UncoupledConstraintCorrection />'))
 
@@ -476,9 +458,7 @@ def exportObstacle(o, scn):
     if True or len(o.data.vertices) < 200:
         t.append(exportTopology(o,scn))
         t.append(createMechanicalObject(o))
-        t.extend([ ET.Element("PointModel",moving='0',simulated='0')
-            , ET.Element("LineModel",moving='0',simulated='0')
-            , ET.Element("TTriangleModel",moving='0',simulated='0') ])
+        t.extend(collisionModelParts(o,obstacle = True))
     else:
         t.append(ET.Element("SparseGridTopology",position="@Visual.position",quads="@Visual.quads",triangles="@Visual.triangles",n="10 10 10"))
         t.append(createMechanicalObject(o))
