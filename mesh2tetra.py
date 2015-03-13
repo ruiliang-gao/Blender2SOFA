@@ -16,5 +16,8 @@ def convert(o, scn):
     a.facets = [ Facet([ Polygon(f.vertices) ]) for f in m.polygons ]
     
     b = TetGenIO()
-    tetrahedralize(b"q1.414a0.1", pointer(a), pointer(b), None, None)
+    # Tetrahedralize the PLC. Switches are chosen to read a PLC (p),
+    #   do quality mesh generation (q) with a specified quality bound
+    #   (1.414), and apply a maximum volume constraint (a0.1).
+    tetrahedralize(b"q1.414", pointer(a), pointer(b), None, None)
     return ( b.points, b.tetrahedra )
