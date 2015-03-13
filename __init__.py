@@ -410,13 +410,14 @@ def matchVertices(o1, o2, s, scn):
             distance.append(dist)
             if dist == min(distance):
                 minindex = j
-        v3.append(minindex)
+        if minindex != -1:
+            v3.append((i,minindex))
     return v3
                 
 def exportAttachConstraint(o, o1, o2, scn):
     stiffness = o.get('stiffness', 500)
     springs = [
-        vector_to_string([i, j, stiffness, 5, 3.5]) for (i,j) in zip(verticesInsideSphere(o1, o, scn), matchVertices(o1,o2,o, scn))
+        vector_to_string([i, j, stiffness, 5, 3.5]) for (i,j) in matchVertices(o1,o2,o, scn)
         ]
     ff = ET.Element("StiffSpringForceField", object1=fixName(o1.name), object2=fixName(o2.name), 
                     spring = vector_to_string(springs))  
