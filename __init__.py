@@ -142,9 +142,9 @@ def collisionModelParts(o, obstacle = False):
         M = "1"
 
     return [ 
-        ET.Element("PointModel",selfCollision='0', contactFriction = str(o.get('contactFriction')), contactStiffness = str(o.get('contactStiffness')), group=str(o.get('collisionGroup','1')), moving = M, simulated = M ), 
-        ET.Element("LineModel",selfCollision='0', contactFriction = str(o.get('contactFriction')), contactStiffness = str(o.get('contactStiffness')), group=str(o.get('collisionGroup','1')), moving = M, simulated = M), 
-        ET.Element("TriangleModel",selfCollision='0', contactFriction = str(o.get('contactFriction')), contactStiffness = str(o.get('contactStiffness')), group=str(o.get('collisionGroup','1')), moving = M, simulated = M) 
+        ET.Element("PointModel",selfCollision='0', contactFriction = str(o.get('contactFriction', 0)), contactStiffness = str(o.get('contactStiffness', 500)), group=str(o.get('collisionGroup','1')), moving = M, simulated = M ), 
+        ET.Element("LineModel",selfCollision='0', contactFriction = str(o.get('contactFriction', 0)), contactStiffness = str(o.get('contactStiffness', 500)), group=str(o.get('collisionGroup','1')), moving = M, simulated = M), 
+        ET.Element("TriangleModel",selfCollision='0', contactFriction = str(o.get('contactFriction', 0)), contactStiffness = str(o.get('contactStiffness', 500)), group=str(o.get('collisionGroup','1')), moving = M, simulated = M) 
     ]
 
 def exportSoftBody(o, scn):
@@ -386,8 +386,7 @@ def pointInsideSphere(v,s):
     else:
         return False
     
-def verticesInsideSphere(o, s, scn):
-    m = o.to_mesh(scn, True, 'PREVIEW')
+def verticesInsideSphere(o, m, s, scn):
     vindex = []
     for v in m.vertices:
         if pointInsideSphere((o.matrix_world*v.co), s):
@@ -396,28 +395,30 @@ def verticesInsideSphere(o, s, scn):
     return vindex
     
 def matchVertices(o1, o2, s, scn):
-    v1 = verticesInsideSphere(o1, s, scn)
-    v2 = verticesInsideSphere(o2, s, scn)
+    m1 = o1.to_mesh(scn, True, 'PREVIEW')
+    m2 = o2.to_mesh(scn, True, 'PREVIEW')
+    v1 = verticesInsideSphere(o1, m1, s, scn)
+    v2 = verticesInsideSphere(o2, m2, s, scn)
     #print(list(o1.data.vertices))
     v3 = []   
     for i in v1:
-        distance = []
+        mindist = 1E+38
         minindex = -1
         for j in v2:
             #print(i)
             #print(j)
-            dist = (o1.matrix_world*o1.data.vertices[i].co - o2.matrix_world*o2.data.vertices[j].co).length
-            distance.append(dist)
-            if dist == min(distance):
+            dist = (o1.matrix_world*m1.vertices[i].co - o2.matrix_world*m2.vertices[j].co).length
+            if dist < mindist :
                 minindex = j
+                mindist = dist
         if minindex != -1:
-            v3.append((i,minindex))
+            v3.append((i,minindex, mindist))
     return v3
                 
 def exportAttachConstraint(o, o1, o2, scn):
     stiffness = o.get('stiffness', 500)
     springs = [
-        vector_to_string([i, j, stiffness, 5, 3.5]) for (i,j) in matchVertices(o1,o2,o, scn)
+        vector_to_string([i, j, stiffness, .1, d]) for (i,j,d) in matchVertices(o1,o2,o, scn)
         ]
     ff = ET.Element("StiffSpringForceField", object1=fixName(o1.name), object2=fixName(o2.name), 
                     spring = vector_to_string(springs))  
@@ -547,6 +548,61 @@ def has_modifier(o,name_of_modifier):
             return True    
     return False
 
+
+def exportObject(scene, o):
+    t = None
+    if not o.hide_render and o.parent == None:
+        annotated_type = o.get('annotated_type')
+        name = fixName(o.name)
+        if o.type == 'MESH' or o.type == 'SURFACE' or o.type == 'CURVE':
+            if has_modifier(o,'SOFT_BODY') or annotated_type == 'SOFT_BODY':
+                t = exportSoftBody(o, scene)
+            elif has_modifier(o,'COLLISION') or annotated_type == 'COLLISION':
+                t = exportObstacle(o, scene)
+            elif has_modifier(o,'HAPTIC') or annotated_type == 'HAPTIC':
+                t = exportHaptic(o, scene)
+            elif has_modifier(o,'CLOTH') or annotated_type == 'CLOTH':
+                t = exportCloth(o, scene)
+            elif o.rigid_body != None and o.rigid_body.enabled or annotated_type == 'RIGID':
+                t = exportRigid(o, scene)
+            elif annotated_type == 'VOLUMETRIC':
+                t = exportVolumetric(o, scene)
+            elif annotated_type == None or annotated_type == 'VISUAL':
+                t = exportVisual(o, scene)
+                 
+        elif o.type == "LAMP":
+            if o.data.type == 'SPOT':
+                t = ET.Element("SpotLight", name=fixName(o.name))
+                o.rotation_mode = "QUATERNION"
+                t.set("position", vector_to_string(o.location))
+                t.set("color", vector_to_string(o.data.color))
+                direction = o.rotation_quaternion * Vector((0,0,-1))
+                t.set("direction",vector_to_string(direction))
+            elif o.data.type == 'POINT':
+                t = ET.Element("PositionalLight", name=fixName(o.name))
+                t.set("position", vector_to_string(o.location))
+                t.set("color", vector_to_string(o.data.color))
+        elif o.type == "EMPTY":
+            if has_modifier(o,'HAPTIC') or annotated_type == 'HAPTIC':
+                t = exportEmptyHaptic(o, scene)
+            elif has_modifier(o,'CM') or annotated_type == 'CM':
+                t = exportCM(o,scene)
+    return t
+
+
+def exportConstraints(scene, o):
+    if not o.hide_render and o.parent == None:
+        annotated_type = o.get('annotated_type')
+        name = fixName(o.name)
+        if  has_modifier(o,'ATTACHCONSTRAINT') or annotated_type == 'ATTACHCONSTRAINT':
+            if (isinstance(o.get('object1'),str) and isinstance(o.get('object2'),str)):
+                o1 = bpy.data.objects[o.get('object1')]
+                o2 = bpy.data.objects[o.get('object2')]
+                return exportAttachConstraint(o, o1, o2, scene)
+            else:
+                return None
+    return None
+
 def exportScene(scene,dir, selection, separate):
     root= ET.Element("Node")
     root.set("name", "root")
@@ -588,8 +644,11 @@ def exportScene(scene,dir, selection, separate):
     root.append(ET.Element("RequiredPlugin", pluginName="SofaCarving"))
     root.append(ET.Element("CarvingManager"))
 
-  
-    #addSolvers(root)
+    # TODO: put all the objects that need a solver e.g. soft bodies, volumetric and attach constraints
+    #  into a separate node call it "solverNode"
+    # and keep the obstacles in the root.
+    # and delete all indiviual solvers in separate objects.
+    addSolvers(root)
     root.append(ET.Element("LightManager"))
     root.append(ET.Element("OglSceneFrame"))
     if (selection == True):
@@ -600,67 +659,23 @@ def exportScene(scene,dir, selection, separate):
         l = list(scene.objects)
     l.reverse()
     for o in l: 
-        if not o.hide_render and o.parent == None:
-            annotated_type = o.get('annotated_type')
-            name = fixName(o.name)
-            print(fixName(o.name))
-            print(annotated_type)
-            t = None
-            if o.type == 'MESH' or o.type == 'SURFACE' or o.type == 'CURVE':
-                if has_modifier(o,'SOFT_BODY') or annotated_type == 'SOFT_BODY':
-                    t = exportSoftBody(o, scene)
-                elif has_modifier(o,'COLLISION') or annotated_type == 'COLLISION':
-                    t = exportObstacle(o, scene)
-                elif has_modifier(o,'HAPTIC') or annotated_type == 'HAPTIC':
-                    t = exportHaptic(o, scene)
-                elif has_modifier(o,'CLOTH') or annotated_type == 'CLOTH':
-                    t = exportCloth(o, scene)
-                elif o.rigid_body != None and o.rigid_body.enabled or annotated_type == 'RIGID':
-                    t = exportRigid(o, scene)
-                elif  has_modifier(o,'ATTACHCONSTRAINT') or annotated_type == 'ATTACHCONSTRAINT':
-                    if (isinstance(o.get('object1'),str) and isinstance(o.get('object2'),str)):
-                        o1 = bpy.data.objects[o.get('object1')]
-                        o2 = bpy.data.objects[o.get('object2')]
-                    else:
-                        continue
-                    t = exportAttachConstraint(o, o1, o2, scene)
-                elif annotated_type == 'VOLUMETRIC':
-                    t = exportVolumetric(o, scene)
-                else:
-                    t = exportVisual(o, scene)
-                 
-            elif o.type == "LAMP":
-                if o.data.type == 'SPOT':
-                    t = ET.Element("SpotLight", name=fixName(o.name))
-                    o.rotation_mode = "QUATERNION"
-                    t.set("position", vector_to_string(o.location))
-                    t.set("color", vector_to_string(o.data.color))
-                    direction = o.rotation_quaternion * Vector((0,0,-1))
-                    t.set("direction",vector_to_string(direction))
-                elif o.data.type == 'POINT':
-                    t = ET.Element("PositionalLight", name=fixName(o.name))
-                    t.set("position", vector_to_string(o.location))
-                    t.set("color", vector_to_string(o.data.color))
-            elif o.type == "EMPTY":
-                if has_modifier(o,'HAPTIC') or annotated_type == 'HAPTIC':
-                    t = exportEmptyHaptic(o, scene)
-                elif has_modifier(o,'CM') or annotated_type == 'CM':
-                    t = exportCM(o,scene)
-            elif o.type == "META":
-                if  has_modifier(o,'ATTACHCONSTRAINT') or annotated_type == 'ATTACHCONSTRAINT':
-                    if (isinstance(o.get('object1'),str) and isinstance(o.get('object2'),str)):
-                        o1 = bpy.data.objects[o.get('object1')]
-                        o2 = bpy.data.objects[o.get('object2')]
-                    else:
-                        continue
-                    t = exportAttachConstraint(o, o1, o2, scene)
-        
-            if (t != None):
-                if (separate):
-                    ET.ElementTree(t).write(dir+"/"+name+".xml")
-                    root.append(ET.Element("include", href=name+".xml"))
-                else:
-                    root.append(t)
+        t = exportObject(scene, o)
+        if (t != None):
+            if (separate):
+                ET.ElementTree(t).write(dir+"/"+name+".xml")
+                root.append(ET.Element("include", href=name+".xml"))
+            else:
+                root.append(t)
+
+    for o in l:
+        t = exportConstraints(scene, o)
+        if (t != None):
+            if (separate):
+                ET.ElementTree(t).write(dir+"/"+name+".xml")
+                root.append(ET.Element("include", href=name+".xml"))
+            else:
+                root.append(t)
+
         
     return root    
 
