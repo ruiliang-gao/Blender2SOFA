@@ -65,8 +65,6 @@ def exportVolumetric(o, scn):
     points, tetrahedra = convertMesh2Tetra(o, scn)
     t = ET.Element("Node", name = fixName(o.name))
 
-    addSolvers(t)
-
     c =  ET.Element('TetrahedronSetTopologyContainer', name="topotetra")
     c.set('points', ndarray_to_flat_string(points))
     c.set('tetrahedra', ndarray_to_flat_string(tetrahedra))
@@ -148,8 +146,7 @@ def collisionModelParts(o, obstacle = False):
     ]
 
 def exportSoftBody(o, scn):
-    t = ET.Element("Node",name=fixName(o.name)) 
-    addSolvers(t)
+    t = ET.Element("Node",name=fixName(o.name))
     t.append(createMechanicalObject(o))
     t.append(ET.Element("UniformMass",template="Vec3d", mass=str(o.get('mass') or 1)))
     v = ET.Element("Node",name="Visual")
@@ -233,8 +230,6 @@ def exportEmptyHaptic(o,scn):
     nt.append(ET.Element("SubsetMapping", indices="0"));
     rl.append(nt);
     t.append(rl)
-
-    addSolvers(t);
 
     # State of the tool
     t.append(ET.Element("MechanicalObject", name = "instrumentState", 
@@ -648,7 +643,9 @@ def exportScene(scene,dir, selection, separate):
     #  into a separate node call it "solverNode"
     # and keep the obstacles in the root.
     # and delete all indiviual solvers in separate objects.
-    addSolvers(root)
+    solverNode = ET.Element("Node", name="SolverNode")
+    addSolvers(solverNode)
+    
     root.append(ET.Element("LightManager"))
     root.append(ET.Element("OglSceneFrame"))
     if (selection == True):
@@ -658,25 +655,35 @@ def exportScene(scene,dir, selection, separate):
     else:
         l = list(scene.objects)
     l.reverse()
+    
+    
+    
     for o in l: 
         t = exportObject(scene, o)
         if (t != None):
             if (separate):
                 ET.ElementTree(t).write(dir+"/"+name+".xml")
-                root.append(ET.Element("include", href=name+".xml"))
+                if(has_modifier(o,'COLLISION') or o.get("annotated_type") == 'COLLISION'):
+                    root.append(ET.Element("include", href=name+".xml"))
+                else:
+                    solverNode.append(ET.Element("include", href=name+".xml"))
             else:
-                root.append(t)
+                if(has_modifier(o,'COLLISION') or o.get("annotated_type") == 'COLLISION'):
+                    root.append(t)
+                else:
+                    solverNode.append(t)
 
     for o in l:
         t = exportConstraints(scene, o)
         if (t != None):
             if (separate):
                 ET.ElementTree(t).write(dir+"/"+name+".xml")
-                root.append(ET.Element("include", href=name+".xml"))
+                solverNode.append(ET.Element("include", href=name+".xml"))
             else:
-                root.append(t)
-
-        
+                solverNode.append(t)
+    
+    root.append(solverNode)
+    
     return root    
 
 
