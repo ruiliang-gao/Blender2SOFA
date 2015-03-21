@@ -762,7 +762,7 @@ class RunSofaOperator(bpy.types.Operator):
 
 # Only needed if you want to add into a dynamic menu
 def menu_func_export(self, context):
-    self.layout.operator(ExportToSofa.bl_idname, text="To Sofa XML Scene")
+    self.layout.operator(ExportToSofa.bl_idname, text="To Sofa XML Scene (.scn)")
 
 addon_keymaps = []
 
