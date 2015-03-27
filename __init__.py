@@ -660,6 +660,7 @@ def exportScene(scene,dir, selection, separate):
     
     for o in l: 
         t = exportObject(scene, o)
+        name = fixName(o.name)
         if (t != None):
             if (separate):
                 ET.ElementTree(t).write(dir+"/"+name+".xml")
@@ -675,6 +676,7 @@ def exportScene(scene,dir, selection, separate):
 
     for o in l:
         t = exportConstraints(scene, o)
+        name = fixName(o.name)
         if (t != None):
             if (separate):
                 ET.ElementTree(t).write(dir+"/"+name+".xml")
