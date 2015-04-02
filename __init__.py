@@ -206,7 +206,7 @@ def exportHaptic(o, scn):
     mo.set('template','Vec3d')
     c.append(mo)
     
-    c.append(ET.Element("PointModel", template= "Vec3d",name="ParticleModel", contactStiffness="0.1", contactFriction="0.01" ,contactResponse = "stick"))
+    c.append(ET.Element("PointModel", template= "Vec3d",name="ParticleModel", contactStiffness="0.1", contactFriction="0.01" ))
     c.append(ET.Element("RigidMapping",template = "Rigid,ExtVec3f", object1="instrumentstate", object2="MO"))
     t.append(c)  
     return t
@@ -278,7 +278,6 @@ def exportEmptyHaptic(o,scn):
             toolFunction = o.get('toolFunction', 'Grasp');
             if toolFunction == 'Carve': pm.set('tags', 'CarvingTool')
             elif toolFunction == 'Suture': pm.set('tags', 'SuturingTool')
-            elif toolFunction == 'Grasp': pm.set('contactResponse', 'stick')
             child.append(pm)
             child.append(ET.Element("RigidMapping", input="@../instrumentState",output="@CM",index=str(i.get('index', 0))))
             t.append(child)
@@ -641,8 +640,10 @@ def exportScene(scene,dir, selection, separate):
     root.append(ET.fromstring('<CollisionResponse name="Response" response="FrictionContact"  printLog="1"/>'))
     root.append(ET.Element("GraspingManager",name="graspingManager0",listening="1"))
     #This doesen't work without haptic device
-    #root.append(ET.Element("RequiredPlugin", pluginName="SofaSuturing"))
-    root.append(ET.Element("SuturingManager", attachStiffness="200000", sutureKey="["))
+     
+    hasHaptic = False;
+      
+  
     root.append(ET.Element("RequiredPlugin", pluginName="SofaCarving"))
     root.append(ET.Element("CarvingManager"))
 
@@ -663,7 +664,13 @@ def exportScene(scene,dir, selection, separate):
         l = list(scene.objects)
     l.reverse()
     
+    for o in l:
+        if(o.get("annotated_type") == 'HAPTIC'):
+            hasHaptic = True;
     
+    if (hasHaptic):
+        root.append(ET.Element("RequiredPlugin", pluginName="SofaSuturing"))
+        root.append(ET.Element("SuturingManager", attachStiffness="200000", sutureKey="["))
     
     for o in l: 
         t = exportObject(scene, o)
