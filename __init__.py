@@ -472,10 +472,13 @@ def exportObstacle(o, scn):
 def exportRigid(o, scn):
     t = ET.Element("Node",name=fixName(o.name))
     t.append(exportVisual(o, scn, name = 'Visual', with_transform = False))
+    t.append(exportTopology(o,scn))
+    
     mo = createMechanicalObject(o)
     mo.set('template','Rigid')
     t.append(mo)
-    t.append(ET.Element("RigidMapping",template='Rigid,ExtVec3f',object1="MO",object2="Visual"))
+    t.append(ET.Element("RigidMapping",template='Rigid,ExtVec3f',object1="MO",object2="Visual"))   
+    t.extend(collisionModelParts(o,obstacle = False))
     return t
     
 def exportTopology(o,scn):
@@ -494,10 +497,13 @@ def addMaterial(m, t):
         a = vector_to_string(mat.diffuse_color*mat.ambient) 
         s = vector_to_string(mat.specular_color*mat.specular_intensity)  
         e = vector_to_string(mat.diffuse_color*mat.emit) 
+        tr = mat.alpha
         ss = mat.specular_hardness
-        text = "Default Diffuse 1 %s 1 Ambient 1 %s 1 Specular 1 %s 1 Emissive 1 %s 1 Shininess 1 %d " % (d,a,s,e,ss)
+        text = "Default Diffuse 1 %s %s Ambient 1 %s 1 Specular 1 %s 1 Emissive 1 %s 1 Shininess 1 %d " % (d,tr,a,s,e,ss)
+
         
         t.set("material", text)
+        
         if len(mat.texture_slots) >= 1 and mat.texture_slots[0] != None :
             tex = mat.texture_slots[0].texture
             if tex.type == 'IMAGE' :
@@ -634,7 +640,8 @@ def exportScene(scene,dir, selection, separate):
     #root.append(ET.Element("DefaultContactManager"))    
     root.append(ET.fromstring('<CollisionResponse name="Response" response="FrictionContact"  printLog="1"/>'))
     root.append(ET.Element("GraspingManager",name="graspingManager0",listening="1"))
-    root.append(ET.Element("RequiredPlugin", pluginName="SofaSuturing"))
+    #This doesen't work without haptic device
+    #root.append(ET.Element("RequiredPlugin", pluginName="SofaSuturing"))
     root.append(ET.Element("SuturingManager", attachStiffness="200000", sutureKey="["))
     root.append(ET.Element("RequiredPlugin", pluginName="SofaCarving"))
     root.append(ET.Element("CarvingManager"))

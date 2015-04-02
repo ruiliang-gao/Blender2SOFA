@@ -17,7 +17,7 @@ OBJECT_LIST = {
     'VOLUMETRIC': ("Volumetic",'SNAP_VOLUME', { 'carvable': False, 'youngModulus': 300 , 'poissonRatio':0.45, 'damping': 0.1, 'contactFriction': 0.01, 'contactStiffness':500, 'collisionGroup':1} ), 
     'HAPTIC':("Haptic",'MODIFIER', {'scale':300, 'forceScale': 0.1, 'forceFeedback' : False, 'toolFunction': 'Grasp', 'deviceName': '', 'collisionGroup':1}), 
     'HAPTICPART': ("HapticPart",'PARTICLE_PATH',{'index':{'default':0,'min':0,'max':2,'step':1}}),
-    'RIGID':("Rigid",'MESH_ICOSPHERE', {'collisionGroup':1})
+    # 'RIGID':("Rigid",'MESH_ICOSPHERE', {'collisionGroup':1})
 }
 
 class MakeSofaSceneOperator(bpy.types.Operator):
