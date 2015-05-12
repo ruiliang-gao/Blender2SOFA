@@ -1,7 +1,7 @@
 bl_info = { 
     'name': "SOFA Export plugin",
     'author': "Saleh Dindar, Di Xie",
-    'version': (0, 0,  0),
+    'version': (0, 1,  0),
     'blender': (2, 69, 0),
     'location': "",
     'warning': "",
@@ -18,7 +18,7 @@ from mathutils import Vector, Euler, Quaternion
 from math import degrees
 from array import array
 from io import StringIO
-from export2sofa.mesh2tetra import convert as convertMesh2Tetra
+from export2sofa.mesh2tetra_tetgen import convert as convertMesh2Tetra
 from export2sofa.ui import register as uiRegister
 from export2sofa.ui import unregister as uiUnregister
 

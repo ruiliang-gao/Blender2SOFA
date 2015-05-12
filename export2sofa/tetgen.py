@@ -262,7 +262,7 @@ else:
     raise RuntimeError("Platform not supported");
 
 PATH = path.dirname(__file__);
-libtetgen = cdll.LoadLibrary(path.join(PATH, 'tetgen', library_file))
+libtetgen = cdll.LoadLibrary(path.join(PATH, library_file))
 
 tetrahedralize = libtetgen.tetrahedralize
 tetrahedralize.argtypes = [ c_char_p, POINTER(TetGenIO), POINTER(TetGenIO), POINTER(TetGenIO), POINTER(TetGenIO) ]

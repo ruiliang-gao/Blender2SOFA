@@ -111,7 +111,7 @@ elif platform == 'unix':
 else:
     raise RuntimeError("Platform not supported");
 
-environ['PATH'] = environ['PATH'] + ';' + path.join(path.dirname(__file__), 'cgaltetrahedralize');
+environ['PATH'] = environ['PATH'] + ';' + path.join(path.dirname(__file__));
 libcgaltetrahedralize = cdll.LoadLibrary(library_file)
 
 tetrahedralize = libcgaltetrahedralize.tetrahedralize
