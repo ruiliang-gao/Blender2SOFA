@@ -258,6 +258,8 @@ if platform == 'win32':
     library_file = 'tetgen.dll'
 elif platform == 'unix':
     library_file = 'libtetgen.so'
+elif platform == 'darwin':
+    library_file = 'libtetgen.dylib'
 else:
     raise RuntimeError("Platform not supported");
 
