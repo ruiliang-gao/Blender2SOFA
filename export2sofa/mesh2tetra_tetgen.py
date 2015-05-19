@@ -1,12 +1,10 @@
 from .tetgen import *
-from bpy import context as C
 import numpy as N
 
-def convert(o, scn):
+def convert(m):
     a = TetGenIO()
     a.firstnumber = 0
     a.mesh_dim = 3
-    m = o.to_mesh(scn, True, 'PREVIEW')
     position =  N.empty((len(m.vertices),3))
     for i, v in enumerate(m.vertices):
         position[i][0] = v.co[0]

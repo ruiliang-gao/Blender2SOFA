@@ -18,7 +18,7 @@ from mathutils import Vector, Euler, Quaternion
 from math import degrees
 from array import array
 from io import StringIO
-from export2sofa.mesh2tetra_cgal import convert as convertMesh2Tetra
+from export2sofa.mesh2tetra_tetgen import convert as convertMesh2Tetra
 from export2sofa.ui import register as uiRegister
 from export2sofa.ui import unregister as uiUnregister
 
@@ -38,6 +38,20 @@ def vector_to_string(v):
         t += str(i) + " "
     return t
 
+
+def geometryNode(opt, t):
+    """
+    Special handling for geometry nodes when needed
+    Most of the time this is identity function. But when isolate_geometry
+    is enabled it will put the geometry node into a separate file
+    and return the node.
+    """
+    if opt.isolate_geometry and t.get('name') != None:
+        fn = t.get('name')+"-geometry.xml"
+        ET.ElementTree(t).write(opt.directory+"/"+fn)
+        return ET.Element("include", href=fn)
+    else:
+        return t
 
 def rotation_to_XYZ_euler(o):
     if o.rotation_mode == 'XYZ':
@@ -61,18 +75,25 @@ def addSolvers(t):
     t.append(ET.Element("EulerImplicitSolver", vdamping = "0.0"))
     t.append(ET.Element("CGLinearSolver",template="GraphScattered"))
 
-def exportVolumetric(o, scn):
-    points, tetrahedra = convertMesh2Tetra(o, scn)
-    t = ET.Element("Node", name = fixName(o.name))
-
-    c =  ET.Element('TetrahedronSetTopologyContainer', name="topotetra")
+def exportTetrahedralTopology(o, opt, name):
+    m = o.to_mesh(opt.scene, True, 'PREVIEW')
+    points, tetrahedra = convertMesh2Tetra(m)
+    c =  ET.Element('TetrahedronSetTopologyContainer', name= name)
     c.set('points', ndarray_to_flat_string(points))
     c.set('tetrahedra', ndarray_to_flat_string(tetrahedra))
+    return geometryNode(opt,c)
+
+def exportVolumetric(o, opt):
+    name = fixName(o.name)
+    t = ET.Element("Node", name = name)
+
+    topotetra = name + '-topology'
+    c = exportTetrahedralTopology(o, opt, topotetra)
+    t.append(c)
     
     mo = createMechanicalObject(o)
     
-    mo.set('position','@topotetra.position')
-    t.append(c)
+    mo.set('position','@'+topotetra+'.position')
     t.append(mo)
     t.append(ET.Element('TetrahedronSetTopologyModifier'))
     t.append(ET.Element('TetrahedronSetTopologyAlgorithms', template = 'Vec3d'))
@@ -104,7 +125,7 @@ def exportVolumetric(o, scn):
         n.append(ET.Element("TriangleSetTopologyAlgorithms", template="Vec3d" ))
         n.append(ET.Element("TriangleSetGeometryAlgorithms", template="Vec3d"))
 
-        n.append(ET.Element('Tetra2TriangleTopologicalMapping', object1="../../topotetra", object2="topotri"))
+        n.append(ET.Element('Tetra2TriangleTopologicalMapping', object1="../../"+topotetra, object2="topotri"))
 
         ogl = ET.Element("OglModel", name="Visual", genTex3d = "1");
         addMaterial(o.data, ogl);
@@ -114,8 +135,8 @@ def exportVolumetric(o, scn):
         n.extend(collisionModelParts(o))
         
     else:
-        n.append(exportVisual(o, scn, name = "Visual"))
-        n.append(ET.Element("BarycentricMapping",template="Vec3d,ExtVec3f",object1="../MO",object2="Visual"))
+        n.append(exportVisual(o, opt, name = name + "-visual"))
+        n.append(ET.Element("BarycentricMapping",template="Vec3d,ExtVec3f",object1="../MO",object2=name + "-visual"))
         
         # The collision stuff would go to the main node
         # since the main node already has the correct topology
@@ -147,15 +168,16 @@ def collisionModelParts(o, obstacle = False):
         ET.Element("TriangleModel",selfCollision=sc, contactFriction = str(o.get('contactFriction', 0)), contactStiffness = str(o.get('contactStiffness', 500)), group=str(o.get('collisionGroup','1')), moving = M, simulated = M) 
     ]
 
-def exportSoftBody(o, scn):
-    t = ET.Element("Node",name=fixName(o.name))
+def exportSoftBody(o, opt):
+    name=fixName(o.name)
+    t = ET.Element("Node",name = name)
     t.append(createMechanicalObject(o))
     t.append(ET.Element("UniformMass",template="Vec3d", mass=str(o.get('mass') or 1)))
     v = ET.Element("Node",name="Visual")
-    og = exportVisual(o, scn,name = 'Visual', with_transform = False)
+    og = exportVisual(o, opt,name = name + '-visual', with_transform = False)
     og.set('template', 'ExtVec3f')
     v.append(og)
-    v.append(ET.Element("BarycentricMapping",template="Vec3d,ExtVec3f",object1="../MO",object2="Visual"))
+    v.append(ET.Element("BarycentricMapping",template="Vec3d,ExtVec3f",object1="../MO",object2=name + "-visual"))
     t.append(v)
 
     # set n later
@@ -175,15 +197,16 @@ def exportSoftBody(o, scn):
     addConstraints(o, t)
                 
     c = ET.Element("Node",name="Collision")    
-    c.append(exportTopology(o,scn))
+    c.append(exportTopology(o,opt))
     c.append(ET.Element("MechanicalObject",template="Vec3d",name="MOC"))
     c.extend(collisionModelParts(o))
     c.append(ET.Element("BarycentricMapping",input="@../",output="@./"))
     t.append(c)
     return t
 
-def exportHaptic(o, scn):
-    t = ET.Element("Node",name=fixName(o.name))
+def exportHaptic(o, opt):
+    name=fixName(o.name)
+    t = ET.Element("Node",name=name)
     t.append(ET.Element("RequiredPlugin",name="Sensable Plugin",pluginName="Sensable"))
     newOmniDriver = ET.Element("NewOmniDriver",name="Omni Driver",deviceName=o.get('deviceName',''),listening="true",tags="Omni", permanent="true", printLog="1")
     newOmniDriver.set("forceScale", str(o.get('forceScale')))
@@ -199,11 +222,11 @@ def exportHaptic(o, scn):
     t.append(momain)   
     t.append(ET.Element("UniformMass", template="Rigid", name="mass", totalmass="0.05"))
     #Visual Model
-    t.append(exportVisual(o, scn, name = 'Visual', with_transform = False))
-    t.append(ET.Element("RigidMapping", template = "Rigid,ExtVec3f", object1="instrumentstate", object2="Visual"))
+    t.append(exportVisual(o, opt, name = name + '-visual', with_transform = False))
+    t.append(ET.Element("RigidMapping", template = "Rigid,ExtVec3f", object1="instrumentstate", object2=name+"-visual"))
     #Collision Model
     c = ET.Element("Node",name="Collision")    
-    c.append(exportTopology(o,scn))
+    c.append(exportTopology(o,opt))
     mo = createMechanicalObject(o)
     mo.set('template','Vec3d')
     c.append(mo)
@@ -213,7 +236,7 @@ def exportHaptic(o, scn):
     t.append(c)  
     return t
 
-def exportEmptyHaptic(o,scn):
+def exportEmptyHaptic(o,opt):
     n = fixName(o.name)
     t = ET.Element("Node", name = n)
     omniTag = n + "__omni"
@@ -267,7 +290,7 @@ def exportEmptyHaptic(o,scn):
     for i in o.children:
         if(i.get('index', 0) != 0): 
             child = ET.Element("Node", name= fixName(i.name) + "__CM")
-            #child.append(exportTopology(i, scn))
+            #child.append(exportTopology(i, opt))
             mo = createMechanicalObject(i)
             mo.set('name', 'CM');
             child.append(mo)
@@ -287,16 +310,17 @@ def exportEmptyHaptic(o,scn):
     #Children start here
     #index is a custom property of a child object if index is missing, then set index=1
     for i in o.children:
+        name = fixName(i.name)
         child =  ET.Element("Node", name = fixName(i.name))
-        child.append(exportVisual(i, scn, name = 'Visual', with_transform = True))
-        child.append(ET.Element("RigidMapping", input="@../instrumentState", output="@Visual", index=str(i.get('index', 0))))
+        child.append(exportVisual(i, opt, name = name + '-visual', with_transform = True))
+        child.append(ET.Element("RigidMapping", input="@../instrumentState", output="@"+name+"-visual", index=str(i.get('index', 0))))
         t.append(child)
  
     t.append(ET.Element("UncoupleConstraintCorrection"))   
     #t.append(ET.fromstring('<UncoupledConstraintCorrection compliance="0.001   0.00003 0 0   0.00003 0   0.00003" />'))
     return t
 
-def exportCM(o,scn):
+def exportCM(o,opt):
     """
     This function generates a XML hierarchy for a simple obstacle
     collision model.
@@ -309,7 +333,7 @@ def exportCM(o,scn):
             annotated_type = i.get('annotated_type')
             if annotated_type == 'COLLISIONMODEL':
                 c = ET.Element("Node",name = i.name)    
-                c.append(exportTopology(i,scn))
+                c.append(exportTopology(i,opt))
                 c.append(createMechanicalObject(i))
                 c.extend(collisionModelParts(o))
                 #c.append(ET.Element("BarycentricMapping",input="@../",output="@./"))
@@ -317,9 +341,9 @@ def exportCM(o,scn):
             elif annotated_type == 'SPARSEGRID':
                 # set n later
                 s = ET.Element("SparseGridTopology",name = i.name)
-                generateTopology(i,s, scn)
+                generateTopology(i,s, opt)
                 # set young modulus later
-                t.append(s)
+                t.append(geometryNode(s))
             
                 h = ET.Element("HexahedronFEMForceField",template="Vec3d")
                 generateYoungModulus(i,h)
@@ -327,21 +351,21 @@ def exportCM(o,scn):
                 t.append(h)
             else:
                 v = ET.Element("Node",name = i.name)
-                og = exportVisual(i, scn,name = 'Visual', with_transform = False)
+                og = exportVisual(i, opt,name = fixName(i.name)+ '-visual', with_transform = False)
                 og.set('template', 'ExtVec3f')
                 v.append(og)
-                #v.append(ET.Element("BarycentricMapping",template="Vec3d,ExtVec3f",object1="../MO",object2="Visual"))
+                #v.append(ET.Element("BarycentricMapping",template="Vec3d,ExtVec3f",object1="../MO",object2=fixName(i.name) + "-visual"))
                 t.append(v)
     return t
 
-def exportCloth(o, scn):
-    t = ET.Element("Node",name=fixName(o.name))
+def exportCloth(o, opt):
+    name=fixName(o.name)
+    t = ET.Element("Node",name=name)
     t.append(ET.Element("EulerImplicitSolver", printLog="0"))
     t.append(ET.Element("CGLinearSolver", template="GraphScattered", iterations="25",  tolerance="1e-009",  threshold="1e-009"))
     
-    tp = ET.Element("TriangleSetTopologyContainer")
-    generateTopologyContainer(o,tp,scn)
-    t.append(tp)
+    
+    t.append(exportTopologyContainer(o,opt))
     
     t.append(ET.Element("TriangleSetTopologyModifier",))
     t.append(ET.Element("TriangleSetTopologyAlgorithms", template="Vec3d" ))
@@ -367,10 +391,10 @@ def exportCloth(o, scn):
 
     t.append(ET.fromstring('<UncoupledConstraintCorrection />'))
 
-    og = exportVisual(o, scn,name = 'Visual', with_transform = True)
+    og = exportVisual(o, opt,name = name + '-visual', with_transform = True)
     og.set('template', 'ExtVec3f')
     t.append(og)
-    t.append(ET.Element("IdentityMapping",template="Vec3d,ExtVec3f",object1="MO",object2="Visual"))
+    t.append(ET.Element("IdentityMapping",template="Vec3d,ExtVec3f",object1="MO",object2=name + "-visual"))
     return t
 
 def pointInsideSphere(v,s):
@@ -382,7 +406,7 @@ def pointInsideSphere(v,s):
     else:
         return False
     
-def verticesInsideSphere(o, m, s, scn):
+def verticesInsideSphere(o, m, s):
     vindex = []
     for v in m.vertices:
         if pointInsideSphere((o.matrix_world*v.co), s):
@@ -390,11 +414,11 @@ def verticesInsideSphere(o, m, s, scn):
     #print(vindex)
     return vindex
     
-def matchVertices(o1, o2, s, scn):
-    m1 = o1.to_mesh(scn, True, 'PREVIEW')
-    m2 = o2.to_mesh(scn, True, 'PREVIEW')
-    v1 = verticesInsideSphere(o1, m1, s, scn)
-    v2 = verticesInsideSphere(o2, m2, s, scn)
+def matchVertices(o1, o2, s, opt):
+    m1 = o1.to_mesh(opt.scene, True, 'PREVIEW')
+    m2 = o2.to_mesh(opt.scene, True, 'PREVIEW')
+    v1 = verticesInsideSphere(o1, m1, s)
+    v2 = verticesInsideSphere(o2, m2, s)
     #print(list(o1.data.vertices))
     v3 = []   
     for i in v1:
@@ -411,29 +435,30 @@ def matchVertices(o1, o2, s, scn):
             v3.append((i,minindex, mindist))
     return v3
                 
-def exportAttachConstraint(o, o1, o2, scn):
+def exportAttachConstraint(o, o1, o2, opt):
     stiffness = o.get('stiffness', 500)
     springs = [
-        vector_to_string([i, j, stiffness, .1, d]) for (i,j,d) in matchVertices(o1,o2,o, scn)
+        vector_to_string([i, j, stiffness, .1, d]) for (i,j,d) in matchVertices(o1,o2,o, opt)
         ]
     ff = ET.Element("StiffSpringForceField", object1=fixName(o1.name), object2=fixName(o2.name), 
                     spring = vector_to_string(springs))  
 
     return ff
     
-def generateTopologyContainer(o, t, scn):
-    m = o.to_mesh(scn, True, 'PREVIEW')
+def generateTopologyContainer(o,opt):
+    t = ET.Element("TriangleSetTopologyContainer")
+    m = o.to_mesh(opt.scene, True, 'PREVIEW')
     position = [ vector_to_string(v.co) for v in m.vertices ]
     edges = [ vector_to_string(e.vertices) for e in m.edges ]
     triangles = [ vector_to_string(f.vertices) for f in m.polygons if len(f.vertices) == 3 ]
     t.set("position", ' '.join(position))
     t.set("edges", ' '.join(edges))
     t.set("triangles", ' '.join(triangles))   
-    return t
+    return geometryNode(opt, t)
     
-def generateTopology(o, t, scn):
+def generateTopology(o, t, opt):
     
-    m = o.to_mesh(scn, True, 'PREVIEW')
+    m = o.to_mesh(opt.scene, True, 'PREVIEW')
     
     position = [ vector_to_string(v.co) for v in m.vertices]
     triangles = [ vector_to_string(f.vertices) for f in m.polygons if len(f.vertices) == 3 ]
@@ -455,37 +480,39 @@ def generatePoissonRatio(o, t):
         t.set("poissonRatio", str(o.get('poissonRatio')))
     return t
  
-def exportObstacle(o, scn):
-    t = ET.Element("Node",name=fixName(o.name))
-    t.append(exportVisual(o, scn, name = 'Visual', with_transform = True))
+def exportObstacle(o, opt):
+    name=fixName(o.name)
+    t = ET.Element("Node",name=name)
+    t.append(exportVisual(o, opt, name = name+'-visual', with_transform = True))
     if True or len(o.data.vertices) < 200:
-        t.append(exportTopology(o,scn))
+        t.append(exportTopology(o,opt))
         t.append(createMechanicalObject(o))
         t.extend(collisionModelParts(o,obstacle = True))
     else:
         t.append(ET.Element("SparseGridTopology",position="@Visual.position",quads="@Visual.quads",triangles="@Visual.triangles",n="10 10 10"))
         t.append(createMechanicalObject(o))
         t.append(ET.Element('TSphereModel'))
-    #t.append(ET.Element("BarycentricMapping",template="Vec3d,ExtVec3f",object1="MO",object2="Visual"))
+    #t.append(ET.Element("BarycentricMapping",template="Vec3d,ExtVec3f",object1="MO",object2=name+'-visual'))
     t.append(ET.fromstring('<UncoupledConstraintCorrection />'))
     return t
     
-def exportRigid(o, scn):
-    t = ET.Element("Node",name=fixName(o.name))
-    t.append(exportVisual(o, scn, name = 'Visual', with_transform = False))
-    t.append(exportTopology(o,scn))
+def exportRigid(o, opt):
+    name=fixName(o.name)
+    t = ET.Element("Node",name=name)
+    t.append(exportVisual(o, opt, name = name + '-visual', with_transform = False))
+    t.append(exportTopology(o,opt))
     
     mo = createMechanicalObject(o)
     mo.set('template','Rigid')
     t.append(mo)
-    t.append(ET.Element("RigidMapping",template='Rigid,ExtVec3f',object1="MO",object2="Visual"))   
+    t.append(ET.Element("RigidMapping",template='Rigid,ExtVec3f',object1="MO",object2=name + "-visual"))   
     t.extend(collisionModelParts(o,obstacle = False))
     return t
     
-def exportTopology(o,scn):
-    t = ET.Element("MeshTopology",name='Topology')
-    generateTopology(o,t,scn)
-    return t    
+def exportTopology(o,opt):
+    t = ET.Element("MeshTopology",name=fixName(o.name) + '-topology')
+    generateTopology(o,t,opt)
+    return geometryNode(opt, t)    
     
 def fixName(name):
     return name.replace(".","_")    
@@ -512,9 +539,9 @@ def addMaterial(m, t):
                 t.set("material","")
 
     
-def exportVisual(o, scn, name = None,with_transform = True):
+def exportVisual(o, opt, name = None,with_transform = True):
 
-    m = o.to_mesh(scn, True, 'RENDER')
+    m = o.to_mesh(opt.scene, True, 'RENDER')
     t = ET.Element("OglModel",name=name or fixName(o.name))
     
     if with_transform :
@@ -541,7 +568,7 @@ def exportVisual(o, scn, name = None,with_transform = True):
         t.set("texcoords", ' '.join(texcoords))
 
     addMaterial(m, t);
-    return t
+    return geometryNode(opt, t)
     
 
 def has_modifier(o,name_of_modifier):
@@ -605,7 +632,13 @@ def exportConstraints(scene, o):
                 return None
     return None
 
-def exportScene(scene,dir, selection, separate):
+
+def exportScene(opt):
+    scene = opt.scene
+    selection = opt.selection_only
+    separate = opt.separate
+    dir = opt.directory
+
     root= ET.Element("Node")
     root.set("name", "root")
     if scene.use_gravity :
@@ -676,7 +709,7 @@ def exportScene(scene,dir, selection, separate):
         root.append(ET.Element("SuturingManager", attachStiffness="200000", sutureKey="["))
     
     for o in l: 
-        t = exportObject(scene, o)
+        t = exportObject(opt, o)
         name = fixName(o.name)
         if (t != None):
             if (separate):
@@ -692,7 +725,7 @@ def exportScene(scene,dir, selection, separate):
                     solverNode.append(t)
 
     for o in l:
-        t = exportConstraints(scene, o)
+        t = exportConstraints(opt, o)
         name = fixName(o.name)
         if (t != None):
             if (separate):
@@ -706,10 +739,18 @@ def exportScene(scene,dir, selection, separate):
     return root    
 
 
-def exportSceneToFile(C, filepath, selection, separate):
-    dir = os.path.dirname(filepath)
-    
-    root = exportScene(C.scene, dir, selection, separate)
+class ExportOptions:
+    pass
+
+def exportSceneToFile(C, filepath, selection, separate, isolate_geometry):
+
+    opt = ExportOptions()
+    opt.isolate_geometry = isolate_geometry
+    opt.scene = C.scene   
+    opt.separate = separate 
+    opt.selection_only = selection
+    opt.directory = os.path.dirname(filepath)
+    root = exportScene(opt)
     
     ET.ElementTree(root).write(filepath)
 
@@ -750,7 +791,7 @@ class ExportToSofa(Operator, ExportHelper):
 
     isolate_geometry = BoolProperty(
             name="Isolate geometry into separate files",
-            descirption="Put geometry components of the scene into separate files",
+            description="Put geometry components of the scene into separate files",
             default=False,
             )
 
@@ -759,7 +800,7 @@ class ExportToSofa(Operator, ExportHelper):
         return context.scene is not None
  
     def execute(self, context):
-        return exportSceneToFile(context, self.filepath, self.use_selection, self.export_separate)
+        return exportSceneToFile(context, self.filepath, self.use_selection, self.export_separate, self.isolate_geometry)
 
 
 from subprocess import Popen
@@ -778,7 +819,7 @@ class RunSofaOperator(bpy.types.Operator):
             fn = mktemp(suffix='.scn')
         else:
             fn = bpy.data.filepath + '.scn'
-        exportSceneToFile(context, fn, False, False)
+        exportSceneToFile(context, fn, False, False, False)
         Popen(fn,shell=True)
         return {'FINISHED'}
 

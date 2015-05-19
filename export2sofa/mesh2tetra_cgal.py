@@ -1,11 +1,7 @@
 from .cgaltetrahedralize import *
-from bpy import context as C
 import numpy as N
 
-def convert(o, scn):
-
-
-    m = o.to_mesh(scn, True, 'PREVIEW')
+def convert(m):
     position =  N.empty((len(m.vertices),3),order='C')
     for i, v in enumerate(m.vertices):
         position[i][0] = v.co[0]
