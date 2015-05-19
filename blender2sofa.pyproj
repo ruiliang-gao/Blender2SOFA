@@ -21,23 +21,15 @@
     <PtvsTargetsFile>$(MSBuildExtensionsPath32)\Microsoft\VisualStudio\v$(VisualStudioVersion)\Python Tools\Microsoft.PythonTools.targets</PtvsTargetsFile>
   </PropertyGroup>
   <ItemGroup>
-    <Compile Include="blender2sofa\cgaltetrahedralize.py" />
-    <Compile Include="blender2sofa\mesh2tetra_cgal.py" />
-    <Compile Include="blender2sofa\mesh2tetra_tetgen.py" />
-    <Compile Include="blender2sofa\test.py" />
-    <Compile Include="blender2sofa\tetgen.py" />
-    <Compile Include="blender2sofa\ui.py" />
-    <Compile Include="blender2sofa\__init__.py" />
+    <Compile Include="blender2sofa.py" />
+    <Compile Include="export2sofa\cgaltetrahedralize.py" />
+    <Compile Include="export2sofa\mesh2tetra_cgal.py" />
+    <Compile Include="export2sofa\mesh2tetra_tetgen.py" />
+    <Compile Include="export2sofa\tetgen.py" />
+    <Compile Include="export2sofa\ui.py" />
   </ItemGroup>
   <ItemGroup>
-    <Content Include="blender2sofa\cgaltetrahedralize\VC12\PythonToolsLinks1\PythonTools.html" />
-    <Content Include="blender2sofa\cgaltetrahedralize\VC12\PythonToolsLinks1\vslogo.png" />
-  </ItemGroup>
-  <ItemGroup>
-    <Folder Include="blender2sofa" />
-    <Folder Include="blender2sofa\cgaltetrahedralize\" />
-    <Folder Include="blender2sofa\cgaltetrahedralize\VC12\" />
-    <Folder Include="blender2sofa\cgaltetrahedralize\VC12\PythonToolsLinks1" />
+    <Folder Include="export2sofa\" />
   </ItemGroup>
   <Import Project="$(PtvsTargetsFile)" Condition="Exists($(PtvsTargetsFile))" />
   <Import Project="$(MSBuildToolsPath)\Microsoft.Common.targets" Condition="!Exists($(PtvsTargetsFile))" />

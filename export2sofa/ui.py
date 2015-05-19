@@ -5,7 +5,7 @@ SOFA_SCENE_PROPERTIES = {
     'alarmDistance': { 'default': 0.1, 'min' : 0.0001, 'max' : 1.0, 'step' : 0.001, 'precision': 3},
     'contactDistance': { 'default': 0.01, 'min': 0.0001, 'max' : 1.0, 'step': 0.001, 'precision': 3},
     'includes': { 'default': '' },
-    'displayFlags': { 'default': 'visualModels'},
+    'displayFlags': { 'default': 'showVisualModels'},
 }
 
 OBJECT_LIST = {
@@ -14,7 +14,7 @@ OBJECT_LIST = {
     'COLLISION': ("Obstacle",'MOD_EDGESPLIT', {'collisionGroup':1}),
     'ATTACHCONSTRAINT': ("Attach Constraint",'CONSTRAINT_DATA', {'stiffness':1000, 'object1':'', 'object2':''}), 
     'SPHERECONSTRAINT': ("Sphere Constraint",'CONSTRAINT', {}),
-    'VOLUMETRIC': ("Volumetic",'SNAP_VOLUME', { 'carvable': False, 'youngModulus': 300 , 'poissonRatio':0.45, 'damping': 0.1, 'contactFriction': 0.01, 'contactStiffness':500, 'collisionGroup':1} ), 
+    'VOLUMETRIC': ("Volumetic",'SNAP_VOLUME', { 'selfCollision': True, 'precomputeConstraints' : False, 'carvable': False, 'youngModulus': 300 , 'poissonRatio':0.45, 'damping': 0.1, 'contactFriction': 0.01, 'contactStiffness':500, 'collisionGroup':1} ), 
     'HAPTIC':("Haptic",'MODIFIER', {'scale':300, 'forceScale': 0.1, 'forceFeedback' : False, 'toolFunction': 'Grasp', 'deviceName': '', 'collisionGroup':1}), 
     'HAPTICPART': ("HapticPart",'PARTICLE_PATH',{'index':{'default':0,'min':0,'max':2,'step':1}}),
     # 'RIGID':("Rigid",'MESH_ICOSPHERE', {'collisionGroup':1})

@@ -18,7 +18,7 @@ from mathutils import Vector, Euler, Quaternion
 from math import degrees
 from array import array
 from io import StringIO
-from export2sofa.mesh2tetra_tetgen import convert as convertMesh2Tetra
+from export2sofa.mesh2tetra_cgal import convert as convertMesh2Tetra
 from export2sofa.ui import register as uiRegister
 from export2sofa.ui import unregister as uiUnregister
 
@@ -85,15 +85,16 @@ def exportVolumetric(o, scn):
     tetrahedralCorotationalFEMForceField = ET.Element('TetrahedralCorotationalFEMForceField')
     generateYoungModulus(o,tetrahedralCorotationalFEMForceField)
     generatePoissonRatio(o,tetrahedralCorotationalFEMForceField)
-    tetrahedralCorotationalFEMForceField.set("damping", str(o.get('damping')))
     t.append(tetrahedralCorotationalFEMForceField)
     
-    t.append(ET.fromstring('<UncoupledConstraintCorrection compliance="0.001   0.00003 0 0   0.00003 0   0.00003" />'))
-
+    if o.get('precomputeConstraints') == True:
+        t.append(ET.Element('PrecomputedConstraintCorrection', rotations="true", recompute="0"))
+    else:
+        t.append(ET.Element('UncoupledConstraintCorrection',compliance="0.001   0.00003 0 0   0.00003 0   0.00003"))
+    
     n = ET.Element('Node', name="triangle-surface")
     t.append(n)
-    ts = ET.Element("TriangleSet", tags="SuturingSurface", group= "2") 
-
+    
     addConstraints(o, t)
 
     if o.get('carvable'):
@@ -109,16 +110,16 @@ def exportVolumetric(o, scn):
         addMaterial(o.data, ogl);
         n.append(ogl)
         n.append(ET.Element("IdentityMapping",object1="../MO",object2="Visual"))
-        n.append(ts)
         
         n.extend(collisionModelParts(o))
         
     else:
         n.append(exportVisual(o, scn, name = "Visual"))
         n.append(ET.Element("BarycentricMapping",template="Vec3d,ExtVec3f",object1="../MO",object2="Visual"))
-        t.append(ts)
         
-        n.extend(collisionModelParts(o))
+        # The collision stuff would go to the main node
+        # since the main node already has the correct topology
+        t.extend(collisionModelParts(o))
 
     return t
 
@@ -138,11 +139,12 @@ def collisionModelParts(o, obstacle = False):
         M = "0"
     else:
         M = "1"
-
+    
+    sc = str(o.get('selfCollision',0))
     return [ 
-        ET.Element("PointModel",selfCollision='0', contactFriction = str(o.get('contactFriction', 0)), contactStiffness = str(o.get('contactStiffness', 500)), group=str(o.get('collisionGroup','1')), moving = M, simulated = M ), 
-        ET.Element("LineModel",selfCollision='0', contactFriction = str(o.get('contactFriction', 0)), contactStiffness = str(o.get('contactStiffness', 500)), group=str(o.get('collisionGroup','1')), moving = M, simulated = M), 
-        ET.Element("TriangleModel",selfCollision='0', contactFriction = str(o.get('contactFriction', 0)), contactStiffness = str(o.get('contactStiffness', 500)), group=str(o.get('collisionGroup','1')), moving = M, simulated = M) 
+        ET.Element("PointModel",selfCollision=sc, contactFriction = str(o.get('contactFriction', 0)), contactStiffness = str(o.get('contactStiffness', 500)), group=str(o.get('collisionGroup','1')), moving = M, simulated = M ), 
+        ET.Element("LineModel",selfCollision=sc, contactFriction = str(o.get('contactFriction', 0)), contactStiffness = str(o.get('contactStiffness', 500)), group=str(o.get('collisionGroup','1')), moving = M, simulated = M), 
+        ET.Element("TriangleModel",selfCollision=sc, contactFriction = str(o.get('contactFriction', 0)), contactStiffness = str(o.get('contactStiffness', 500)), group=str(o.get('collisionGroup','1')), moving = M, simulated = M) 
     ]
 
 def exportSoftBody(o, scn):
@@ -611,11 +613,12 @@ def exportScene(scene,dir, selection, separate):
     else:
         root.set("gravity","0 0 0")
     
-    if scene.get('displayFlags') != None :
+    if scene.get('displayFlags') != None and scene.get('displayFlags') != "" :
         root.append(ET.Element("VisualStyle",displayFlags=scene['displayFlags']))
     if scene.get('includes') != None :
         for i in scene['includes'].split(';') :
-            root.append(ET.Element("include", href=i))
+            if i.strip() != "":
+                root.append(ET.Element("include", href=i))
              
     lcp = ET.Element("LCPConstraintSolver", tolerance="1e-3", initial_guess="false", build_lcp="0",  printLog="0" )
     if scene.get('mu') != None :
@@ -742,6 +745,12 @@ class ExportToSofa(Operator, ExportHelper):
     export_separate = BoolProperty(
             name="Export to Separate Files",
             description="Export Objects into Separate Files and Include all in one *.scn File",
+            default=False,
+            )
+
+    isolate_geometry = BoolProperty(
+            name="Isolate geometry into separate files",
+            descirption="Put geometry components of the scene into separate files",
             default=False,
             )
 
