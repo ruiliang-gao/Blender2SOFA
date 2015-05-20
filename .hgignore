@@ -1,5 +1,6 @@
 syntax: glob
 tetgen/tetgen
+*.dll
 *.o
 *.os
 *.dblite
@@ -10,3 +11,8 @@ tetgen/tetgen
 tetgen\tetgen.pyproj
 tetgen\tetgen.exp
 tetgen\tetgen.sln
+x64
+*.sln
+*.sdf
+*.exp
+*.suo

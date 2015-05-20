@@ -78,7 +78,7 @@ def addSolvers(t):
 def exportTetrahedralTopology(o, opt, name):
     m = o.to_mesh(opt.scene, True, 'PREVIEW')
     points, tetrahedra = convertMesh2Tetra(m)
-    c =  ET.Element('TetrahedronSetTopologyContainer', name= name)
+    c =  ET.Element('TetrahedronSetTopologyContainer', name= name, createTriangleArray='1')
     c.set('points', ndarray_to_flat_string(points))
     c.set('tetrahedra', ndarray_to_flat_string(tetrahedra))
     return geometryNode(opt,c)
@@ -113,35 +113,39 @@ def exportVolumetric(o, opt):
     else:
         t.append(ET.Element('UncoupledConstraintCorrection',compliance="0.001   0.00003 0 0   0.00003 0   0.00003"))
     
-    n = ET.Element('Node', name="triangle-surface")
-    t.append(n)
     
     addConstraints(o, t)
 
     if o.get('carvable'):
-
+        n = ET.Element('Node', name="triangle-surface")
         n.append(ET.Element("TriangleSetTopologyContainer",name="topotri"))
         n.append(ET.Element("TriangleSetTopologyModifier",))
         n.append(ET.Element("TriangleSetTopologyAlgorithms", template="Vec3d" ))
         n.append(ET.Element("TriangleSetGeometryAlgorithms", template="Vec3d"))
 
-        n.append(ET.Element('Tetra2TriangleTopologicalMapping', object1="../../"+topotetra, object2="topotri"))
+        n.append(ET.Element('Tetra2TriangleTopologicalMapping', object1="../../"+topotetra, object2="topotri", flipNormals='1'))
 
         ogl = ET.Element("OglModel", name="Visual", genTex3d = "1");
         addMaterial(o.data, ogl);
         n.append(ogl)
-        n.append(ET.Element("IdentityMapping",object1="../MO",object2="Visual"))
-        
+        #n.append(ET.Element("IdentityMapping",object1="../MO",object2="Visual"))
         n.extend(collisionModelParts(o))
+        t.append(n)
         
     else:
-        n.append(exportVisual(o, opt, name = name + "-visual"))
-        n.append(ET.Element("BarycentricMapping",template="Vec3d,ExtVec3f",object1="../MO",object2=name + "-visual"))
+        n = ET.Element('Node', name="Collision")
+        n.append(exportTopology(o,opt))
+        n.append(ET.Element("MechanicalObject",template="Vec3d",name="MOC"))
+        n.extend(collisionModelParts(o))
+        n.append(ET.Element("BarycentricMapping",object1="../MO",object2="MOC"))
+        t.append(n)
         
-        # The collision stuff would go to the main node
-        # since the main node already has the correct topology
-        t.extend(collisionModelParts(o))
-
+        v = ET.Element('Node', name="Visual")
+        v.append(exportVisual(o, opt, name = name + "-visual"))
+        v.append(ET.Element("BarycentricMapping",template="Vec3d,ExtVec3f",object1="../MO",object2=name + "-visual"))
+        t.append(v)
+        
+        
     return t
 
 def addConstraints(o, t):
@@ -445,12 +449,28 @@ def exportAttachConstraint(o, o1, o2, opt):
 
     return ff
     
-def generateTopologyContainer(o,opt):
-    t = ET.Element("TriangleSetTopologyContainer")
+import bmesh
+
+def triangulatedBMesh(o, opt):
+    """
+    Return a triangulated mesh of o in the BMesh object format
+    """
     m = o.to_mesh(opt.scene, True, 'PREVIEW')
-    position = [ vector_to_string(v.co) for v in m.vertices ]
-    edges = [ vector_to_string(e.vertices) for e in m.edges ]
-    triangles = [ vector_to_string(f.vertices) for f in m.polygons if len(f.vertices) == 3 ]
+    bm = bmesh.new()
+    bm.from_mesh(m)
+    r = bmesh.ops.triangulate(bm, faces = bm.faces)
+    return bm, r['faces']
+    
+def exportTopologyContainer(o,opt):
+
+    bm, triangles = triangulatedBMesh(o, opt)
+    position = [ vector_to_string(v.co) for v in bm.verts]
+    edges = [ vector_to_string([ v.index for v in e.verts ]) for e in bm.edges ]
+    triangles = [ vector_to_string([ v.index for v in f.verts ]) for f in triangles ]
+    bm.free()
+
+    t = ET.Element("TriangleSetTopologyContainer")
+
     t.set("position", ' '.join(position))
     t.set("edges", ' '.join(edges))
     t.set("triangles", ' '.join(triangles))   
@@ -458,15 +478,13 @@ def generateTopologyContainer(o,opt):
     
 def generateTopology(o, t, opt):
     
-    m = o.to_mesh(opt.scene, True, 'PREVIEW')
-    
-    position = [ vector_to_string(v.co) for v in m.vertices]
-    triangles = [ vector_to_string(f.vertices) for f in m.polygons if len(f.vertices) == 3 ]
-    quads     = [ vector_to_string(f.vertices) for f in m.polygons if len(f.vertices) == 4 ]
+    bm, triangles = triangulatedBMesh(o, opt)
+    position = [ vector_to_string(v.co) for v in bm.verts]
+    triangles = [ vector_to_string([ v.index for v in f.verts ]) for f in triangles ]
+    bm.free()
 
     t.set("position", ' '.join(position))
     t.set("triangles", ' '.join(triangles))
-    t.set("quads", ' '.join(quads))
     
     return t
 
