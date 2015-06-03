@@ -128,7 +128,7 @@ def exportVolumetric(o, opt):
         ogl = ET.Element("OglModel", name="Visual", genTex3d = "1");
         addMaterial(o.data, ogl);
         n.append(ogl)
-        #n.append(ET.Element("IdentityMapping",object1="../MO",object2="Visual"))
+        n.append(ET.Element("IdentityMapping",object1="../MO",object2="Visual"))
         n.extend(collisionModelParts(o))
         t.append(n)
         
@@ -271,26 +271,10 @@ def exportEmptyHaptic(o,opt):
             template="Rigid",stiffness="10000000",angularStiffness="2000000",
             external_rest_shape="RigidLayer/Tool/RealPosition", points = "0"))
 
-    
-    #Collision Model
-    #cm = ET.Element("Node", name = "CM")
-    #mo =  createMechanicalObject(o)
-    #mo.set('name','Particle')
-    #cm.append(mo)
-    #pm = ET.Element("TPointModel",
-    #                     template="Vec3d",  
-    #                     contactStiffness="0.01", bothSide="true",
-    #                     #contactResponse="stick"
-    #                     )
-    
-    #toolFunction = o.get('toolFunction', 'Grasp');
-    #if toolFunction == 'Carve': pm.set('tags', 'CravingTool')
-    #elif toolFunction == 'Suture': pm.set('tags', 'SuturingTool')
-
-    #cm.append(pm)
-    #cm.append(ET.Element("RigidMapping", template="Rigid3d,Vec3d", input="@../instrumentState", output="@Particle"))
-    #t.append(cm)
-    
+    t.append(ET.Element("UncoupleConstraintCorrection"
+                        ,compliance="0.001   0.00003 0 0   0.00003 0   0.00003"
+                        ))   
+        
     for i in o.children:
         if(i.get('index', 0) != 0): 
             child = ET.Element("Node", name= fixName(i.name) + "__CM")
@@ -319,9 +303,6 @@ def exportEmptyHaptic(o,opt):
         child.append(exportVisual(i, opt, name = name + '-visual', with_transform = True))
         child.append(ET.Element("RigidMapping", input="@../instrumentState", output="@"+name+"-visual", index=str(i.get('index', 0))))
         t.append(child)
- 
-    t.append(ET.Element("UncoupleConstraintCorrection"))   
-    #t.append(ET.fromstring('<UncoupledConstraintCorrection compliance="0.001   0.00003 0 0   0.00003 0   0.00003" />'))
     return t
 
 def exportCM(o,opt):
@@ -596,26 +577,26 @@ def has_modifier(o,name_of_modifier):
     return False
 
 
-def exportObject(scene, o):
+def exportObject(opt, o):
     t = None
     if not o.hide_render and o.parent == None:
         annotated_type = o.get('annotated_type')
         name = fixName(o.name)
         if o.type == 'MESH' or o.type == 'SURFACE' or o.type == 'CURVE':
             if has_modifier(o,'SOFT_BODY') or annotated_type == 'SOFT_BODY':
-                t = exportSoftBody(o, scene)
+                t = exportSoftBody(o, opt)
             elif has_modifier(o,'COLLISION') or annotated_type == 'COLLISION':
-                t = exportObstacle(o, scene)
+                t = exportObstacle(o, opt)
             elif has_modifier(o,'HAPTIC') or annotated_type == 'HAPTIC':
-                t = exportHaptic(o, scene)
+                t = exportHaptic(o, opt)
             elif has_modifier(o,'CLOTH') or annotated_type == 'CLOTH':
-                t = exportCloth(o, scene)
+                t = exportCloth(o, opt)
             elif o.rigid_body != None and o.rigid_body.enabled or annotated_type == 'RIGID':
-                t = exportRigid(o, scene)
+                t = exportRigid(o, opt)
             elif annotated_type == 'VOLUMETRIC':
-                t = exportVolumetric(o, scene)
+                t = exportVolumetric(o, opt)
             elif annotated_type == None or annotated_type == 'VISUAL':
-                t = exportVisual(o, scene)
+                t = exportVisual(o, opt)
                  
         elif o.type == "LAMP":
             if o.data.type == 'SPOT':
@@ -631,13 +612,13 @@ def exportObject(scene, o):
                 t.set("color", vector_to_string(o.data.color))
         elif o.type == "EMPTY":
             if has_modifier(o,'HAPTIC') or annotated_type == 'HAPTIC':
-                t = exportEmptyHaptic(o, scene)
+                t = exportEmptyHaptic(o, opt)
             elif has_modifier(o,'CM') or annotated_type == 'CM':
-                t = exportCM(o,scene)
+                t = exportCM(o,opt)
     return t
 
 
-def exportConstraints(scene, o):
+def exportConstraints(opt, o):
     if not o.hide_render and o.parent == None:
         annotated_type = o.get('annotated_type')
         name = fixName(o.name)
@@ -645,7 +626,7 @@ def exportConstraints(scene, o):
             if (isinstance(o.get('object1'),str) and isinstance(o.get('object2'),str)):
                 o1 = bpy.data.objects[o.get('object1')]
                 o2 = bpy.data.objects[o.get('object2')]
-                return exportAttachConstraint(o, o1, o2, scene)
+                return exportAttachConstraint(o, o1, o2, opt)
             else:
                 return None
     return None
