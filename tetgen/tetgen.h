@@ -2238,8 +2238,8 @@ void tetrahedralize(tetgenbehavior *b, tetgenio *in, tetgenio *out,
 #ifdef TETLIBRARY
 extern "C" {
 EXPORT
-void tetrahedralize(char *switches, tetgenio *in, tetgenio *out,
-                    tetgenio *addin = NULL, tetgenio *bgmin = NULL);
+int tetrahedralize(char *switches, tetgenio *in, tetgenio *out,
+                    tetgenio *addin = NULL, tetgenio *bgmin = NULL, const char** errorMessage = NULL);
 }
 #endif // #ifdef TETLIBRARY
 
@@ -2249,42 +2249,26 @@ void tetrahedralize(char *switches, tetgenio *in, tetgenio *out,
 //                                                                           //
 ///////////////////////////////////////////////////////////////////////////////
 
-inline void terminatetetgen(tetgenmesh *m, int x)
+extern const char * ERRORMESSAGE1;
+extern const char * ERRORMESSAGE2;
+extern const char * ERRORMESSAGE3;
+extern const char * ERRORMESSAGE4;
+extern const char * ERRORMESSAGE5;
+extern const char * ERRORMESSAGE10;
+
+
+struct TetGenRuntimeError {
+    int errorCode;
+    const char * message;
+};
+inline void terminatetetgen(tetgenmesh *m, int x, const char* message)
 {
   // Release the allocated memory.
   if (m) {
     m->freememory();
   }
-#ifdef TETLIBRARY
-  throw x;
-#else
-  switch (x) {
-  case 1: // Out of memory.
-    printf("Error:  Out of memory.\n"); 
-    break;
-  case 2: // Encounter an internal error.
-    printf("Please report this bug to Hang.Si@wias-berlin.de. Include\n");
-    printf("  the message above, your input data set, and the exact\n");
-    printf("  command line you used to run this program, thank you.\n");
-    break;
-  case 3:
-    printf("A self-intersection was detected. Program stopped.\n");
-    printf("Hint: use -d option to detect all self-intersections.\n"); 
-    break;
-  case 4:
-    printf("A very small input feature size was detected. Program stopped.\n");
-    printf("Hint: use -T option to set a smaller tolerance.\n");
-    break;
-  case 5:
-    printf("Two very close input facets were detected. Program stopped.\n");
-    printf("Hint: use -Y option to avoid adding Steiner points in boundary.\n");
-    break;
-  case 10: 
-    printf("An input error was detected. Program stopped.\n"); 
-    break;
-  } // switch (x)
-  exit(x);
-#endif // #ifdef TETLIBRARY
+  struct TetGenRuntimeError e = { x, message };
+  throw e;
 }
 
 ///////////////////////////////////////////////////////////////////////////////

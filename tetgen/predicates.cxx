@@ -629,9 +629,10 @@ void exactinit(int verbose, int noexact, int nofilter, REAL maxx, REAL maxy,
   // Added by H. Si, 2012-08-23.
 
   // Sort maxx < maxy < maxz. Re-use 'half' for swapping.
-  assert(maxx > 0);
-  assert(maxy > 0);
-  assert(maxz > 0);
+  if (maxx == 0 || maxy == 0 || maxz == 0)
+  {
+      terminatetetgen(NULL, 12, "Object is too flat");
+  }
 
   if (maxx > maxz) {
     half = maxx; maxx = maxz; maxz = half;

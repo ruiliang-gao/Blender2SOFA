@@ -15,7 +15,10 @@ class Polygon(Structure):
             ]
 
     def get_vertices(self, v):
-        return npc.as_array(self.vertexlist,shape=self.numberofvertices)
+        if self.vertexlist:
+            return npc.as_array(self.vertexlist,shape=self.numberofvertices)
+        else:
+            return np.empty(0)
 
     def set_vertices(self, v):
         """
@@ -200,7 +203,10 @@ class TetGenIO(Structure):
             ]
     
     def get_points(self):
-        return npc.as_array(self.pointlist,shape=(self.numberofpoints,self.mesh_dim))
+        if self.pointlist:
+            return npc.as_array(self.pointlist,shape=(self.numberofpoints,self.mesh_dim))
+        else:
+            return np.empty((0,self.mesh_dim))
 
     def set_points(self,points):
         self.numberofpoints = int(points.size / self.mesh_dim)
@@ -220,11 +226,20 @@ class TetGenIO(Structure):
 
     facets = property(get_facets, set_facets)
 
+    def get_trifaces(self):
+        if self.trifacelist:
+            return npc.as_array(self.trifacelist,shape=(self.numberoftrifaces,3))
+        else:
+            return np.empty((0,3))
+
+    trifaces = property(get_trifaces)
+        
+
     def get_tetrahedra(self):
         if self.tetrahedronlist:
             return npc.as_array(self.tetrahedronlist,shape=(self.numberoftetrahedra,self.numberofcorners))
         else:
-            return None
+            return np.empty((0,self.numberofcorners))
 
     def set_tetrahedra(self, th):
         self.numberoftetrahedra = len(th) / self.numberofcorners
@@ -239,7 +254,7 @@ class TetGenIO(Structure):
         if self.facetmarkrlist :
             return npc.as_array(self.facetmarkrlist,shape=self.numberoffacets)
         else:
-            None
+            return np.empty(0)
 
     def set_facetmarkers(self,fm):
         assert(len(fm) == self.numberoffacets)
@@ -266,6 +281,23 @@ else:
 PATH = path.dirname(__file__);
 libtetgen = cdll.LoadLibrary(path.join(PATH, library_file))
 
-tetrahedralize = libtetgen.tetrahedralize
-tetrahedralize.argtypes = [ c_char_p, POINTER(TetGenIO), POINTER(TetGenIO), POINTER(TetGenIO), POINTER(TetGenIO) ]
+_tetrahedralize = libtetgen.tetrahedralize
+_tetrahedralize.restype = c_int
+_tetrahedralize.argtypes = [ c_char_p, POINTER(TetGenIO), POINTER(TetGenIO), POINTER(TetGenIO), POINTER(TetGenIO), POINTER(c_char_p) ]
+
+class TetGenError(RuntimeError):
+    def __init__(self, code, message):
+        RuntimeError.__init__(self, "TetGen Error", code, message)
+        self.errorCode = code
+        self.errorMessage = message
+
+def tetrahedralize(switches, input):
+    output = TetGenIO()
+    errorMessage = c_char_p()
+    errorCode = _tetrahedralize(switches.encode('ascii'), byref(input), byref(output), None, None, byref(errorMessage))
+    if errorCode == 0:
+        return output
+    else:
+        raise TetGenError(errorCode, (errorMessage.value).decode('ascii'))
+
 
