@@ -737,11 +737,12 @@ def exportScene(opt):
     
     return root    
 
-
+import export2sofa.lua_export
 class ExportOptions:
     pass
 
-def exportSceneToFile(C, filepath, selection, separate, isolate_geometry):
+
+def exportSceneToFile(C, filepath, selection, separate, isolate_geometry, export_to_lua):
 
     opt = ExportOptions()
     opt.isolate_geometry = isolate_geometry
@@ -751,7 +752,10 @@ def exportSceneToFile(C, filepath, selection, separate, isolate_geometry):
     opt.directory = os.path.dirname(filepath)
     root = exportScene(opt)
     
-    ET.ElementTree(root).write(filepath)
+    if export_to_lua:
+        export2sofa.lua_export.writeElementTreeToLua(root, filepath)
+    else:
+        ET.ElementTree(root).write(filepath)
 
     return {'FINISHED'}
 
@@ -799,7 +803,44 @@ class ExportToSofa(Operator, ExportHelper):
         return context.scene is not None
  
     def execute(self, context):
-        return exportSceneToFile(context, self.filepath, self.use_selection, self.export_separate, self.isolate_geometry)
+        return exportSceneToFile(context, self.filepath, self.use_selection, self.export_separate, self.isolate_geometry, False)
+
+class ExportToSaLua(Operator, ExportHelper):
+    """Export to Sofa Lua scene format"""
+    bl_idname = "export.tosalua"  
+    bl_label = "Export To Sofa SaLua"
+
+    # ExportHelper mixin class uses this
+    filename_ext = ".salua"
+
+    filter_glob = StringProperty(
+            default="*.salua",
+            options={'HIDDEN'},
+            )
+            
+    use_selection = BoolProperty(
+            name="Selection Only",
+            description="Export Selected Objects Only",
+            default=False,
+            )
+    
+    export_separate = BoolProperty(
+            name="Export to Separate Files",
+            description="Export Objects into Separate Files and Include all in one *.scn File",
+            default=False,
+            )
+
+    isolate_geometry = BoolProperty(
+            name="Isolate geometry into separate files",
+            description="Put geometry components of the scene into separate files",
+            default=False,
+            )
+    @classmethod
+    def poll(cls, context):
+        return context.scene is not None
+ 
+    def execute(self, context):
+        return exportSceneToFile(context, self.filepath, self.use_selection, self.export_separate, self.isolate_geometry, True)
 
 
 from subprocess import Popen
@@ -818,7 +859,7 @@ class RunSofaOperator(bpy.types.Operator):
             fn = mktemp(suffix='.scn')
         else:
             fn = bpy.data.filepath + '.scn'
-        exportSceneToFile(context, fn, False, False, False)
+        exportSceneToFile(context, fn, False, False, False, False)
         Popen(fn,shell=True)
         return {'FINISHED'}
 
@@ -827,12 +868,14 @@ class RunSofaOperator(bpy.types.Operator):
 
 # Only needed if you want to add into a dynamic menu
 def menu_func_export(self, context):
-    self.layout.operator(ExportToSofa.bl_idname, text="To Sofa XML Scene (.scn)")
+    self.layout.operator(ExportToSofa.bl_idname, text="SOFA XML Scene (.scn)")
+    self.layout.operator(ExportToSaLua.bl_idname, text="SOFA SaLua Scene (.salua)")
 
 addon_keymaps = []
 
 def register():
     bpy.utils.register_class(ExportToSofa)
+    bpy.utils.register_class(ExportToSaLua)
     bpy.types.INFO_MT_file_export.append(menu_func_export)
 
     bpy.utils.register_class(RunSofaOperator)
