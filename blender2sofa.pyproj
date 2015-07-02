@@ -23,10 +23,14 @@
   <ItemGroup>
     <Compile Include="blender2sofa.py" />
     <Compile Include="export2sofa\cgaltetrahedralize.py" />
+    <Compile Include="export2sofa\lua_export.py">
+      <SubType>Code</SubType>
+    </Compile>
     <Compile Include="export2sofa\mesh2tetra_cgal.py" />
     <Compile Include="export2sofa\mesh2tetra_tetgen.py" />
     <Compile Include="export2sofa\tetgen.py" />
     <Compile Include="export2sofa\ui.py" />
+    <Compile Include="export2sofa\__init__.py" />
   </ItemGroup>
   <ItemGroup>
     <Folder Include="export2sofa\" />

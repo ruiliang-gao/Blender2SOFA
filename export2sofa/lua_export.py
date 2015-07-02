@@ -1,9 +1,48 @@
+from numpy import ndarray
+from io import StringIO
+
 
 def writeln(out, level, text):
     for i in range(level):
         out.write('  ')
     out.write(text)
     out.write('\n')
+
+def iterable(o):
+    return hasattr(o, '__getitem__') and hasattr(o, '__len__')
+
+def write_vector(b, v, flat):
+    for i in v:
+        if iterable(i):
+            if not flat: b.write('{ ')
+            write_vector(b, i, flat)
+            if not flat: b.write(' }, ')
+        else:      
+            b.write(luarepr(i))
+            b.write(', ')
+
+def vector_to_string(v, flat = True):
+    b = StringIO()
+    b.write('{ ')
+    write_vector(b, v, flat)
+    b.write(' }')
+    s = b.getvalue()
+    b.close()
+    return s
+
+def luarepr(o):
+    if isinstance(o, str):
+        return repr(o)
+    elif isinstance(o,int) or isinstance(o,float):
+        return repr(o)
+    elif isinstance(o, ndarray):
+        f = o.reshape(o.size)
+        return vector_to_string(f)
+    elif iterable(o):
+        return vector_to_string(o)
+    else:
+        print("Warning this representation may not be valid in Lua: " + repr(o) + " of type " + str(type(o)))
+        return repr(o)
 
 def writeNode(out, n, level, parent = None, serial = 0):
     """
@@ -21,7 +60,7 @@ def writeNode(out, n, level, parent = None, serial = 0):
             writeln(out,level, '{} = {}:createChild({})'.format(var, parent, name))
         for a in n.attrib:
             if a != 'name':
-                writeln(out,level,  '{}.{} = {}'.format(var, a, repr(n.get(a))))
+                writeln(out,level,  '{}.{} = {}'.format(var, a, luarepr(n.get(a))))
     else:
         # Exporting an object
         var = "{}{}".format(n.tag, serial)
@@ -36,7 +75,7 @@ def writeNode(out, n, level, parent = None, serial = 0):
         # Non-string attributes must be set via __newindex
         for a in n.attrib:
             if not isinstance(n.get(a),str):
-                writeln(out,level,  '{}.{} = {}'.format(var, a, repr(n.get(a))))
+                writeln(out,level,  '{}.{} = {}'.format(var, a, luarepr(n.get(a))))
 
     # Output the children of the node
     for c in n:

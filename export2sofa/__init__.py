@@ -1,7 +1,7 @@
 bl_info = { 
     'name': "SOFA Export plugin",
     'author': "Saleh Dindar, Di Xie",
-    'version': (0, 1,  0),
+    'version': (0, 1,  1),
     'blender': (2, 69, 0),
     'location': "",
     'warning': "",
@@ -21,6 +21,7 @@ from io import StringIO
 from export2sofa.mesh2tetra_tetgen import convert as convertMesh2Tetra
 from export2sofa.ui import register as uiRegister
 from export2sofa.ui import unregister as uiUnregister
+from numpy import ndarray
 
 def ndarray_to_flat_string(a):
     b = StringIO()
@@ -32,12 +33,31 @@ def ndarray_to_flat_string(a):
     b.close()
     return s
 
+def iterable(o):
+    return hasattr(o, '__getitem__') and hasattr(o, '__len__')
+
 def vector_to_string(v):
     t = ""
     for i in v :
-        t += str(i) + " "
+        if iterable(i):
+            t += vector_to_string(i) + ' '
+        else:
+            t += str(i) + ' '
     return t
 
+def stringify_etree(node):
+    for a in node.attrib:
+        o = node.get(a)
+        if isinstance(o, str):
+            pass
+        elif isinstance(o, ndarray):
+            node.set(a, ndarray_to_flat_string(o))
+        elif iterable(o):
+            node.set(a, vector_to_string(o))
+        else:
+            node.set(a, str(o))
+    for c in node:
+        stringify_etree(c)
 
 def geometryNode(opt, t):
     """
@@ -66,9 +86,9 @@ def rotation_to_XYZ_euler(o):
 
 def createMechanicalObject(o):
     t = ET.Element("MechanicalObject",template="Vec3d",name="MO")
-    t.set("translation", vector_to_string(o.location))
-    t.set("rotation", vector_to_string(rotation_to_XYZ_euler(o)))
-    t.set("scale3d", vector_to_string(o.scale))
+    t.set("translation", (o.location))
+    t.set("rotation", (rotation_to_XYZ_euler(o)))
+    t.set("scale3d", (o.scale))
     return t
 
 def addSolvers(t):
@@ -79,8 +99,8 @@ def exportTetrahedralTopology(o, opt, name):
     m = o.to_mesh(opt.scene, True, 'PREVIEW')
     points, tetrahedra = convertMesh2Tetra(m)
     c =  ET.Element('TetrahedronSetTopologyContainer', name= name, createTriangleArray='1')
-    c.set('points', ndarray_to_flat_string(points))
-    c.set('tetrahedra', ndarray_to_flat_string(tetrahedra))
+    c.set('points', points)
+    c.set('tetrahedra', tetrahedra)
     return geometryNode(opt,c)
 
 def exportVolumetric(o, opt):
@@ -153,10 +173,10 @@ def addConstraints(o, t):
         if q.name.startswith('BoxConstraint'):
             tl = q.matrix_world * Vector(q.bound_box[0])
             br = q.matrix_world * Vector(q.bound_box[6])
-            t.append(ET.Element("BoxConstraint",box=vector_to_string(tl)+ ' ' + vector_to_string(br)))
+            t.append(ET.Element("BoxConstraint",box=tl+br))
         elif q.name.startswith('SphereConstraint'):
             n = q.name.replace('.', '_')
-            t.append(ET.Element("SphereROI",name=n,centers=vector_to_string(q.location),radii=str(max(q.scale))))
+            t.append(ET.Element("SphereROI",name=n,centers=(q.location),radii=(max(q.scale))))
             t.append(ET.Element("FixedConstraint", indices="@%s.indices" % n))
 
 def collisionModelParts(o, obstacle = False):
@@ -165,18 +185,18 @@ def collisionModelParts(o, obstacle = False):
     else:
         M = "1"
     
-    sc = str(o.get('selfCollision',0))
+    sc = (o.get('selfCollision',0))
     return [ 
-        ET.Element("PointModel",selfCollision=sc, contactFriction = str(o.get('contactFriction', 0)), contactStiffness = str(o.get('contactStiffness', 500)), group=str(o.get('collisionGroup','1')), moving = M, simulated = M ), 
-        ET.Element("LineModel",selfCollision=sc, contactFriction = str(o.get('contactFriction', 0)), contactStiffness = str(o.get('contactStiffness', 500)), group=str(o.get('collisionGroup','1')), moving = M, simulated = M), 
-        ET.Element("TriangleModel",selfCollision=sc, contactFriction = str(o.get('contactFriction', 0)), contactStiffness = str(o.get('contactStiffness', 500)), group=str(o.get('collisionGroup','1')), moving = M, simulated = M) 
+        ET.Element("PointModel",selfCollision=sc, contactFriction = (o.get('contactFriction', 0)), contactStiffness = (o.get('contactStiffness', 500)), group=(o.get('collisionGroup','1')), moving = M, simulated = M ), 
+        ET.Element("LineModel",selfCollision=sc, contactFriction = (o.get('contactFriction', 0)), contactStiffness = (o.get('contactStiffness', 500)), group=(o.get('collisionGroup','1')), moving = M, simulated = M), 
+        ET.Element("TriangleModel",selfCollision=sc, contactFriction = (o.get('contactFriction', 0)), contactStiffness = (o.get('contactStiffness', 500)), group=(o.get('collisionGroup','1')), moving = M, simulated = M) 
     ]
 
 def exportSoftBody(o, opt):
     name=fixName(o.name)
     t = ET.Element("Node",name = name)
     t.append(createMechanicalObject(o))
-    t.append(ET.Element("UniformMass",template="Vec3d", mass=str(o.get('mass') or 1)))
+    t.append(ET.Element("UniformMass",template="Vec3d", mass=(o.get('mass') or 1)))
     v = ET.Element("Node",name="Visual")
     og = exportVisual(o, opt,name = name + '-visual', with_transform = False)
     og.set('template', 'ExtVec3f')
@@ -186,15 +206,15 @@ def exportSoftBody(o, opt):
 
     # set n later
     sparseGridTopology = ET.Element("SparseGridTopology",position="@Visual/Visual.position",quads="@Visual/Visual.quads",triangles="@Visual/Visual.triangles",n="10 10 10")
-    sparseGridTopology.set("n",str(o.get('resX')) + ' ' + str(o.get('resY')) + ' ' + str(o.get('resZ')) )
+    sparseGridTopology.set("n",[o.get('resX'),o.get('resY'),o.get('resZ')] )
     t.append(sparseGridTopology)
    
    # set young modulus later
-    #t.append(ET.Element("HexahedronFEMForceField",template="Vec3d",youngModulus=str(o.get('youngModulus')),poissonRatio=str(o.get('poissonRatio'))))
+    #t.append(ET.Element("HexahedronFEMForceField",template="Vec3d",youngModulus=(o.get('youngModulus')),poissonRatio=(o.get('poissonRatio'))))
     h = ET.Element("HexahedronFEMForceField",template="Vec3d", method="large")
     generateYoungModulus(o,h)
     generatePoissonRatio(o,h)
-    h.set("rayleighStiffness", str(o.get('rayleighStiffness')))
+    h.set("rayleighStiffness", (o.get('rayleighStiffness')))
     t.append(h)
     
     t.append(ET.fromstring('<UncoupledConstraintCorrection />'))
@@ -213,8 +233,8 @@ def exportHaptic(o, opt):
     t = ET.Element("Node",name=name)
     t.append(ET.Element("RequiredPlugin",name="Sensable Plugin",pluginName="Sensable"))
     newOmniDriver = ET.Element("NewOmniDriver",name="Omni Driver",deviceName=o.get('deviceName',''),listening="true",tags="Omni", permanent="true", printLog="1")
-    newOmniDriver.set("forceScale", str(o.get('forceScale')))
-    newOmniDriver.set("scale", str(o.get('scale')))
+    newOmniDriver.set("forceScale", (o.get('forceScale')))
+    newOmniDriver.set("scale", (o.get('scale')))
     t.append(newOmniDriver)
     t.append(ET.Element("GraspingManager",name="graspingManager0",listening="1"))
     #Mechanical Object
@@ -250,10 +270,10 @@ def exportEmptyHaptic(o,opt):
     rl.append(ET.Element("RequiredPlugin",name="Sensable Plugin",pluginName="Sensable"))
     rl.append(ET.Element("MechanicalObject", name="ToolRealPosition", tags=omniTag, template="Rigid"))
     rl.append(ET.Element("NewOmniDriver",
-                         deviceName = str(o.get('deviceName','')), 
-                         tags= omniTag, scale = str(o.get("scale", 300)),
+                         deviceName = (o.get('deviceName','')), 
+                         tags= omniTag, scale = (o.get("scale", 300)),
                          permanent="true", listening="true", alignOmniWithCamera="true",
-                         forceScale = str(o.get("forceScale", 0.01))));
+                         forceScale = (o.get("forceScale", 0.01))));
     nt = ET.Element("Node",name = "Tool");
     nt.append(ET.Element("MechanicalObject", template="Rigid", name="RealPosition"))
     nt.append(ET.Element("SubsetMapping", indices="0"));
@@ -265,7 +285,7 @@ def exportEmptyHaptic(o,opt):
                         template="Rigid3d",
                         position="0 0 0 0 0 0 1 0 0 0 0 0 0 1 0 0 0 0 0 0 1"))
     t.append(ET.Element("UniformMass", template = "Rigid3d", name="mass", totalmass="0.05"))
-    t.append(ET.Element("LCPForceFeedback", activate=str(o.get('forceFeedback',"false")), tags=omniTag, forceCoef="0.1"))
+    t.append(ET.Element("LCPForceFeedback", activate=(o.get('forceFeedback',"false")), tags=omniTag, forceCoef="0.1"))
 
     t.append(ET.Element("RestShapeSpringsForceField", 
             template="Rigid",stiffness="10000000",angularStiffness="2000000",
@@ -292,7 +312,7 @@ def exportEmptyHaptic(o,opt):
             if toolFunction == 'Carve': pm.set('tags', 'CarvingTool')
             elif toolFunction == 'Suture': pm.set('tags', 'SuturingTool')
             child.append(pm)
-            child.append(ET.Element("RigidMapping", input="@../instrumentState",output="@CM",index=str(i.get('index', 0))))
+            child.append(ET.Element("RigidMapping", input="@../instrumentState",output="@CM",index=(i.get('index', 0))))
             t.append(child)
     
     #Children start here
@@ -301,7 +321,7 @@ def exportEmptyHaptic(o,opt):
         name = fixName(i.name)
         child =  ET.Element("Node", name = fixName(i.name))
         child.append(exportVisual(i, opt, name = name + '-visual', with_transform = True))
-        child.append(ET.Element("RigidMapping", input="@../instrumentState", output="@"+name+"-visual", index=str(i.get('index', 0))))
+        child.append(ET.Element("RigidMapping", input="@../instrumentState", output="@"+name+"-visual", index=(i.get('index', 0))))
         t.append(child)
     return t
 
@@ -364,12 +384,12 @@ def exportCloth(o, opt):
     tfff=ET.Element("TriangularFEMForceField", template="Vec3d",  method="large" )
     generatePoissonRatio(o,tfff)
     generateYoungModulus(o,tfff)
-    tfff.set("damping", str(o.get('stretchDamping')))
+    tfff.set("damping", (o.get('stretchDamping')))
     t.append(tfff)
     
     triangularBendingSprings = ET.Element("TriangularBendingSprings", template="Vec3d")
-    triangularBendingSprings.set("stiffness", str(o.get('bendingStiffness')))
-    triangularBendingSprings.set("damping", str(o.get('bendingDamping')))
+    triangularBendingSprings.set("stiffness", (o.get('bendingStiffness')))
+    triangularBendingSprings.set("damping", (o.get('bendingDamping')))
     t.append(triangularBendingSprings)
 
     t.extend(collisionModelParts(o))
@@ -426,7 +446,7 @@ def exportAttachConstraint(o, o1, o2, opt):
         vector_to_string([i, j, stiffness, .1, d]) for (i,j,d) in matchVertices(o1,o2,o, opt)
         ]
     ff = ET.Element("StiffSpringForceField", object1=fixName(o1.name), object2=fixName(o2.name), 
-                    spring = vector_to_string(springs))  
+                    spring = ' '.join(springs))  
 
     return ff
     
@@ -445,38 +465,38 @@ def triangulatedBMesh(o, opt):
 def exportTopologyContainer(o,opt):
 
     bm, triangles = triangulatedBMesh(o, opt)
-    position = [ vector_to_string(v.co) for v in bm.verts]
-    edges = [ vector_to_string([ v.index for v in e.verts ]) for e in bm.edges ]
-    triangles = [ vector_to_string([ v.index for v in f.verts ]) for f in triangles ]
+    position = [ (v.co) for v in bm.verts]
+    edges = [ ([ v.index for v in e.verts ]) for e in bm.edges ]
+    triangles = [ ([ v.index for v in f.verts ]) for f in triangles ]
     bm.free()
 
     t = ET.Element("TriangleSetTopologyContainer")
 
-    t.set("position", ' '.join(position))
-    t.set("edges", ' '.join(edges))
-    t.set("triangles", ' '.join(triangles))   
+    t.set("position", (position))
+    t.set("edges", (edges))
+    t.set("triangles", (triangles))   
     return geometryNode(opt, t)
     
 def generateTopology(o, t, opt):
     
     bm, triangles = triangulatedBMesh(o, opt)
-    position = [ vector_to_string(v.co) for v in bm.verts]
-    triangles = [ vector_to_string([ v.index for v in f.verts ]) for f in triangles ]
+    position = [ (v.co) for v in bm.verts]
+    triangles = [ ([ v.index for v in f.verts ]) for f in triangles ]
     bm.free()
 
-    t.set("position", ' '.join(position))
-    t.set("triangles", ' '.join(triangles))
+    t.set("position", (position))
+    t.set("triangles", (triangles))
     
     return t
 
 def generateYoungModulus(o, t):
     if o.get('youngModulus') != None :
-        t.set("youngModulus", str(o.get('youngModulus')))
+        t.set("youngModulus", (o.get('youngModulus')))
     return t
 
 def generatePoissonRatio(o, t):
     if o.get('poissonRatio') != None :
-        t.set("poissonRatio", str(o.get('poissonRatio')))
+        t.set("poissonRatio", (o.get('poissonRatio')))
     return t
  
 def exportObstacle(o, opt):
@@ -544,27 +564,29 @@ def exportVisual(o, opt, name = None,with_transform = True):
     t = ET.Element("OglModel",name=name or fixName(o.name))
     
     if with_transform :
-        t.set("translation", vector_to_string(o.location))
-        t.set("rotation", vector_to_string(rotation_to_XYZ_euler(o)))
-        t.set("scale3d", vector_to_string(o.scale))
+        t.set("translation", (o.location))
+        t.set("rotation", (rotation_to_XYZ_euler(o)))
+        t.set("scale3d", (o.scale))
 
-    position = [ vector_to_string(v.co) for v in m.vertices]
-    t.set("position", ' '.join(position))
-    normal   = [ vector_to_string(v.normal) for v in m.vertices]
-    t.set("normal", ' '.join(normal))
+    position = array('d')
+    for v in m.vertices:
+        position.extend(v.co)
+    t.set("position", position)
+    normal   = [ (v.normal) for v in m.vertices]
+    t.set("normal", (normal))
 
-    triangles = [ vector_to_string(f.vertices) for f in m.polygons if len(f.vertices) == 3 ]
-    quads     = [ vector_to_string(f.vertices) for f in m.polygons if len(f.vertices) == 4 ]
-    t.set("triangles", ' '.join(triangles))
-    t.set("quads", ' '.join(quads))    
+    triangles = [ (f.vertices) for f in m.polygons if len(f.vertices) == 3 ]
+    quads     = [ (f.vertices) for f in m.polygons if len(f.vertices) == 4 ]
+    t.set("triangles", (triangles))
+    t.set("quads", (quads))    
 
     if len(m.uv_layers) >= 1 :
         uvl = m.uv_layers[0].data
         ## allocate a mapping between vertex indices and loop indices
         mapping = array('I',[ 0 for i in range(0,len(m.vertices)) ])
         for l in m.loops: mapping[l.vertex_index] = l.index     
-        texcoords = [ vector_to_string(uvl[mapping[i]].uv) for i in range(0,len(m.vertices))]
-        t.set("texcoords", ' '.join(texcoords))
+        texcoords = [ (uvl[mapping[i]].uv) for i in range(0,len(m.vertices))]
+        t.set("texcoords", (texcoords))
 
     addMaterial(m, t);
     return geometryNode(opt, t)
@@ -602,14 +624,14 @@ def exportObject(opt, o):
             if o.data.type == 'SPOT':
                 t = ET.Element("SpotLight", name=fixName(o.name))
                 o.rotation_mode = "QUATERNION"
-                t.set("position", vector_to_string(o.location))
-                t.set("color", vector_to_string(o.data.color))
+                t.set("position", (o.location))
+                t.set("color", (o.data.color))
                 direction = o.rotation_quaternion * Vector((0,0,-1))
-                t.set("direction",vector_to_string(direction))
+                t.set("direction",(direction))
             elif o.data.type == 'POINT':
                 t = ET.Element("PositionalLight", name=fixName(o.name))
-                t.set("position", vector_to_string(o.location))
-                t.set("color", vector_to_string(o.data.color))
+                t.set("position", (o.location))
+                t.set("color", (o.data.color))
         elif o.type == "EMPTY":
             if has_modifier(o,'HAPTIC') or annotated_type == 'HAPTIC':
                 t = exportEmptyHaptic(o, opt)
@@ -641,7 +663,7 @@ def exportScene(opt):
     root= ET.Element("Node")
     root.set("name", "root")
     if scene.use_gravity :
-        root.set("gravity",vector_to_string(scene.gravity))
+        root.set("gravity",(scene.gravity))
     else:
         root.set("gravity","0 0 0")
     
@@ -654,7 +676,7 @@ def exportScene(opt):
              
     lcp = ET.Element("LCPConstraintSolver", tolerance="1e-3", initial_guess="false", build_lcp="0",  printLog="0" )
     if scene.get('mu') != None :
-        lcp.set("mu",str(scene.get('mu')))
+        lcp.set("mu",(scene.get('mu')))
     root.append(lcp)
     
     root.append(ET.fromstring('<FreeMotionAnimationLoop printLog = "0"/>'))
@@ -664,9 +686,9 @@ def exportScene(opt):
     
     mpi = ET.Element("MinProximityIntersection",useSurfaceNormals="0")
     if scene.get('alarmDistance'):
-        mpi.set("alarmDistance",str(scene.get('alarmDistance')))
+        mpi.set("alarmDistance",(scene.get('alarmDistance')))
     if scene.get('contactDistance'):
-        mpi.set("contactDistance", str(scene.get('contactDistance')))
+        mpi.set("contactDistance", (scene.get('contactDistance')))
     root.append(mpi)
     
     root.append(ET.Element("CollisionGroup"))
@@ -755,6 +777,7 @@ def exportSceneToFile(C, filepath, selection, separate, isolate_geometry, export
     if export_to_lua:
         export2sofa.lua_export.writeElementTreeToLua(root, filepath)
     else:
+        stringify_etree(root)
         ET.ElementTree(root).write(filepath)
 
     return {'FINISHED'}
