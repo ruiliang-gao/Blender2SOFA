@@ -22,6 +22,12 @@ from export2sofa.ui import register as uiRegister
 from export2sofa.ui import unregister as uiUnregister
 from numpy import ndarray, empty
 
+class TetException(Exception):
+    def __init__(self, message):
+        Exception.__init__(self, message)
+        self.message = message
+
+
 def ndarray_to_flat_string(a):
     b = StringIO()
     f = a.reshape(a.size)
@@ -98,8 +104,7 @@ def exportTetrahedralTopology(o, opt, name):
     if o.type == 'MESH' and o.data.tetrahedral.is_tetrahedral:
       m = o.data
     else:
-      # TODO: proper error reporting
-      raise RuntimeError("Tetrahedral mesh expected! %s" % o.name)
+      raise TetException("While processing %s: Tetrahedral mesh expected!" % o.name)
       
     points =  empty((len(m.vertices),3))
     for i, v in enumerate(m.vertices):
@@ -844,7 +849,12 @@ class ExportToSofa(Operator, ExportHelper):
         return context.scene is not None
  
     def execute(self, context):
-        return exportSceneToFile(context, self.filepath, self.use_selection, self.export_separate, self.isolate_geometry, False)
+        self.report({'INFO'}, "Exporting to %s" % self.filepath)
+        try:
+            return exportSceneToFile(context, self.filepath, self.use_selection, self.export_separate, self.isolate_geometry, False)
+        except TetException as et:
+            self.report({'ERROR'}, "Export failed: %s" % et.message)
+            return { 'CANCELLED' }
 
 class ExportToSaLua(Operator, ExportHelper):
     """Export to Sofa Lua scene format"""
@@ -881,7 +891,12 @@ class ExportToSaLua(Operator, ExportHelper):
         return context.scene is not None
  
     def execute(self, context):
-        return exportSceneToFile(context, self.filepath, self.use_selection, self.export_separate, self.isolate_geometry, True)
+        self.report({'INFO'}, "Exporting to %s" % self.filepath)
+        try:
+            return exportSceneToFile(context, self.filepath, self.use_selection, self.export_separate, self.isolate_geometry, True)
+        except TetException as et:
+            self.report({'ERROR'}, "Export failed: %s" % et.message)
+            return { 'CANCELLED' }
 
 
 from subprocess import Popen
@@ -900,7 +915,14 @@ class RunSofaOperator(bpy.types.Operator):
             fn = mktemp(suffix='.scn')
         else:
             fn = bpy.data.filepath + '.scn'
-        exportSceneToFile(context, fn, False, False, False, False)
+        self.report({'INFO'}, "Exporting to %s" % fn)
+        try:
+            exportSceneToFile(context, fn, False, False, False, False)
+        except TetException as et:
+            self.report({'ERROR'}, "Export failed: %s" % et.message)
+            return { 'CANCELLED' }
+
+        return {'FINISHED'}
         Popen(fn,shell=True)
         return {'FINISHED'}
 
