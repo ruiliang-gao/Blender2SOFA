@@ -1,12 +1,12 @@
 zip -r blender2sofa-$(hg id -i).zip blender2sofa.py \
-	export2sofa/cgaltetrahedralize.py \
-	export2sofa/libmpfr-4.dll\
-	export2sofa/tetgen.py \
+  export2sofa/__init__.py\
 	export2sofa/ui.py\
-  exprot2sofa/lua_export.py\
-	export2sofa/mesh2tetra_cgal.py\
-	export2sofa/mesh2tetra_tetgen.py \
-	export2sofa/tetgen.dll\
-	export2sofa/CGAL-vc120-mt-4.6.dll \
-	export2sofa/CGALTetrahedralize.dll \
-	export2sofa/libgmp-10.dll
+  export2sofa/lua_export.py
+
+zip -r blender-tetrahedral-$(hg id -i).zip blendertetrahedral.py \
+  tetrahedral/__init__.py \
+	tetrahedral/cgaltetrahedralize/__init__.py \
+	tetrahedral/cgaltetrahedralize/libmpfr-4.dll\
+	tetrahedral/cgaltetrahedralize/CGAL-vc120-mt-4.6.dll \
+	tetrahedral/cgaltetrahedralize/CGALTetrahedralize.dll \
+	tetrahedral/cgaltetrahedralize/libgmp-10.dll

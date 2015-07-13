@@ -100,6 +100,17 @@ class TetrahedralMesh(Structure):
     tetrahedra = property(get_tetrahedra,set_tetrahedra)
 
 
+class TetrahedralizeParameters(Structure):
+    _fields_ = [
+     ('cell_size', c_real),
+     ('facet_angle', c_real),
+     ('facet_size',c_real),
+     ('facet_distance',c_real),
+     ('cell_radius_edge_ratio',c_real),
+    ]
+
+
+
 
 
 from os import path, environ
@@ -115,5 +126,5 @@ environ['PATH'] = environ['PATH'] + ';' + path.join(path.dirname(__file__));
 libcgaltetrahedralize = cdll.LoadLibrary(library_file)
 
 tetrahedralize = libcgaltetrahedralize.tetrahedralize
-tetrahedralize.argtypes = [ POINTER(TriangleMesh), POINTER(TetrahedralMesh) ]
+tetrahedralize.argtypes = [ POINTER(TriangleMesh), POINTER(TetrahedralMesh), POINTER(TetrahedralizeParameters) ]
 

@@ -1,3 +1,5 @@
+#include <assert.h>
+
 #include <CGAL/Exact_predicates_inexact_constructions_kernel.h>
 
 #include <CGAL/Mesh_triangulation_3.h>
@@ -67,8 +69,47 @@ struct ExtractIndex : public boost::static_visitor<int> {
     }
 };
 
-int tetrahedralize(struct TriangleMesh* inmesh, struct TetrahedralMesh* outmesh /* parameters */)
+/* These are copied from QTetraMesher */
+struct TetrahedralizeParameters defaultParameters = {
+    /*.cell_size              =*/ 0.01,
+    /*.facet_angle            =*/ 25.0,
+    /*.facet_size             =*/ 0.01,
+    /*.facet_distance         =*/ 0.03,
+    /*.cell_radius_edge_ratio =*/ 3
+};
+
+
+uint64_t encodeFacet(int a, int b, int c)
 {
+    uint64_t i1, i2, i3;
+    if (a < b)
+    {
+        if (a < c)
+            i1 = a, i2 = b, i3 = c;
+        else
+            i1 = c, i2 = a, i3 = b;
+    }
+    else
+    {
+        if (b < c)
+            i1 = b, i2 = c, i3 = a;
+        else
+            i1 = c, i2 = a, i3 = b;
+    }
+    return (i1 << 40) | (i2 << 20) | i3;
+}
+
+void decodeFacet(uint64_t in, int *out)
+{
+    out[0] = (int)((in >> 40) & ((1 << 20) - 1));
+    out[1] = (int)((in >> 20) & ((1 << 20) - 1));
+    out[2] = (int)((in >>  0) & ((1 << 20) - 1));
+}
+
+
+int tetrahedralize(struct TriangleMesh* inmesh, struct TetrahedralMesh* outmesh, struct TetrahedralizeParameters* parameters)
+{
+    struct TetrahedralizeParameters *params = parameters != NULL ? parameters : &defaultParameters;
     /* Convert inmesh to a CGAL polyhedral mesh */
     Polyhedron P;
     BuildTriangleMesh<HalfedgeDS> meshBuilder(inmesh);
@@ -80,8 +121,13 @@ int tetrahedralize(struct TriangleMesh* inmesh, struct TetrahedralMesh* outmesh 
     Mesh_domain domain(P);
     // Mesh criteria (no cell_size set)
     // Mesh criteria
-    Mesh_criteria criteria(facet_angle = 25, facet_size = 0.15, facet_distance = 0.008,
-        cell_radius_edge_ratio = 3);
+    Mesh_criteria criteria(
+        cell_size = params->cell_size,
+        facet_angle = params->facet_angle, 
+        facet_size = params->facet_size, 
+        facet_distance = params->facet_distance,
+        cell_radius_edge_ratio = params->cell_radius_edge_ratio
+        );
 
     // Mesh generation
     C3t3 c3t3 = CGAL::make_mesh_3<C3t3>(domain, criteria, no_perturb(), no_exude());
@@ -110,13 +156,47 @@ int tetrahedralize(struct TriangleMesh* inmesh, struct TetrahedralMesh* outmesh 
             outmesh->tetrahedron[j][k] = V[i->vertex(k)];
 
 
-    outmesh->triangleCount = (int) c3t3.number_of_facets_in_complex();
-    outmesh->triangle = new int[c3t3.number_of_facets_in_complex()][3];
+    /* extract the surface from the tetrahedral mesh */
+
+    std::set<uint64_t> faceSet;
+
+    static const int lu[4][3] = {
+        { 1, 3, 2 },
+        { 0, 2, 3 },
+        { 0, 3, 1 },
+        { 0, 1, 2 }
+    };
+
+    for (int i = 0; i < outmesh->tetrahedronCount; i++)
+    {
+        for (int f = 0; f < 4; f++)
+        {
+            uint64_t id = encodeFacet(
+                outmesh->tetrahedron[i][lu[f][0]],
+                outmesh->tetrahedron[i][lu[f][1]],
+                outmesh->tetrahedron[i][lu[f][2]]
+                );
+            uint64_t revid = encodeFacet(
+                outmesh->tetrahedron[i][lu[f][0]],
+                outmesh->tetrahedron[i][lu[f][2]],
+                outmesh->tetrahedron[i][lu[f][1]]
+                );
+            if (faceSet.count(revid) != 0)
+                faceSet.erase(revid);
+            else
+                faceSet.insert(id);
+            
+        }
+    }
+
+    /* take the remaining faces from the set and put them in */
+    outmesh->triangleCount = (int)faceSet.size();
+    outmesh->triangle = new int[faceSet.size()][3];
     j = 0;
-    for (auto i = c3t3.facets_in_complex_begin(); i != c3t3.facets_in_complex_end(); i++, j++)
-        for (int k = 0, l = 0; k < 4; k++)
-            if (k != i->second)
-                outmesh->triangle[j][l++] = V[ i->first->vertex(k) ];
+    for (auto i = faceSet.begin(); i != faceSet.end(); i++, j++)
+    {
+        decodeFacet(*i, &outmesh->triangle[j][0]);
+    }
 
     return 0;
 }

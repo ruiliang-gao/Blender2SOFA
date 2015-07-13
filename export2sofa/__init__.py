@@ -18,10 +18,9 @@ from mathutils import Vector, Euler, Quaternion
 from math import degrees
 from array import array
 from io import StringIO
-from export2sofa.mesh2tetra_tetgen import convert as convertMesh2Tetra
 from export2sofa.ui import register as uiRegister
 from export2sofa.ui import unregister as uiUnregister
-from numpy import ndarray
+from numpy import ndarray, empty
 
 def ndarray_to_flat_string(a):
     b = StringIO()
@@ -96,8 +95,25 @@ def addSolvers(t):
     t.append(ET.Element("CGLinearSolver",template="GraphScattered"))
 
 def exportTetrahedralTopology(o, opt, name):
-    m = o.to_mesh(opt.scene, True, 'PREVIEW')
-    points, tetrahedra = convertMesh2Tetra(m)
+    if o.type == 'MESH' and o.data.tetrahedral.is_tetrahedral:
+      m = o.data
+    else:
+      # TODO: proper error reporting
+      raise RuntimeError("Tetrahedral mesh expected! %s" % o.name)
+      
+    points =  empty((len(m.vertices),3))
+    for i, v in enumerate(m.vertices):
+        points[i][0] = v.co[0]
+        points[i][1] = v.co[1]
+        points[i][2] = v.co[2]
+
+    tetrahedra = empty([len(m.tetrahedral.tetrahedra), 4],dtype=int)
+    for i, f in enumerate(m.tetrahedral.tetrahedra):
+        tetrahedra[i][0] = f.vertices[0]
+        tetrahedra[i][1] = f.vertices[1]
+        tetrahedra[i][2] = f.vertices[2]
+        tetrahedra[i][3] = f.vertices[3]
+
     c =  ET.Element('TetrahedronSetTopologyContainer', name= name, createTriangleArray='1')
     c.set('points', points)
     c.set('tetrahedra', tetrahedra)
@@ -480,8 +496,10 @@ def exportTopologyContainer(o,opt):
 def generateTopology(o, t, opt):
     
     bm, triangles = triangulatedBMesh(o, opt)
-    position = [ (v.co) for v in bm.verts]
-    triangles = [ ([ v.index for v in f.verts ]) for f in triangles ]
+    position = array('d')
+    for v in bm.verts:
+      position.extend([v.co[0],v.co[1],v.co[2]])
+    triangles = [ [ v.index for v in f.verts ] for f in triangles ]
     bm.free()
 
     t.set("position", (position))
@@ -572,8 +590,8 @@ def exportVisual(o, opt, name = None,with_transform = True):
     for v in m.vertices:
         position.extend(v.co)
     t.set("position", position)
-    normal   = [ (v.normal) for v in m.vertices]
-    t.set("normal", (normal))
+    normal   = [ v.normal for v in m.vertices]
+    t.set("normal", normal)
 
     triangles = [ (f.vertices) for f in m.polygons if len(f.vertices) == 3 ]
     quads     = [ (f.vertices) for f in m.polygons if len(f.vertices) == 4 ]
