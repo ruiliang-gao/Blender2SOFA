@@ -1,8 +1,8 @@
 bl_info = { 
     'name': "SOFA Export plugin",
     'author': "Saleh Dindar, Di Xie",
-    'version': (0, 1,  1),
-    'blender': (2, 69, 0),
+    'version': (0, 1,  2),
+    'blender': (2, 74, 0),
     'location': "",
     'warning': "",
     'description': "Export Blender scenes into SOFA scene files",
