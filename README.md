@@ -11,6 +11,11 @@ parameters that are needed in a SOFA simulation.
 
 [Installation intstructions with pictures](https://bitbucket.org/surflab/blender2sofa/wiki/Install)
 
+### Tetrahedral Meshes
+Blender2SOFA does not create tetrahedral meshes any more. You have to create
+tetrahedral models using [QTetraMesher](http://qtm.dennis2society.de/) and import
+them into your scene using _Import MSH_ operator provided.
+
 ## Usage
 To export to a Sofa readable .SCN file, go to _File -> Export -> Export To Sofa_, and then in the save dialog
 specify the name of your .SCN file

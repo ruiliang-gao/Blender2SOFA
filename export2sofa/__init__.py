@@ -936,6 +936,9 @@ def menu_func_export(self, context):
 addon_keymaps = []
 
 def register():
+    io_msh.register()
+    ui.register()
+
     bpy.utils.register_class(ExportToSofa)
     bpy.utils.register_class(ExportToSaLua)
     bpy.types.INFO_MT_file_export.append(menu_func_export)
@@ -951,12 +954,11 @@ def register():
     kmi = km.keymap_items.new(RunSofaOperator.bl_idname, 'F5', 'PRESS')
     addon_keymaps.append((km, kmi))
 
-    io_msh.register()
-    ui.register()
 
 
 def unregister():
     bpy.utils.unregister_class(ExportToSofa)
+    bpy.utils.unregister_class(ExportToSaLua)
     bpy.types.INFO_MT_file_export.remove(menu_func_export)
 
     # handle the keymap
@@ -971,6 +973,4 @@ def unregister():
     
 if __name__ == "__main__":
     register()
-    bpy.ops.export.tosofa('INVOKE_DEFAULT')
-    #bpy.ops.scene.runsofa('INVOKE_DEFAULT')
 

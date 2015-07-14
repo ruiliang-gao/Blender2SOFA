@@ -171,17 +171,20 @@ class ImportMSH(bpy.types.Operator, bpy_extras.io_utils.ImportHelper):
       
       
 
+def menu_func_import(self, context):
+    self.layout.operator(ImportMSH.bl_idname, text="GMSH (.msh)")
 
 def register():
     bpy.utils.register_class(ImportMSH)
     bpy.utils.register_class(MeshTetrahedron)
     bpy.utils.register_class(TetrahedralMeshPanel)    
+    bpy.types.INFO_MT_file_import.append(menu_func_import)
     bpy.types.Mesh.tetrahedra = bpy.props.CollectionProperty(name="Tetrahedra", type=MeshTetrahedron)
 
 def unregister():
     del bpy.types.Mesh.tetrahedra
+    bpy.types.INFO_MT_file_import.remove(menu_func_import)
     bpy.utils.unregister_class(ImportMSH)
-    bpy.utils.unregister_class(TetrahedralizeMesh)
     bpy.utils.unregister_class(TetrahedralMeshPanel)    
     bpy.utils.unregister_class(MeshTetrahedron)
     
