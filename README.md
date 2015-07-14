@@ -5,7 +5,7 @@ SOFA scenes from a Blender scene easily. UI is provided for specifying
 parameters that are needed in a SOFA simulation.
 
 ## Install
-1. Download latest distribution zip file for your platform [Windows x64](https://bitbucket.org/surflab/blender2sofa/downloads/blender2sofa-latest-win64.zip) [OSX](https://bitbucket.org/surflab/blender2sofa/downloads/blender2sofa-latest-osx.zip)
+1. Download latest distribution zip file [blender2sofa-latest.zip](https://bitbucket.org/surflab/blender2sofa/downloads/blender2sofa-latest.zip)
 2. Use _Install From File..._ in _Addons_ tab of Blender to install the plugin
 3. Activate the plugin from the list. Hit _Save User Settings_ to make it permanent.
 
