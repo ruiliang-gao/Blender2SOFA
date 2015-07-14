@@ -922,7 +922,6 @@ class RunSofaOperator(bpy.types.Operator):
             self.report({'ERROR'}, "Export failed: %s" % et.message)
             return { 'CANCELLED' }
 
-        return {'FINISHED'}
         Popen(fn,shell=True)
         return {'FINISHED'}
 

@@ -50,8 +50,10 @@ def invoke_CGALTetrahedralize(m, options):
         
     tri.triangles = faces
     print('calling tetrahedralize')
-    cgal.tetrahedralize(tri, tet, par)
+    retval = cgal.tetrahedralize(tri, tet, par)
     print('done calling')
+    if retval != 0:
+        raise TetException("CGALTetrahedralize error code %d" % retval)
     if tet.tetrahedronCount == 0:
         raise TetException("CGALTetrahedralize returned empty tetrahedralization")
     else:

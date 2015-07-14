@@ -126,5 +126,6 @@ environ['PATH'] = environ['PATH'] + ';' + path.join(path.dirname(__file__));
 libcgaltetrahedralize = cdll.LoadLibrary(library_file)
 
 tetrahedralize = libcgaltetrahedralize.tetrahedralize
+tetrahedralize.restype = c_int
 tetrahedralize.argtypes = [ POINTER(TriangleMesh), POINTER(TetrahedralMesh), POINTER(TetrahedralizeParameters) ]
 

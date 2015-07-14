@@ -111,6 +111,7 @@ int tetrahedralize(struct TriangleMesh* inmesh, struct TetrahedralMesh* outmesh,
 {
     struct TetrahedralizeParameters *params = parameters != NULL ? parameters : &defaultParameters;
     /* Convert inmesh to a CGAL polyhedral mesh */
+    if (inmesh == NULL) return 1;
     Polyhedron P;
     BuildTriangleMesh<HalfedgeDS> meshBuilder(inmesh);
     P.delegate(meshBuilder);
@@ -129,8 +130,16 @@ int tetrahedralize(struct TriangleMesh* inmesh, struct TetrahedralMesh* outmesh,
         cell_radius_edge_ratio = params->cell_radius_edge_ratio
         );
 
-    // Mesh generation
-    C3t3 c3t3 = CGAL::make_mesh_3<C3t3>(domain, criteria, no_perturb(), no_exude());
+    C3t3 c3t3;
+    try {
+        // Mesh generation
+        c3t3 = CGAL::make_mesh_3<C3t3>(domain, criteria, no_perturb(), no_exude());
+    }
+    catch (std::exception e)
+    {
+        std::cerr << "Error while tetrahedralizing " << e.what() << std::endl;
+        return 3;
+    }
 
     /* Convert CGAL polyhedral mesh into a tetrahedral outmesh*/
     auto t = c3t3.triangulation();
