@@ -36,7 +36,7 @@ def decodeFacet(f):
 LU = [ [1,3,2], [0,2,3], [0,3,1], [0,1,2] ]
 def make_outer_surface(M):
   faceSet = set()
-  for t in M.tetrahedral.tetrahedra:
+  for t in M.tetrahedra:
     for l in LU:
       f = encodeFacet(t.vertices[l[0]],t.vertices[l[1]],t.vertices[l[2]])
       rf = encodeFacet(t.vertices[l[0]],t.vertices[l[2]],t.vertices[l[1]])
@@ -59,11 +59,6 @@ class MeshTetrahedron(bpy.types.PropertyGroup):
     """Represent a tetrahedron in a mesh"""
     vertices = bpy.props.IntVectorProperty(size=4)
 
-# A property group of all the settings we need for a tetrahedral information
-# namely we only need the index array
-class TetrahedralMesh(bpy.types.PropertyGroup):
-    tetrahedra = bpy.props.CollectionProperty(name="Tetrahedra", type=MeshTetrahedron)
-
 # A panel will give us a permanent place in the data tab for meshes
 class TetrahedralMeshPanel(bpy.types.Panel):
     """A panel to edit tetrahedral properties"""
@@ -81,9 +76,9 @@ class TetrahedralMeshPanel(bpy.types.Panel):
         return True
     def draw(self, context):
         layout = self.layout
-        tet = context.object.data.tetrahedral
+        M = context.object.data
         row = layout.row()
-        row.label("Tetrahedron count: %d" % len(tet.tetrahedra));
+        row.label("Tetrahedron count: %d" % len(M.tetrahedra));
 
 
 class ExportMSHOperator(bpy.types.Operator):
@@ -93,7 +88,7 @@ class ExportMSHOperator(bpy.types.Operator):
       Enabled only for tetrahedral meshes
       """
       return context.object is not None and context.object.type == 'MESH' \
-        and len(context.object.tetrahedral.tetrahedra) > 0
+        and len(context.object.tetrahedra) > 0
 
 
 class ImportMSH(bpy.types.Operator, bpy_extras.io_utils.ImportHelper):
@@ -151,8 +146,8 @@ class ImportMSH(bpy.types.Operator, bpy_extras.io_utils.ImportHelper):
           # TODO: what about triangle elements
           idx, count, _, _, _, a, b, c, d = line.split()
           i = int(idx)
-          t = M.tetrahedral.tetrahedra.add()
-          if i != len(M.tetrahedral.tetrahedra):
+          t = M.tetrahedra.add()
+          if i != len(M.tetrahedra):
             self.report({'ERROR'}, "%s:%d: Elements must come in proper order, %d" %(objName,lineno,i))
             return {'CANCELLED'}
           t.vertices[0] = int(a) - 1
@@ -180,16 +175,14 @@ class ImportMSH(bpy.types.Operator, bpy_extras.io_utils.ImportHelper):
 def register():
     bpy.utils.register_class(ImportMSH)
     bpy.utils.register_class(MeshTetrahedron)
-    bpy.utils.register_class(TetrahedralMesh)    
     bpy.utils.register_class(TetrahedralMeshPanel)    
-    bpy.types.Mesh.tetrahedral = bpy.props.PointerProperty(type=TetrahedralMesh)
+    bpy.types.Mesh.tetrahedra = bpy.props.CollectionProperty(name="Tetrahedra", type=MeshTetrahedron)
 
 def unregister():
-    del bpy.types.Mesh.tetrahedral
+    del bpy.types.Mesh.tetrahedra
     bpy.utils.unregister_class(ImportMSH)
     bpy.utils.unregister_class(TetrahedralizeMesh)
     bpy.utils.unregister_class(TetrahedralMeshPanel)    
-    bpy.utils.unregister_class(TetrahedralMesh)    
     bpy.utils.unregister_class(MeshTetrahedron)
     
 if __name__ == "__main__":

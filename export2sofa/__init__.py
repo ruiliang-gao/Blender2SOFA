@@ -18,9 +18,9 @@ from mathutils import Vector, Euler, Quaternion
 from math import degrees
 from array import array
 from io import StringIO
-from export2sofa.ui import register as uiRegister
-from export2sofa.ui import unregister as uiUnregister
 from numpy import ndarray, empty
+from . import io_msh
+from . import ui
 
 class TetException(Exception):
     def __init__(self, message):
@@ -101,7 +101,7 @@ def addSolvers(t):
     t.append(ET.Element("CGLinearSolver",template="GraphScattered"))
 
 def exportTetrahedralTopology(o, opt, name):
-    if o.type == 'MESH' and o.data.tetrahedral.is_tetrahedral:
+    if o.type == 'MESH' and hasattr(o.data,'tetrahedra') and len(o.data.tetrahedra) > 0:
       m = o.data
     else:
       raise TetException("While processing %s: Tetrahedral mesh expected!" % o.name)
@@ -112,8 +112,8 @@ def exportTetrahedralTopology(o, opt, name):
         points[i][1] = v.co[1]
         points[i][2] = v.co[2]
 
-    tetrahedra = empty([len(m.tetrahedral.tetrahedra), 4],dtype=int)
-    for i, f in enumerate(m.tetrahedral.tetrahedra):
+    tetrahedra = empty([len(m.tetrahedra), 4],dtype=int)
+    for i, f in enumerate(m.tetrahedra):
         tetrahedra[i][0] = f.vertices[0]
         tetrahedra[i][1] = f.vertices[1]
         tetrahedra[i][2] = f.vertices[2]
@@ -951,7 +951,8 @@ def register():
     kmi = km.keymap_items.new(RunSofaOperator.bl_idname, 'F5', 'PRESS')
     addon_keymaps.append((km, kmi))
 
-    uiRegister()
+    io_msh.register()
+    ui.register()
 
 
 def unregister():
@@ -965,7 +966,8 @@ def unregister():
         
     bpy.utils.unregister_class(RunSofaOperator)
 
-    uiUnregister()    
+    io_msh.unregister()
+    ui.unregister()    
     
 if __name__ == "__main__":
     register()
