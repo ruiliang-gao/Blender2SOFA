@@ -58,7 +58,7 @@ def make_outer_surface(M):
 class MeshTetrahedron(bpy.types.PropertyGroup):
     """Represent a tetrahedron in a mesh"""
     vertices = bpy.props.IntVectorProperty(size=4)
-
+    
 # A panel will give us a permanent place in the data tab for meshes
 class TetrahedralMeshPanel(bpy.types.Panel):
     """A panel to edit tetrahedral properties"""

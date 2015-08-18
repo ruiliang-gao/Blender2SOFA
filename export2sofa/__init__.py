@@ -123,7 +123,87 @@ def exportTetrahedralTopology(o, opt, name):
     c.set('points', points)
     c.set('tetrahedra', tetrahedra)
     return geometryNode(opt,c)
+    
+def exportThickShellTopology(o, opt, name):
+    m = o.to_mesh(opt.scene, True, 'PREVIEW')
+    thickness = o.get('thickness', 0.1)
+    V = len(m.vertices)
+    points =  empty([V * 2,3])
+    for i, v in enumerate(m.vertices):
+        v1 = v.co - v.normal * thickness / 2
+        v2 = v.co + v.normal * thickness / 2
+        points[i+0][0] = v1[0]
+        points[i+0][1] = v1[1]
+        points[i+0][2] = v1[2]
+        points[i+V][0] = v2[0]
+        points[i+V][1] = v2[1]
+        points[i+V][2] = v2[2]
+    
+    
+    quads = list(filter(lambda f: len(f.vertices) == 4, m.polygons))
 
+    if len(quads) == 0 : raise TetException("Object '%s' has to be a quad mesh for a thick shell topology" % o.name)
+    
+    hexahedra = empty([len(quads), 8], dtype=int)
+    for i, f in enumerate(quads):
+        for k in range(0, 2):
+            for j in range(0, 4):
+                hexahedra[i][k * 4 + j] = f.vertices[j] + k * V 
+
+    c =  ET.Element('HexahedronSetTopologyContainer', name= name)
+    c.set('points', points)
+    c.set('hexahedra', hexahedra)
+    return geometryNode(opt,c)
+        
+def exportThickQuadShell(o, opt):
+    name = fixName(o.name)
+    t = ET.Element("Node", name = name)
+
+    topo = name + '-hexahedral-topology'
+    c = exportThickShellTopology(o, opt, topo)
+    t.append(c)
+    
+    mo = createMechanicalObject(o)
+    
+    mo.set('position','@'+topo+'.position')
+    t.append(mo)
+    
+    t.append(ET.Element('HexahedronSetTopologyModifier'))
+    t.append(ET.Element('HexahedronSetTopologyAlgorithms', template = 'Vec3d'))
+    t.append(ET.Element('HexahedronSetGeometryAlgorithms', template = 'Vec3d'))
+
+    # set massDensity later
+    t.append(ET.Element("DiagonalMass"))
+
+    h = ET.Element("HexahedronFEMForceField",template="Vec3d", method="large")
+    generateYoungModulus(o,h)
+    generatePoissonRatio(o,h)
+    h.set("rayleighStiffness", (o.get('rayleighStiffness')))
+    t.append(h)
+    
+    if o.get('precomputeConstraints') == True:
+        t.append(ET.Element('PrecomputedConstraintCorrection', rotations="true", recompute="0"))
+    else:
+        t.append(ET.Element('UncoupledConstraintCorrection',compliance="0.001   0.00003 0 0   0.00003 0   0.00003"))
+    
+    
+    addConstraints(o, t)
+    
+    n = ET.Element('Node', name="Collision")
+    n.append(exportTopology(o,opt))
+    n.append(ET.Element("MechanicalObject",template="Vec3d",name="MOC"))
+    n.extend(collisionModelParts(o))
+    n.append(ET.Element("BarycentricMapping",object1="../MO",object2="MOC"))
+    t.append(n)
+    
+    v = ET.Element('Node', name="Visual")
+    v.append(exportVisual(o, opt, name = name + "-visual"))
+    v.append(ET.Element("BarycentricMapping",template="Vec3d,ExtVec3f",object1="../MO",object2=name + "-visual"))
+    t.append(v)
+        
+        
+    return t
+    
 def exportVolumetric(o, opt):
     name = fixName(o.name)
     t = ET.Element("Node", name = name)
@@ -640,6 +720,8 @@ def exportObject(opt, o):
                 t = exportRigid(o, opt)
             elif annotated_type == 'VOLUMETRIC':
                 t = exportVolumetric(o, opt)
+            elif annotated_type == 'THICKSHELL':
+                t = exportThickQuadShell(o, opt)
             elif annotated_type == None or annotated_type == 'VISUAL':
                 t = exportVisual(o, opt)
                  
