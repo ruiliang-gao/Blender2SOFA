@@ -84,10 +84,11 @@ class SofaPropertyPanel(bpy.types.Panel):
                 c = layout.column_flow(align=True, columns = 1)
                 c.label(text="Object Properties", icon='OBJECT_DATAMODE')
                 (t,i,p) = OBJECT_MAP[antype]
-                for e in p:
+                l = list(p.keys()); l.sort()
+                for e in l:
                   if type(p[e]) != str:
                     c.prop(obj, '["'+ e + '"]')
-                for e in p:
+                for e in l:
                   if type(p[e]) == str:
                     c.label(text=e + ':')
                     c.prop(obj, '["'+ e +'"]', '')
@@ -99,10 +100,11 @@ class SofaPropertyPanel(bpy.types.Panel):
                 c = layout.column_flow(align=True, columns=1)
                 c.label(text="Scene Properties", icon='SCENE_DATA')
                 p = SOFA_SCENE_PROPERTIES 
-                for e in p:
+                l = list(p.keys()); l.sort()
+                for e in l:
                   if type(p[e]['default']) != str:
                     c.prop(s, '["'+ e + '"]')
-                for e in p:
+                for e in l:
                   if type(p[e]['default']) == str:
                     c.label(text=e + ':')
                     c.prop(s, '["'+ e +'"]', '')
