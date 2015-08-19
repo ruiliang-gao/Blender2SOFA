@@ -15,7 +15,7 @@ OBJECT_LIST = {
     'ATTACHCONSTRAINT': ("Attach Constraint",'CONSTRAINT_DATA', {'stiffness':1000, 'object1':'', 'object2':''}), 
     'SPHERECONSTRAINT': ("Sphere Constraint",'CONSTRAINT', {}),
     'VOLUMETRIC': ("Volumetic",'SNAP_VOLUME', { 'selfCollision': False, 'precomputeConstraints' : False, 'carvable': False, 'youngModulus': 300 , 'poissonRatio':0.45, 'damping': 0.1, 'contactFriction': 0.01, 'contactStiffness':500, 'collisionGroup':1, 'suture': False} ), 
-    'THICKSHELL': ("Thick Shell",'MOD_CLOTH', { 'selfCollision': False, 'precomputeConstraints' : False, 'youngModulus': 300 , 'poissonRatio':0.45, 'damping': 0.1, 'contactFriction': 0.01, 'contactStiffness':500, 'collisionGroup':1, 'thickness': 0.1 } ), 
+    'THICKSHELL': ("Thick Shell",'MOD_CLOTH', { 'selfCollision': False, 'precomputeConstraints' : False, 'youngModulus': 300 , 'poissonRatio':0.45, 'damping': 0.1, 'contactFriction': 0.01, 'contactStiffness':500, 'collisionGroup':1, 'thickness': 0.1 , 'suture': False} ), 
     'HAPTIC':("Haptic",'MODIFIER', {'scale':300, 'forceScale': 0.1, 'forceFeedback' : False, 'toolFunction': 'Grasp', 'deviceName': '', 'collisionGroup':1}), 
     'HAPTICPART': ("HapticPart",'PARTICLE_PATH',{'index':{'default':0,'min':0,'max':2,'step':1}}),
     'THICKCURVE': ("Thick Curve", 'MOD_CLOTH', { 'thickness': 0.1 }),

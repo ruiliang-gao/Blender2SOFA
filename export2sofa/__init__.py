@@ -340,7 +340,7 @@ def exportHaptic(o, opt):
     name=fixName(o.name)
     t = ET.Element("Node",name=name)
     t.append(ET.Element("RequiredPlugin",name="Sensable Plugin",pluginName="Sensable"))
-    newOmniDriver = ET.Element("NewOmniDriver",name="Omni Driver",deviceName=o.get('deviceName',''),listening="true",tags="Omni", permanent="true", printLog="1")
+    newOmniDriver = ET.Element("NewOmniDriver",name="Omni Driver",deviceName=o.get('deviceName',''),listening="true",tags="Omni", permanent="true")
     newOmniDriver.set("forceScale", (o.get('forceScale')))
     newOmniDriver.set("scale", (o.get('scale')))
     t.append(newOmniDriver)
@@ -474,7 +474,7 @@ def exportCM(o,opt):
 def exportCloth(o, opt):
     name=fixName(o.name)
     t = ET.Element("Node",name=name)
-    t.append(ET.Element("EulerImplicitSolver", printLog="0"))
+    t.append(ET.Element("EulerImplicitSolver"))
     t.append(ET.Element("CGLinearSolver", template="GraphScattered", iterations="25",  tolerance="1e-009",  threshold="1e-009"))
     
     
@@ -812,12 +812,12 @@ def exportScene(opt):
             if i.strip() != "":
                 root.append(ET.Element("include", href=i))
              
-    lcp = ET.Element("LCPConstraintSolver", tolerance="1e-3", initial_guess="false", build_lcp="0",  printLog="0" )
+    lcp = ET.Element("LCPConstraintSolver", tolerance="1e-3", initial_guess="false", build_lcp="0")
     if scene.get('mu') != None :
         lcp.set("mu",(scene.get('mu')))
     root.append(lcp)
     
-    root.append(ET.fromstring('<FreeMotionAnimationLoop printLog = "0"/>'))
+    root.append(ET.Element('FreeMotionAnimationLoop'))
  
     root.append(ET.Element("CollisionPipeline", depth="15"))
     root.append(ET.Element("BruteForceDetection"))
@@ -832,7 +832,7 @@ def exportScene(opt):
     root.append(ET.Element("CollisionGroup"))
 
     #root.append(ET.Element("DefaultContactManager"))    
-    root.append(ET.fromstring('<CollisionResponse name="Response" response="FrictionContact"  printLog="1"/>'))
+    root.append(ET.fromstring('<CollisionResponse name="Response" response="FrictionContact"/>'))
     root.append(ET.Element("GraspingManager",name="graspingManager0",listening="1"))
     #This doesen't work without haptic device
      
