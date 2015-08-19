@@ -61,6 +61,9 @@ def writeNode(out, n, level, parent = None, serial = 0):
         for a in n.attrib:
             if a != 'name':
                 writeln(out,level,  '{}.{} = {}'.format(var, a, luarepr(n.get(a))))
+    elif n.tag == 'include':
+        var = "{}{}".format(n.tag, serial)
+        writeln(out, level, '{} = include "{}"'.format(var, n.get('href')))
     else:
         # Exporting an object
         var = "{}{}".format(n.tag, serial)

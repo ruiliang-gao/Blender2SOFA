@@ -19,8 +19,11 @@ from math import degrees
 from array import array
 from io import StringIO
 from numpy import ndarray, empty
-from . import io_msh
-from . import ui
+import export2sofa.io_msh
+import export2sofa.ui
+import export2sofa.lua_export
+#from export2sofa import io_msh
+#from export2sofa import ui
 
 class TetException(Exception):
     def __init__(self, message):
@@ -73,7 +76,7 @@ def geometryNode(opt, t):
     """
     if opt.isolate_geometry and t.get('name') != None:
         fn = t.get('name')+"-geometry.xml"
-        ET.ElementTree(t).write(opt.directory+"/"+fn)
+        writeNodesToFile(t, os.path.join(opt.directory, fn), opt)
         return ET.Element("include", href=fn)
     else:
         return t
@@ -281,6 +284,10 @@ def addConstraints(o, t):
             t.append(ET.Element("FixedConstraint", indices="@%s.indices" % n))
 
 def collisionModelParts(o, obstacle = False):
+    if o.get('suture', False):
+      sutureTag = 'SuturingSurface' 
+    else:
+      sutureTag = ''
     if obstacle:
         M = "0"
     else:
@@ -290,7 +297,7 @@ def collisionModelParts(o, obstacle = False):
     return [ 
         ET.Element("PointModel",selfCollision=sc, contactFriction = (o.get('contactFriction', 0)), contactStiffness = (o.get('contactStiffness', 500)), group=(o.get('collisionGroup','1')), moving = M, simulated = M ), 
         ET.Element("LineModel",selfCollision=sc, contactFriction = (o.get('contactFriction', 0)), contactStiffness = (o.get('contactStiffness', 500)), group=(o.get('collisionGroup','1')), moving = M, simulated = M), 
-        ET.Element("TriangleModel",selfCollision=sc, contactFriction = (o.get('contactFriction', 0)), contactStiffness = (o.get('contactStiffness', 500)), group=(o.get('collisionGroup','1')), moving = M, simulated = M) 
+        ET.Element("TriangleModel",selfCollision=sc, contactFriction = (o.get('contactFriction', 0)), contactStiffness = (o.get('contactStiffness', 500)), group=(o.get('collisionGroup','1')), moving = M, simulated = M, tags = sutureTag) 
     ]
 
 def exportSoftBody(o, opt):
@@ -694,7 +701,31 @@ def exportVisual(o, opt, name = None,with_transform = True):
     addMaterial(m, t);
     return geometryNode(opt, t)
     
+def exportCurveTopology(o, opt):
+    t = ET.Element("MeshTopology",name=fixName(o.name) + '-topology')
+    m = o.to_mesh(opt.scene, True, 'PREVIEW')
+    
+    position = array('d')
+    for v in m.vertices:
+      position.extend([v.co[0],v.co[1],v.co[2]])
+    edges = array('I')
+    for e in m.edges:
+      edges.extend(e.vertices)
 
+    t.set("position", position)
+    t.set("edges", edges)
+    
+    return geometryNode(opt, t)    
+
+def exportThickCurve(o, opt):
+    thickness = o.get('thickness', 0.1)
+    t = ET.Element("Node", name = fixName(o.name))
+    t.append(exportCurveTopology(o, opt))
+    t.append(createMechanicalObject(o))
+    t.append(ET.Element("Line", proximity = thickness))
+    t.append(ET.Element("Point", proximity = thickness))
+    return t;
+    
 def has_modifier(o,name_of_modifier):
     for i in o.modifiers:
         if i.type == name_of_modifier: 
@@ -722,6 +753,8 @@ def exportObject(opt, o):
                 t = exportVolumetric(o, opt)
             elif annotated_type == 'THICKSHELL':
                 t = exportThickQuadShell(o, opt)
+            elif annotated_type == 'THICKCURVE':
+                t = exportThickCurve(o, opt)
             elif annotated_type == None or annotated_type == 'VISUAL':
                 t = exportVisual(o, opt)
                  
@@ -839,7 +872,7 @@ def exportScene(opt):
         name = fixName(o.name)
         if (t != None):
             if (separate):
-                ET.ElementTree(t).write(dir+"/"+name+".xml")
+                writeNodesToFile(t, os.path.join(dir, name+ ".xml"), opt)
                 if(has_modifier(o,'COLLISION') or o.get("annotated_type") == 'COLLISION'):
                     root.append(ET.Element("include", href=name+".xml"))
                 else:
@@ -855,7 +888,7 @@ def exportScene(opt):
         name = fixName(o.name)
         if (t != None):
             if (separate):
-                ET.ElementTree(t).write(dir+"/"+name+".xml")
+                writeNodesToFile(t, os.path.join(dir, name+ ".xml"), opt)
                 solverNode.append(ET.Element("include", href=name+".xml"))
             else:
                 solverNode.append(t)
@@ -864,10 +897,15 @@ def exportScene(opt):
     
     return root    
 
-import export2sofa.lua_export
 class ExportOptions:
     pass
 
+def writeNodesToFile(root, filepath, opt):
+    if opt.export_to_lua:
+        export2sofa.lua_export.writeElementTreeToLua(root, filepath)
+    else:
+        stringify_etree(root)
+        ET.ElementTree(root).write(filepath)
 
 def exportSceneToFile(C, filepath, selection, separate, isolate_geometry, export_to_lua):
 
@@ -877,13 +915,9 @@ def exportSceneToFile(C, filepath, selection, separate, isolate_geometry, export
     opt.separate = separate 
     opt.selection_only = selection
     opt.directory = os.path.dirname(filepath)
+    opt.export_to_lua = export_to_lua
     root = exportScene(opt)
-    
-    if export_to_lua:
-        export2sofa.lua_export.writeElementTreeToLua(root, filepath)
-    else:
-        stringify_etree(root)
-        ET.ElementTree(root).write(filepath)
+    writeNodesToFile(root, filepath, opt)
 
     return {'FINISHED'}
 
@@ -1018,8 +1052,8 @@ def menu_func_export(self, context):
 addon_keymaps = []
 
 def register():
-    io_msh.register()
-    ui.register()
+    export2sofa.io_msh.register()
+    export2sofa.ui.register()
 
     bpy.utils.register_class(ExportToSofa)
     bpy.utils.register_class(ExportToSaLua)
@@ -1050,8 +1084,8 @@ def unregister():
         
     bpy.utils.unregister_class(RunSofaOperator)
 
-    io_msh.unregister()
-    ui.unregister()    
+    export2sofa.io_msh.unregister()
+    export2sofa.ui.unregister()    
     
 if __name__ == "__main__":
     register()
