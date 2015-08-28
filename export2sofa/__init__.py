@@ -126,32 +126,39 @@ def exportTetrahedralTopology(o, opt, name):
     c.set('points', points)
     c.set('tetrahedra', tetrahedra)
     return geometryNode(opt,c)
-    
+
+# Export a HexahedronSetTopology container with the topology of a 
+# thick shell. The object is supposed to be convertible to a quad mesh.
+# The object can have two custom attributes:
+#   - thickness: total thickness of the shell multiplied by normal
+#   - layerCount: total number of layers generated. 3 means 4 layers of surfaces and 3 layers of hexahedral elements.
+#
 def exportThickShellTopology(o, opt, name):
     m = o.to_mesh(opt.scene, True, 'PREVIEW')
     thickness = o.get('thickness', 0.1)
+    layerCount    = o.get('layerCount', 1)
+    if layerCount < 1: raise TetException("Object '%s': Number of layers has to be a positive number" % o.name)
     V = len(m.vertices)
-    points =  empty([V * 2,3])
+    points =  empty([V * (layerCount+1),3])
     for i, v in enumerate(m.vertices):
-        v1 = v.co - v.normal * thickness / 2
-        v2 = v.co + v.normal * thickness / 2
-        points[i+0][0] = v1[0]
-        points[i+0][1] = v1[1]
-        points[i+0][2] = v1[2]
-        points[i+V][0] = v2[0]
-        points[i+V][1] = v2[1]
-        points[i+V][2] = v2[2]
-    
+      for j in range(0, layerCount+1):
+        offset = j / layerCount - 0.5
+        vn = v.co + v.normal * offset * thickness
+        points[i+V*j][0] = vn[0]
+        points[i+V*j][1] = vn[1]
+        points[i+V*j][2] = vn[2]
     
     quads = list(filter(lambda f: len(f.vertices) == 4, m.polygons))
+    quadCount = len(quads)
 
-    if len(quads) == 0 : raise TetException("Object '%s' has to be a quad mesh for a thick shell topology" % o.name)
+    if quadCount == 0 : raise TetException("Object '%s' has to be a quad mesh for a thick shell topology" % o.name)
     
-    hexahedra = empty([len(quads), 8], dtype=int)
+    hexahedra = empty([quadCount * layerCount, 8], dtype=int)
     for i, f in enumerate(quads):
+      for l in range(0, layerCount):
         for k in range(0, 2):
             for j in range(0, 4):
-                hexahedra[i][k * 4 + j] = f.vertices[j] + k * V 
+                hexahedra[l*quadCount+i][k * 4 + j] = f.vertices[j] + (l+k) * V 
 
     c =  ET.Element('HexahedronSetTopologyContainer', name= name)
     c.set('points', points)
