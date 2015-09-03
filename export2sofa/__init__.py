@@ -222,7 +222,9 @@ def exportThickQuadShell(o, opt):
     for i, tp in enumerate([ oshell, ishell ]):
       n = ET.Element('Node', name= 'Collision %d' % i )
       n.append(tp)
-      n.append(ET.Element("MechanicalObject",template="Vec3d",name="MOC"))
+      moc = createMechanicalObject(o)
+      moc.set('name', 'MOC')
+      n.append(moc)
       n.extend(collisionModelParts(o, group = i + 1, bothSide = 1))
       n.append(ET.Element("BarycentricMapping",object1="../MO",object2="MOC"))
       t.append(n)
@@ -287,7 +289,9 @@ def exportVolumetric(o, opt):
     else:
         n = ET.Element('Node', name="Collision")
         n.append(exportTopology(o,opt))
-        n.append(ET.Element("MechanicalObject",template="Vec3d",name="MOC"))
+        moc = createMechanicalObject(o)
+        moc.set('name', 'MOC')
+        n.append(moc)
         n.extend(collisionModelParts(o))
         n.append(ET.Element("BarycentricMapping",object1="../MO",object2="MOC"))
         t.append(n)
@@ -359,7 +363,9 @@ def exportSoftBody(o, opt):
                 
     c = ET.Element("Node",name="Collision")    
     c.append(exportTopology(o,opt))
-    c.append(ET.Element("MechanicalObject",template="Vec3d",name="MOC"))
+    moc = createMechanicalObject(o)
+    moc.set('name', 'MOC')
+    c.append(moc)
     c.extend(collisionModelParts(o))
     c.append(ET.Element("BarycentricMapping",input="@../",output="@./"))
     t.append(c)
