@@ -303,16 +303,20 @@ def exportVolumetric(o, opt):
         
         
     return t
+    
+def cwisemul(a, b):
+  return Vector([ a.x * b.x, a.y * b.y, a.z * b.z ])
 
 def addConstraints(o, t):
     for q in o.children:
+      if not q.hide_render:
         if q.name.startswith('BoxConstraint'):
             tl = q.matrix_world * Vector(q.bound_box[0])
             br = q.matrix_world * Vector(q.bound_box[6])
             t.append(ET.Element("BoxConstraint",box=tl+br))
         elif q.name.startswith('SphereConstraint'):
             n = q.name.replace('.', '_')
-            t.append(ET.Element("SphereROI",name=n,centers=(q.location),radii=(max(q.scale))))
+            t.append(ET.Element("SphereROI",name=n,centers=(q.matrix_world.translation),radii=(max(cwisemul(q.parent.scale, q.scale)))))
             t.append(ET.Element("FixedConstraint", indices="@%s.indices" % n))
 
 def collisionModelParts(o, obstacle = False, group = None, bothSide = 0):
