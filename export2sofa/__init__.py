@@ -126,44 +126,71 @@ def exportTetrahedralTopology(o, opt, name):
     c.set('points', points)
     c.set('tetrahedra', tetrahedra)
     return geometryNode(opt,c)
-    
-def exportThickShellTopology(o, opt, name):
+
+# Export a HexahedronSetTopology container with the topology of a 
+# thick shell. The object is supposed to be convertible to a quad mesh.
+# The object can have two custom attributes:
+#   - thickness: total thickness of the shell multiplied by normal
+#   - layerCount: total number of layers generated. 3 means 4 layers of surfaces and 3 layers of hexahedral elements.
+#
+# Return value is three nodes, 
+#   - Volumetric topology for physical model
+#   - Outer shell topology
+#   - Inner shell topology
+def exportThickShellTopologies(o, opt, name):
     m = o.to_mesh(opt.scene, True, 'PREVIEW')
     thickness = o.get('thickness', 0.1)
+    layerCount    = o.get('layerCount', 1)
+    if layerCount < 1: raise TetException("Object '%s': Number of layers has to be a positive number" % o.name)
     V = len(m.vertices)
-    points =  empty([V * 2,3])
+    points =  empty([V * (layerCount+1),3])
     for i, v in enumerate(m.vertices):
-        v1 = v.co - v.normal * thickness / 2
-        v2 = v.co + v.normal * thickness / 2
-        points[i+0][0] = v1[0]
-        points[i+0][1] = v1[1]
-        points[i+0][2] = v1[2]
-        points[i+V][0] = v2[0]
-        points[i+V][1] = v2[1]
-        points[i+V][2] = v2[2]
-    
+      for j in range(0, layerCount+1):
+        offset = j / layerCount - 0.5
+        vn = v.co + v.normal * offset * thickness
+        points[i+V*j][0] = vn[0]
+        points[i+V*j][1] = vn[1]
+        points[i+V*j][2] = vn[2]
     
     quads = list(filter(lambda f: len(f.vertices) == 4, m.polygons))
+    quadCount = len(quads)
 
-    if len(quads) == 0 : raise TetException("Object '%s' has to be a quad mesh for a thick shell topology" % o.name)
+    if quadCount == 0 : raise TetException("Object '%s' has to be a quad mesh for a thick shell topology" % o.name)
     
-    hexahedra = empty([len(quads), 8], dtype=int)
+    hexahedra = empty([quadCount * layerCount, 8], dtype=int)
     for i, f in enumerate(quads):
+      for l in range(0, layerCount):
         for k in range(0, 2):
             for j in range(0, 4):
-                hexahedra[i][k * 4 + j] = f.vertices[j] + k * V 
+                hexahedra[l*quadCount+i][k * 4 + j] = f.vertices[j] + (l+k) * V 
 
+    # first one is inner, second one is outer shell
+    shell = [ empty([quadCount*2, 3], dtype=int), empty([quadCount*2, 3], dtype=int) ]
+    double_tri_to_quad = [ 0, 1, 2, 2, 3, 0 ]
+   
+    for i, f in enumerate(quads):
+      for k in range(0, 2):
+        for l in range(0, 2):
+          for j in range(0, 3):
+            # jj has to be the inverse direction of j for inner
+            # because the inner surface has the opposite winding order
+            # compared to outer
+            jj = (3 - (1-k*2) * j) % 3
+            shell[k][i*2+l][jj] = f.vertices[double_tri_to_quad[l*3+j]]
+    
+    oshell = ET.Element('MeshTopology', name = name + "-outer", triangles = shell[1], points = points[V*layerCount:V*(layerCount+1), ...])
+    ishell = ET.Element('MeshTopology', name = name + "-inner", triangles = shell[0], points = points[0:V, ...])
     c =  ET.Element('HexahedronSetTopologyContainer', name= name)
     c.set('points', points)
     c.set('hexahedra', hexahedra)
-    return geometryNode(opt,c)
+    return geometryNode(opt,c), geometryNode(opt, oshell), geometryNode(opt, ishell)
         
 def exportThickQuadShell(o, opt):
     name = fixName(o.name)
     t = ET.Element("Node", name = name)
 
     topo = name + '-hexahedral-topology'
-    c = exportThickShellTopology(o, opt, topo)
+    c, oshell, ishell = exportThickShellTopologies(o, opt, topo)
     t.append(c)
     
     mo = createMechanicalObject(o)
@@ -192,12 +219,15 @@ def exportThickQuadShell(o, opt):
     
     addConstraints(o, t)
     
-    n = ET.Element('Node', name="Collision")
-    n.append(exportTopology(o,opt))
-    n.append(ET.Element("MechanicalObject",template="Vec3d",name="MOC"))
-    n.extend(collisionModelParts(o))
-    n.append(ET.Element("BarycentricMapping",object1="../MO",object2="MOC"))
-    t.append(n)
+    for i, tp in enumerate([ oshell, ishell ]):
+      n = ET.Element('Node', name= 'Collision %d' % i )
+      n.append(tp)
+      moc = createMechanicalObject(o)
+      moc.set('name', 'MOC')
+      n.append(moc)
+      n.extend(collisionModelParts(o, group = i + 1, bothSide = 1))
+      n.append(ET.Element("BarycentricMapping",object1="../MO",object2="MOC"))
+      t.append(n)
     
     v = ET.Element('Node', name="Visual")
     v.append(exportVisual(o, opt, name = name + "-visual"))
@@ -259,7 +289,9 @@ def exportVolumetric(o, opt):
     else:
         n = ET.Element('Node', name="Collision")
         n.append(exportTopology(o,opt))
-        n.append(ET.Element("MechanicalObject",template="Vec3d",name="MOC"))
+        moc = createMechanicalObject(o)
+        moc.set('name', 'MOC')
+        n.append(moc)
         n.extend(collisionModelParts(o))
         n.append(ET.Element("BarycentricMapping",object1="../MO",object2="MOC"))
         t.append(n)
@@ -271,19 +303,23 @@ def exportVolumetric(o, opt):
         
         
     return t
+    
+def cwisemul(a, b):
+  return Vector([ a.x * b.x, a.y * b.y, a.z * b.z ])
 
 def addConstraints(o, t):
     for q in o.children:
+      if not q.hide_render:
         if q.name.startswith('BoxConstraint'):
             tl = q.matrix_world * Vector(q.bound_box[0])
             br = q.matrix_world * Vector(q.bound_box[6])
             t.append(ET.Element("BoxConstraint",box=tl+br))
         elif q.name.startswith('SphereConstraint'):
             n = q.name.replace('.', '_')
-            t.append(ET.Element("SphereROI",name=n,centers=(q.location),radii=(max(q.scale))))
+            t.append(ET.Element("SphereROI",name=n,centers=(q.matrix_world.translation),radii=(max(cwisemul(q.parent.scale, q.scale)))))
             t.append(ET.Element("FixedConstraint", indices="@%s.indices" % n))
 
-def collisionModelParts(o, obstacle = False):
+def collisionModelParts(o, obstacle = False, group = None, bothSide = 0):
     if o.get('suture', False):
       sutureTag = 'SuturingSurface' 
     else:
@@ -293,11 +329,12 @@ def collisionModelParts(o, obstacle = False):
     else:
         M = "1"
     
-    sc = (o.get('selfCollision',0))
+    sc = o.get('selfCollision',0)
+    if group == None: group = o.get('collisionGroup','1')
     return [ 
-        ET.Element("PointModel",selfCollision=sc, contactFriction = (o.get('contactFriction', 0)), contactStiffness = (o.get('contactStiffness', 500)), group=(o.get('collisionGroup','1')), moving = M, simulated = M ), 
-        ET.Element("LineModel",selfCollision=sc, contactFriction = (o.get('contactFriction', 0)), contactStiffness = (o.get('contactStiffness', 500)), group=(o.get('collisionGroup','1')), moving = M, simulated = M), 
-        ET.Element("TriangleModel",selfCollision=sc, contactFriction = (o.get('contactFriction', 0)), contactStiffness = (o.get('contactStiffness', 500)), group=(o.get('collisionGroup','1')), moving = M, simulated = M, tags = sutureTag) 
+        ET.Element("PointModel",selfCollision=sc, contactFriction = (o.get('contactFriction', 0)), contactStiffness = (o.get('contactStiffness', 500)), group=group, moving = M, simulated = M, bothSide= bothSide ), 
+        ET.Element("LineModel",selfCollision=sc, contactFriction = (o.get('contactFriction', 0)), contactStiffness = (o.get('contactStiffness', 500)), group=group, moving = M, simulated = M, bothSide = bothSide ), 
+        ET.Element("TriangleModel",selfCollision=sc, contactFriction = (o.get('contactFriction', 0)), contactStiffness = (o.get('contactStiffness', 500)), group=group, moving = M, simulated = M, tags = sutureTag) 
     ]
 
 def exportSoftBody(o, opt):
@@ -330,7 +367,9 @@ def exportSoftBody(o, opt):
                 
     c = ET.Element("Node",name="Collision")    
     c.append(exportTopology(o,opt))
-    c.append(ET.Element("MechanicalObject",template="Vec3d",name="MOC"))
+    moc = createMechanicalObject(o)
+    moc.set('name', 'MOC')
+    c.append(moc)
     c.extend(collisionModelParts(o))
     c.append(ET.Element("BarycentricMapping",input="@../",output="@./"))
     t.append(c)
@@ -340,7 +379,7 @@ def exportHaptic(o, opt):
     name=fixName(o.name)
     t = ET.Element("Node",name=name)
     t.append(ET.Element("RequiredPlugin",name="Sensable Plugin",pluginName="Sensable"))
-    newOmniDriver = ET.Element("NewOmniDriver",name="Omni Driver",deviceName=o.get('deviceName',''),listening="true",tags="Omni", permanent="true", printLog="1")
+    newOmniDriver = ET.Element("NewOmniDriver",name="Omni Driver",deviceName=o.get('deviceName',''),listening="true",tags="Omni", permanent="true")
     newOmniDriver.set("forceScale", (o.get('forceScale')))
     newOmniDriver.set("scale", (o.get('scale')))
     t.append(newOmniDriver)
@@ -474,7 +513,7 @@ def exportCM(o,opt):
 def exportCloth(o, opt):
     name=fixName(o.name)
     t = ET.Element("Node",name=name)
-    t.append(ET.Element("EulerImplicitSolver", printLog="0"))
+    t.append(ET.Element("EulerImplicitSolver"))
     t.append(ET.Element("CGLinearSolver", template="GraphScattered", iterations="25",  tolerance="1e-009",  threshold="1e-009"))
     
     t.append(exportTopologyContainer(o,opt))
@@ -814,12 +853,12 @@ def exportScene(opt):
             if i.strip() != "":
                 root.append(ET.Element("include", href=i))
              
-    lcp = ET.Element("LCPConstraintSolver", tolerance="1e-3", initial_guess="false", build_lcp="0",  printLog="0" )
+    lcp = ET.Element("LCPConstraintSolver", tolerance="1e-3", initial_guess="false", build_lcp="0")
     if scene.get('mu') != None :
         lcp.set("mu",(scene.get('mu')))
     root.append(lcp)
     
-    root.append(ET.fromstring('<FreeMotionAnimationLoop printLog = "0"/>'))
+    root.append(ET.Element('FreeMotionAnimationLoop'))
  
     root.append(ET.Element("CollisionPipeline", depth="15"))
     root.append(ET.Element("BruteForceDetection"))
@@ -834,7 +873,7 @@ def exportScene(opt):
     root.append(ET.Element("CollisionGroup"))
 
     #root.append(ET.Element("DefaultContactManager"))    
-    root.append(ET.fromstring('<CollisionResponse name="Response" response="FrictionContact"  printLog="1"/>'))
+    root.append(ET.fromstring('<CollisionResponse name="Response" response="FrictionContact"/>'))
     root.append(ET.Element("GraspingManager",name="graspingManager0",listening="1"))
     #This doesen't work without haptic device
      

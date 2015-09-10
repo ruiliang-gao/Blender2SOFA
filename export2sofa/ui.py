@@ -8,19 +8,26 @@ SOFA_SCENE_PROPERTIES = {
     'displayFlags': { 'default': 'showVisualModels'},
 }
 
-OBJECT_LIST = {
+OBJECT_MAP = {
     'SOFT_BODY': ( "Soft Body", 'MOD_SOFT', {'resX':10, 'resY':10, 'resZ':10, 'youngModulus':300, 'poissonRatio':0.45, 'rayleighStiffness':0, 'contactFriction':0.01, 'contactStiffness':500, 'collisionGroup':1}), 
-    'CLOTH' : ("Cloth",'MOD_CLOTH', {'youngModulus':300, 'poissonRatio': { 'default': 0.45, 'min': 0.0, 'max' : 0.5, 'step': 0.001 }, 'bendingStiffness':300, 'stretchDamping':0.1, 'bendingDamping':0.1, 'collisionGroup':1}),
-    'COLLISION': ("Obstacle",'MOD_EDGESPLIT', {'collisionGroup':1}),
-    'ATTACHCONSTRAINT': ("Attach Constraint",'CONSTRAINT_DATA', {'stiffness':1000, 'object1':'', 'object2':''}), 
-    'SPHERECONSTRAINT': ("Sphere Constraint",'CONSTRAINT', {}),
+    'CLOTH' : ("Cloth",'OUTLINER_OB_SURFACE', {'youngModulus':300, 'poissonRatio': { 'default': 0.45, 'min': 0.0, 'max' : 0.5, 'step': 0.001 }, 'bendingStiffness':300, 'stretchDamping':0.1, 'bendingDamping':0.1, 'collisionGroup':1}),
+    'COLLISION': ("Obstacle",'SOLID', {'collisionGroup':1}),
+    'ATTACHCONSTRAINT': ("Attach Constraint",'LINKED', {'stiffness':1000, 'object1':'', 'object2':''}), 
+    'SPHERECONSTRAINT': ("Sphere Constraint",'SURFACE_NSPHERE', {}),
     'VOLUMETRIC': ("Volumetic",'SNAP_VOLUME', { 'selfCollision': False, 'precomputeConstraints' : False, 'carvable': False, 'youngModulus': 300 , 'poissonRatio':0.45, 'damping': 0.1, 'contactFriction': 0.01, 'contactStiffness':500, 'collisionGroup':1, 'suture': False} ), 
-    'THICKSHELL': ("Thick Shell",'MOD_CLOTH', { 'selfCollision': False, 'precomputeConstraints' : False, 'youngModulus': 300 , 'poissonRatio':0.45, 'damping': 0.1, 'contactFriction': 0.01, 'contactStiffness':500, 'collisionGroup':1, 'thickness': 0.1 } ), 
-    'HAPTIC':("Haptic",'MODIFIER', {'scale':300, 'forceScale': 0.1, 'forceFeedback' : False, 'toolFunction': 'Grasp', 'deviceName': '', 'collisionGroup':1}), 
-    'HAPTICPART': ("HapticPart",'PARTICLE_PATH',{'index':{'default':0,'min':0,'max':2,'step':1}}),
-    'THICKCURVE': ("Thick Curve", 'MOD_CLOTH', { 'thickness': 0.1 }),
-    # 'RIGID':("Rigid",'MESH_ICOSPHERE', {'collisionGroup':1})
+    'THICKSHELL': ("Thick Shell",'MOD_CLOTH', { 'selfCollision': False, 'precomputeConstraints' : False, 'youngModulus': 300 , 'poissonRatio':0.45, 'damping': 0.1, 'contactFriction': 0.01, 'contactStiffness':500, 'collisionGroup':1, 'thickness': 0.1 , 'suture': False, 'layerCount': 1 } ), 
+    'HAPTIC':("Haptic",'SCULPTMODE_HLT', {'scale':300, 'forceScale': 0.1, 'forceFeedback' : False, 'toolFunction': 'Grasp', 'deviceName': '', 'collisionGroup':1}), 
+    'HAPTICPART': ("HapticPart",'OOPS',{'index':{'default':0,'min':0,'max':2,'step':1}}),
+    'THICKCURVE': ("Thick Curve", 'ROOTCURVE', { 'thickness': 0.1 }),
+    'RIGID':("Rigid",'MESH_ICOSPHERE', {'collisionGroup':1})
 }
+
+OBJECT_LIST = [ 
+  'SOFT_BODY', 'VOLUMETRIC', 'THICKSHELL', 'THICKCURVE',
+  'CLOTH', 'COLLISION', 'RIGID',
+  'HAPTIC', 'HAPTICPART',
+  'SPHERECONSTRAINT', 'ATTACHCONSTRAINT',
+  ]
 
 class MakeSofaSceneOperator(bpy.types.Operator):
     bl_label = "Make SOFA scene"
@@ -56,39 +63,53 @@ class SofaPropertyPanel(bpy.types.Panel):
 
         row = layout.row()
         row.operator("scene.runsofa")
-
+        
         if obj != None: 
-            row = layout.row()
-            row.label(text="Object Properties", icon='OBJECT_DATAMODE')
+            layout.separator()
             antype = obj.get("annotated_type")
             
+            c = layout.column_flow(align=True, columns=1)
+            c.label(text="Object Kind", icon='OBJECT_DATAMODE')
             for n in OBJECT_LIST:
-                (t,i,p) = OBJECT_LIST[n]
-                row = layout.row()
+                (t,i,p) = OBJECT_MAP[n]
                 if(antype == n):
-                    row.operator("tips.setannotatedtype", text=t, icon='X').kind = n
-                    for e in p:
-                        row = layout.row()
-                        row.prop(obj, '["'+ e + '"]')
+                    c.operator("tips.setannotatedtype", text=t, icon='X').kind = n
                 
                 else:
-                    row.operator("tips.setannotatedtype", text=t, icon=i).kind = n
-                    
-                    
 
-        s = context.scene
-        if s != None:        
-
-            if s.get('sofa') != None:
-                row = layout.row()
-                row.label(text="Scene Properties", icon='SCENE_DATA')
+                    c.operator("tips.setannotatedtype", text=t, icon=i).kind = n
+            
+            if antype != None:
+                layout.separator()
+                c = layout.column_flow(align=True, columns = 1)
+                c.label(text="Object Properties", icon='OBJECT_DATAMODE')
+                (t,i,p) = OBJECT_MAP[antype]
+                l = list(p.keys()); l.sort()
+                for e in l:
+                  if type(p[e]) != str:
+                    c.prop(obj, '["'+ e + '"]')
+                for e in l:
+                  if type(p[e]) == str:
+                    c.label(text=e + ':')
+                    c.prop(obj, '["'+ e +'"]', '')
         
-                for i in SOFA_SCENE_PROPERTIES:
-                    row = layout.row(align=True)
-                    row.prop(s, '["' + i + '"]') 
+        s = context.scene
+        if s != None:
+            layout.separator()
+            if s.get('sofa') != None:
+                c = layout.column_flow(align=True, columns=1)
+                c.label(text="Scene Properties", icon='SCENE_DATA')
+                p = SOFA_SCENE_PROPERTIES 
+                l = list(p.keys()); l.sort()
+                for e in l:
+                  if type(p[e]['default']) != str:
+                    c.prop(s, '["'+ e + '"]')
+                for e in l:
+                  if type(p[e]['default']) == str:
+                    c.label(text=e + ':')
+                    c.prop(s, '["'+ e +'"]', '')
 
             else:
-                layout.row();
                 layout.operator("sofa.makescene")
 
         
@@ -107,7 +128,7 @@ class SetAnnotatedTypeButton(bpy.types.Operator):
         if( type==self.kind):
             #delete the type and related properties
             del o["annotated_type"]
-            (t,i,p) = OBJECT_LIST[self.kind]
+            (t,i,p) = OBJECT_MAP[self.kind]
             for e in p:
                 if o.get(e):
                         del o[e]
@@ -118,7 +139,7 @@ class SetAnnotatedTypeButton(bpy.types.Operator):
         #if the object type is other types
         elif (type != None):
             #delete previous properties
-            (text,icon,properties) = OBJECT_LIST[type]
+            (text,icon,properties) = OBJECT_MAP[type]
             for prop in properties:
                 if o.get(prop):
                         del o[prop]
@@ -128,7 +149,7 @@ class SetAnnotatedTypeButton(bpy.types.Operator):
                     del o[prop]
             #set the current type and related properties
             o['annotated_type'] = self.kind
-            (t,i,p) = OBJECT_LIST[self.kind]
+            (t,i,p) = OBJECT_MAP[self.kind]
             o["_RNA_UI"] = o.get("_RNA_UI", {})
             for e in p:
                 if isinstance(p[e], dict):
@@ -140,7 +161,7 @@ class SetAnnotatedTypeButton(bpy.types.Operator):
         else :
             #assign the type and related properties for it
             o['annotated_type'] = self.kind
-            (t,i,p) = OBJECT_LIST[self.kind]
+            (t,i,p) = OBJECT_MAP[self.kind]
             o["_RNA_UI"] = o.get("_RNA_UI", {})
             for e in p:
                 if isinstance(p[e], dict):
