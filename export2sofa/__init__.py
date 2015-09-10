@@ -477,7 +477,6 @@ def exportCloth(o, opt):
     t.append(ET.Element("EulerImplicitSolver", printLog="0"))
     t.append(ET.Element("CGLinearSolver", template="GraphScattered", iterations="25",  tolerance="1e-009",  threshold="1e-009"))
     
-    
     t.append(exportTopologyContainer(o,opt))
     
     t.append(ET.Element("TriangleSetTopologyModifier",))
@@ -499,14 +498,15 @@ def exportCloth(o, opt):
     triangularBendingSprings.set("stiffness", (o.get('bendingStiffness')))
     triangularBendingSprings.set("damping", (o.get('bendingDamping')))
     t.append(triangularBendingSprings)
-
+    addConstraints(o,t)
     t.extend(collisionModelParts(o))
 
-    t.append(ET.fromstring('<UncoupledConstraintCorrection />'))
+    t.append(ET.fromstring('<UncoupledConstraintCorrection compliance="0.001   0.00003 0 0   0.00003 0   0.00003" />'))
+    
+    ogl = ET.Element("OglModel", name= name + '-visual');
+    addMaterial(o.data, ogl);
+    t.append(ogl)
 
-    og = exportVisual(o, opt,name = name + '-visual', with_transform = True)
-    og.set('template', 'ExtVec3f')
-    t.append(og)
     t.append(ET.Element("IdentityMapping",template="Vec3d,ExtVec3f",object1="MO",object2=name + "-visual"))
     return t
 
@@ -573,7 +573,9 @@ def triangulatedBMesh(o, opt):
 def exportTopologyContainer(o,opt):
 
     bm, triangles = triangulatedBMesh(o, opt)
-    position = [ (v.co) for v in bm.verts]
+    position = array('d')
+    for v in bm.verts:
+      position.extend([v.co[0],v.co[1],v.co[2]])
     edges = [ ([ v.index for v in e.verts ]) for e in bm.edges ]
     triangles = [ ([ v.index for v in f.verts ]) for f in triangles ]
     bm.free()
