@@ -226,12 +226,12 @@ def exportThickQuadShell(o, opt):
       moc.set('name', 'MOC')
       n.append(moc)
       n.extend(collisionModelParts(o, group = i + 1, bothSide = 1))
-      n.append(ET.Element("BarycentricMapping",object1="../MO",object2="MOC"))
+      n.append(ET.Element("BarycentricMapping",input="@../MO",output="@MOC"))
       t.append(n)
     
     v = ET.Element('Node', name="Visual")
     v.append(exportVisual(o, opt, name = name + "-visual"))
-    v.append(ET.Element("BarycentricMapping",template="Vec3d,ExtVec3f",object1="../MO",object2=name + "-visual"))
+    v.append(ET.Element("BarycentricMapping",template="Vec3d,ExtVec3f",input="@../MO",output='@' + name + "-visual"))
     t.append(v)
         
         
@@ -277,12 +277,12 @@ def exportVolumetric(o, opt):
         n.append(ET.Element("TriangleSetTopologyAlgorithms", template="Vec3d" ))
         n.append(ET.Element("TriangleSetGeometryAlgorithms", template="Vec3d"))
 
-        n.append(ET.Element('Tetra2TriangleTopologicalMapping', object1="../../"+topotetra, object2="topotri", flipNormals='1'))
+        n.append(ET.Element('Tetra2TriangleTopologicalMapping', input="@../../"+topotetra, output="@topotri", flipNormals='1'))
 
         ogl = ET.Element("OglModel", name="Visual", genTex3d = "1");
         addMaterial(o.data, ogl);
         n.append(ogl)
-        n.append(ET.Element("IdentityMapping",object1="../MO",object2="Visual"))
+        n.append(ET.Element("IdentityMapping",input="@../MO",output="@Visual"))
         n.extend(collisionModelParts(o))
         t.append(n)
         
@@ -293,12 +293,12 @@ def exportVolumetric(o, opt):
         moc.set('name', 'MOC')
         n.append(moc)
         n.extend(collisionModelParts(o))
-        n.append(ET.Element("BarycentricMapping",object1="../MO",object2="MOC"))
+        n.append(ET.Element("BarycentricMapping",input="@../MO",output="@MOC"))
         t.append(n)
         
         v = ET.Element('Node', name="Visual")
         v.append(exportVisual(o, opt, name = name + "-visual"))
-        v.append(ET.Element("BarycentricMapping",template="Vec3d,ExtVec3f",object1="../MO",object2=name + "-visual"))
+        v.append(ET.Element("BarycentricMapping",template="Vec3d,ExtVec3f",input="@../MO",output='@' + name + "-visual"))
         t.append(v)
         
         
@@ -346,7 +346,7 @@ def exportSoftBody(o, opt):
     og = exportVisual(o, opt,name = name + '-visual', with_transform = False)
     og.set('template', 'ExtVec3f')
     v.append(og)
-    v.append(ET.Element("BarycentricMapping",template="Vec3d,ExtVec3f",object1="../MO",object2=name + "-visual"))
+    v.append(ET.Element("BarycentricMapping",template="Vec3d,ExtVec3f",input="@../MO",output='@' + name + "-visual"))
     t.append(v)
 
     # set n later
@@ -394,7 +394,7 @@ def exportHaptic(o, opt):
     t.append(ET.Element("UniformMass", template="Rigid", name="mass", totalmass="0.05"))
     #Visual Model
     t.append(exportVisual(o, opt, name = name + '-visual', with_transform = False))
-    t.append(ET.Element("RigidMapping", template = "Rigid,ExtVec3f", object1="instrumentstate", object2=name+"-visual"))
+    t.append(ET.Element("RigidMapping", template = "Rigid,ExtVec3f", input="@instrumentstate", output='@' + name+"-visual"))
     #Collision Model
     c = ET.Element("Node",name="Collision")    
     c.append(exportTopology(o,opt))
@@ -403,7 +403,7 @@ def exportHaptic(o, opt):
     c.append(mo)
     
     c.append(ET.Element("PointModel", template= "Vec3d",name="ParticleModel", contactStiffness="0.1", contactFriction="0.01" ))
-    c.append(ET.Element("RigidMapping",template = "Rigid,ExtVec3f", object1="instrumentstate", object2="MO"))
+    c.append(ET.Element("RigidMapping",template = "Rigid,ExtVec3f", input="@instrumentstate", output="@MO"))
     t.append(c)  
     return t
 
@@ -506,7 +506,7 @@ def exportCM(o,opt):
                 og = exportVisual(i, opt,name = fixName(i.name)+ '-visual', with_transform = False)
                 og.set('template', 'ExtVec3f')
                 v.append(og)
-                #v.append(ET.Element("BarycentricMapping",template="Vec3d,ExtVec3f",object1="../MO",object2=fixName(i.name) + "-visual"))
+                #v.append(ET.Element("BarycentricMapping",template="Vec3d,ExtVec3f",input="@../MO",output='@' + fixName(i.name) + "-visual"))
                 t.append(v)
     return t
 
@@ -546,7 +546,7 @@ def exportCloth(o, opt):
     addMaterial(o.data, ogl);
     t.append(ogl)
 
-    t.append(ET.Element("IdentityMapping",template="Vec3d,ExtVec3f",object1="MO",object2=name + "-visual"))
+    t.append(ET.Element("IdentityMapping",template="Vec3d,ExtVec3f",input="@MO",output='@' + name + "-visual"))
     return t
 
 def pointInsideSphere(v,s):
@@ -592,7 +592,7 @@ def exportAttachConstraint(o, o1, o2, opt):
     springs = [
         vector_to_string([i, j, stiffness, .1, d]) for (i,j,d) in matchVertices(o1,o2,o, opt)
         ]
-    ff = ET.Element("StiffSpringForceField", object1=fixName(o1.name), object2=fixName(o2.name), 
+    ff = ET.Element("StiffSpringForceField", object1='@' + fixName(o1.name), object2='@' + fixName(o2.name), 
                     spring = ' '.join(springs))  
 
     return ff
@@ -662,7 +662,6 @@ def exportObstacle(o, opt):
         t.append(ET.Element("SparseGridTopology",position="@Visual.position",quads="@Visual.quads",triangles="@Visual.triangles",n="10 10 10"))
         t.append(createMechanicalObject(o))
         t.append(ET.Element('TSphereModel'))
-    #t.append(ET.Element("BarycentricMapping",template="Vec3d,ExtVec3f",object1="MO",object2=name+'-visual'))
     t.append(ET.fromstring('<UncoupledConstraintCorrection />'))
     return t
     
@@ -675,7 +674,7 @@ def exportRigid(o, opt):
     mo = createMechanicalObject(o)
     mo.set('template','Rigid')
     t.append(mo)
-    t.append(ET.Element("RigidMapping",template='Rigid,ExtVec3f',object1="MO",object2=name + "-visual"))   
+    t.append(ET.Element("RigidMapping",template='Rigid,ExtVec3f',input="@MO",output='@' + name + "-visual"))   
     t.extend(collisionModelParts(o,obstacle = False))
     return t
     
