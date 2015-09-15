@@ -947,20 +947,6 @@ def writeNodesToFile(root, filepath, opt):
         stringify_etree(root)
         ET.ElementTree(root).write(filepath)
 
-def exportSceneToFile(C, filepath, selection, separate, isolate_geometry, export_to_lua):
-
-    opt = ExportOptions()
-    opt.isolate_geometry = isolate_geometry
-    opt.scene = C.scene   
-    opt.separate = separate 
-    opt.selection_only = selection
-    opt.directory = os.path.dirname(filepath)
-    opt.export_to_lua = export_to_lua
-    root = exportScene(opt)
-    writeNodesToFile(root, filepath, opt)
-
-    return {'FINISHED'}
-
 # ExportHelper is a helper class, defines filename and
 # invoke() function which calls the file selector.
 from bpy_extras.io_utils import ExportHelper
@@ -968,17 +954,20 @@ from bpy.props import StringProperty, BoolProperty, EnumProperty
 from bpy.types import Operator
 
 
+FILEFORMATS = [ ('.salua', 'SaLua', 'Lua based scene file'), ('.scn', 'XML', 'XML scene file') ]
 
 class ExportToSofa(Operator, ExportHelper):
-    """Export to Sofa XML scene format"""
+    """Export to SOFA scene"""
     bl_idname = "export.tosofa"  # important since its how bpy.ops.import_test.some_data is constructed
-    bl_label = "Export To Sofa XML"
+    bl_label = "Export To SOFA"
 
     # ExportHelper mixin class uses this
-    filename_ext = ".scn"
+    filename_ext = EnumProperty(
+      name ='File format', description='File format of the SOFA scene file to be created',
+       items = FILEFORMATS )
 
     filter_glob = StringProperty(
-            default="*.scn",
+            default='*.scn;*.salua',
             options={'HIDDEN'},
             )
             
@@ -989,14 +978,14 @@ class ExportToSofa(Operator, ExportHelper):
             )
     
     export_separate = BoolProperty(
-            name="Export to Separate Files",
+            name="Isolate objects into separate files",
             description="Export Objects into Separate Files and Include all in one *.scn File",
             default=False,
             )
 
     isolate_geometry = BoolProperty(
             name="Isolate geometry into separate files",
-            description="Put geometry components of the scene into separate files",
+            description="Put each geometry components of objects into separate files",
             default=False,
             )
 
@@ -1007,53 +996,20 @@ class ExportToSofa(Operator, ExportHelper):
     def execute(self, context):
         self.report({'INFO'}, "Exporting to %s" % self.filepath)
         try:
-            return exportSceneToFile(context, self.filepath, self.use_selection, self.export_separate, self.isolate_geometry, False)
+            opt = ExportOptions()
+            opt.isolate_geometry = self.isolate_geometry
+            opt.scene = context.scene   
+            opt.separate = self.export_separate 
+            opt.selection_only = self.use_selection
+            opt.directory = os.path.dirname(self.filepath)
+            opt.export_to_lua = (self.filename_ext == '.salua')
+            root = exportScene(opt)
+            writeNodesToFile(root, self.filepath, opt)
+
+            return {'FINISHED'}
         except TetException as et:
             self.report({'ERROR'}, "Export failed: %s" % et.message)
             return { 'CANCELLED' }
-
-class ExportToSaLua(Operator, ExportHelper):
-    """Export to Sofa Lua scene format"""
-    bl_idname = "export.tosalua"  
-    bl_label = "Export To Sofa SaLua"
-
-    # ExportHelper mixin class uses this
-    filename_ext = ".salua"
-
-    filter_glob = StringProperty(
-            default="*.salua",
-            options={'HIDDEN'},
-            )
-            
-    use_selection = BoolProperty(
-            name="Selection Only",
-            description="Export Selected Objects Only",
-            default=False,
-            )
-    
-    export_separate = BoolProperty(
-            name="Export to Separate Files",
-            description="Export Objects into Separate Files and Include all in one *.scn File",
-            default=False,
-            )
-
-    isolate_geometry = BoolProperty(
-            name="Isolate geometry into separate files",
-            description="Put geometry components of the scene into separate files",
-            default=False,
-            )
-    @classmethod
-    def poll(cls, context):
-        return context.scene is not None
- 
-    def execute(self, context):
-        self.report({'INFO'}, "Exporting to %s" % self.filepath)
-        try:
-            return exportSceneToFile(context, self.filepath, self.use_selection, self.export_separate, self.isolate_geometry, True)
-        except TetException as et:
-            self.report({'ERROR'}, "Export failed: %s" % et.message)
-            return { 'CANCELLED' }
-
 
 from subprocess import Popen
 from tempfile import mktemp
@@ -1061,33 +1017,49 @@ from tempfile import mktemp
 class RunSofaOperator(bpy.types.Operator):
     bl_idname = "scene.runsofa"
     bl_label = "Run Simulation in Sofa"
+    bl_options = { 'REGISTER', 'UNDO' }
 
+    file_format = EnumProperty(name = "File format", 
+      items = FILEFORMATS)
+      
+    filepath = StringProperty(name = "Filepath")
+      
     @classmethod
     def poll(cls, context):
         return context.scene is not None
 
-    def execute(self, context):
+    def invoke(self, context, event):
+        ext = self.file_format
         if bpy.data.filepath == '':
-            fn = mktemp(suffix='.scn')
+            self.filepath = mktemp(suffix=ext)
         else:
-            fn = bpy.data.filepath + '.scn'
-        self.report({'INFO'}, "Exporting to %s" % fn)
+            self.filepath = bpy.data.filepath + ext
+        return self.execute(context)
+
+    def execute(self, context):
+        self.report({'INFO'}, "Exporting to %s" % self.filepath)
         try:
-            exportSceneToFile(context, fn, False, False, False, False)
+            opt = ExportOptions()
+            opt.isolate_geometry = False
+            opt.scene = context.scene   
+            opt.separate = False 
+            opt.selection_only = False
+            opt.directory = os.path.dirname(self.filepath)
+            opt.export_to_lua = (self.file_format == '.salua')
+            root = exportScene(opt)
+            writeNodesToFile(root,self.filepath, opt)
+            Popen(self.filepath,shell=True)
+            return {'FINISHED'}
         except TetException as et:
             self.report({'ERROR'}, "Export failed: %s" % et.message)
             return { 'CANCELLED' }
-
-        Popen(fn,shell=True)
-        return {'FINISHED'}
 
 
 ############## Register/Unregister add-on ###########################################
 
 # Only needed if you want to add into a dynamic menu
 def menu_func_export(self, context):
-    self.layout.operator(ExportToSofa.bl_idname, text="SOFA XML Scene (.scn)")
-    self.layout.operator(ExportToSaLua.bl_idname, text="SOFA SaLua Scene (.salua)")
+    self.layout.operator(ExportToSofa.bl_idname, text="SOFA Scene (.scn;.salua)")
 
 addon_keymaps = []
 
@@ -1096,7 +1068,6 @@ def register():
     export2sofa.ui.register()
 
     bpy.utils.register_class(ExportToSofa)
-    bpy.utils.register_class(ExportToSaLua)
     bpy.types.INFO_MT_file_export.append(menu_func_export)
 
     bpy.utils.register_class(RunSofaOperator)
@@ -1114,7 +1085,6 @@ def register():
 
 def unregister():
     bpy.utils.unregister_class(ExportToSofa)
-    bpy.utils.unregister_class(ExportToSaLua)
     bpy.types.INFO_MT_file_export.remove(menu_func_export)
 
     # handle the keymap
