@@ -1014,13 +1014,18 @@ class ExportToSofa(Operator, ExportHelper):
 from subprocess import Popen
 from tempfile import mktemp
 
+
+def updateFileFormat(self, context):
+  base, ext = os.path.splitext(self.filepath)
+  self.filepath = base + self.file_format
+    
 class RunSofaOperator(bpy.types.Operator):
     bl_idname = "scene.runsofa"
     bl_label = "Run Simulation in Sofa"
     bl_options = { 'REGISTER', 'UNDO' }
 
     file_format = EnumProperty(name = "File format", 
-      items = FILEFORMATS)
+      items = FILEFORMATS, update = updateFileFormat)
       
     filepath = StringProperty(name = "Filepath")
       
