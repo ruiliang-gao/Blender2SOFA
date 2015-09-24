@@ -438,7 +438,7 @@ def exportEmptyHaptic(o,opt):
             template="Rigid",stiffness="10000000",angularStiffness="2000000",
             external_rest_shape="RigidLayer/Tool/RealPosition", points = "0"))
 
-    t.append(ET.Element("UncoupleConstraintCorrection"
+    t.append(ET.Element("UncoupledConstraintCorrection"
                         ,compliance="0.001   0.00003 0 0   0.00003 0   0.00003"
                         ))   
         
