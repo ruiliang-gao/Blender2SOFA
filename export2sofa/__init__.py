@@ -411,16 +411,16 @@ def exportEmptyHaptic(o,opt):
     n = fixName(o.name)
     t = ET.Element("Node", name = n)
     omniTag = n + "__omni"
-
+    t.append(ET.Element("RequiredPlugin",name="Sensable Plugin",pluginName="Sensable"))
     ## Omni driver wrapper
     rl = ET.Element("Node", name="RigidLayer")
-    rl.append(ET.Element("RequiredPlugin",name="Sensable Plugin",pluginName="Sensable"))
-    rl.append(ET.Element("MechanicalObject", name="ToolRealPosition", tags=omniTag, template="Rigid"))
+    
     rl.append(ET.Element("NewOmniDriver",
                          deviceName = (o.get('deviceName','')), 
                          tags= omniTag, scale = (o.get("scale", 300)),
                          permanent="true", listening="true", alignOmniWithCamera="true",
                          forceScale = (o.get("forceScale", 0.01))));
+    rl.append(ET.Element("MechanicalObject", name="ToolRealPosition", tags=omniTag, template="Rigid"))
     nt = ET.Element("Node",name = "Tool");
     nt.append(ET.Element("MechanicalObject", template="Rigid", name="RealPosition"))
     nt.append(ET.Element("SubsetMapping", indices="0"));
@@ -428,24 +428,16 @@ def exportEmptyHaptic(o,opt):
     t.append(rl)
 
     # State of the tool
-    t.append(ET.Element("MechanicalObject", name = "instrumentState", 
-                        template="Rigid3d",
-                        position="0 0 0 0 0 0 1 0 0 0 0 0 0 1 0 0 0 0 0 0 1"))
-    t.append(ET.Element("UniformMass", template = "Rigid3d", name="mass", totalmass="0.05"))
-    t.append(ET.Element("LCPForceFeedback", activate=(o.get('forceFeedback',"false")), tags=omniTag, forceCoef="0.1"))
-
-    t.append(ET.Element("RestShapeSpringsForceField", 
-            template="Rigid",stiffness="10000000",angularStiffness="2000000",
-            external_rest_shape="RigidLayer/Tool/RealPosition", points = "0"))
-
-    t.append(ET.Element("UncoupledConstraintCorrection"
-                        ,compliance="0.001   0.00003 0 0   0.00003 0   0.00003"
-                        ))   
-        
+    isn = ET.Element("Node",name = "Instrument"+n);
+    isn.append(ET.Element("EulerImplicit", name="cg odesolver",rayleighStiffness="0.01",rayleighMass="1"));
+    isn.append(ET.Element("CGLinearSolver", iterations="100",name="linear solver", threshold="1e-20", tolerance="1e-20"));
+    isn.append(ET.Element("MechanicalObject", name = "instrumentState", template="Rigid3d", position="0 0 0 0 0 0 1 0 0 0 0 0 0 1 0 0 0 0 0 0 1"))
+    isn.append(ET.Element("UniformMass", template = "Rigid3d", name="mass", totalmass="0.1"))
+    isn.append(ET.Element("LCPForceFeedback", activate=(o.get('forceFeedback',"true")), tags=omniTag, forceCoef="1.0"))
+           
     for i in o.children:
-        if(i.get('index', 0) != 0): 
+        if(i.get('index', 0) == 0): 
             child = ET.Element("Node", name= fixName(i.name) + "__CM")
-            #child.append(exportTopology(i, opt))
             mo = createMechanicalObject(i)
             mo.set('name', 'CM');
             child.append(mo)
@@ -459,8 +451,8 @@ def exportEmptyHaptic(o,opt):
             if toolFunction == 'Carve': pm.set('tags', 'CarvingTool')
             elif toolFunction == 'Suture': pm.set('tags', 'SuturingTool')
             child.append(pm)
-            child.append(ET.Element("RigidMapping", input="@../instrumentState",output="@CM",index=(i.get('index', 0))))
-            t.append(child)
+            child.append(ET.Element("RigidMapping", input="@../instrumentState",output="@CM",index="0"))
+            isn.append(child)
     
     #Children start here
     #index is a custom property of a child object if index is missing, then set index=1
@@ -469,7 +461,10 @@ def exportEmptyHaptic(o,opt):
         child =  ET.Element("Node", name = fixName(i.name))
         child.append(exportVisual(i, opt, name = name + '-visual', with_transform = True))
         child.append(ET.Element("RigidMapping", input="@../instrumentState", output="@"+name+"-visual", index=(i.get('index', 0))))
-        t.append(child)
+        isn.append(child)
+    isn.append(ET.Element("RestShapeSpringsForceField", template="Rigid",stiffness="10000000",angularStiffness="2000000", external_rest_shape="../RigidLayer/ToolRealPosition", points = "0"))
+    isn.append(ET.Element("UncoupledConstraintCorrection",compliance="0.001   0.00003 0 0   0.00003 0   0.00003"))   
+    t.append(isn)
     return t
 
 def exportCM(o,opt):
@@ -852,36 +847,34 @@ def exportScene(opt):
             if i.strip() != "":
                 root.append(ET.Element("include", href=i))
              
-    lcp = ET.Element("LCPConstraintSolver", tolerance="1e-3", initial_guess="false", build_lcp="0")
+    lcp = ET.Element("LCPConstraintSolver", tolerance="1e-3", maxIt = "1000")
     if scene.get('mu') != None :
         lcp.set("mu",(scene.get('mu')))
+    else:
+        lcp.set("mu",1e-6)
     root.append(lcp)
     
     root.append(ET.Element('FreeMotionAnimationLoop'))
  
-    root.append(ET.Element("CollisionPipeline", depth="15"))
+    root.append(ET.Element("CollisionPipeline", depth="6"))
     root.append(ET.Element("BruteForceDetection"))
     
-    mpi = ET.Element("MinProximityIntersection",useSurfaceNormals="0")
+    mpi = ET.Element("LocalMinDistance", angleCone = "0.0")
     if scene.get('alarmDistance'):
         mpi.set("alarmDistance",(scene.get('alarmDistance')))
     if scene.get('contactDistance'):
         mpi.set("contactDistance", (scene.get('contactDistance')))
     root.append(mpi)
-    
+   
     root.append(ET.Element("CollisionGroup"))
 
     #root.append(ET.Element("DefaultContactManager"))    
     root.append(ET.fromstring('<CollisionResponse name="Response" response="FrictionContact"/>'))
-    root.append(ET.Element("GraspingManager",name="graspingManager0",listening="1"))
-    #This doesen't work without haptic device
      
     hasHaptic = False;
       
-  
     root.append(ET.Element("RequiredPlugin", pluginName="SofaCarving"))
-    root.append(ET.Element("CarvingManager"))
-
+   
     # TODO: put all the objects that need a solver e.g. soft bodies, volumetric and attach constraints
     #  into a separate node call it "solverNode"
     # and keep the obstacles in the root.
@@ -905,7 +898,7 @@ def exportScene(opt):
     
     if (hasHaptic):
         root.append(ET.Element("RequiredPlugin", pluginName="SofaSuturing"))
-        root.append(ET.Element("SuturingManager", attachStiffness="200000", sutureKey="["))
+        root.append(ET.Element("SuturingManager", attachStiffness="1e12", sutureKey="["))
     
     for o in l: 
         t = exportObject(opt, o)
@@ -918,7 +911,7 @@ def exportScene(opt):
                 else:
                     solverNode.append(ET.Element("include", href=name+".xml"))
             else:
-                if(has_modifier(o,'COLLISION') or o.get("annotated_type") == 'COLLISION'):
+                if(has_modifier(o,'COLLISION') or o.get("annotated_type") == 'COLLISION') or o.get("annotated_type") == 'HAPTIC':
                     root.append(t)
                 else:
                     solverNode.append(t)
@@ -1014,13 +1007,18 @@ class ExportToSofa(Operator, ExportHelper):
 from subprocess import Popen
 from tempfile import mktemp
 
+
+def updateFileFormat(self, context):
+  base, ext = os.path.splitext(self.filepath)
+  self.filepath = base + self.file_format
+    
 class RunSofaOperator(bpy.types.Operator):
     bl_idname = "scene.runsofa"
     bl_label = "Run Simulation in Sofa"
     bl_options = { 'REGISTER', 'UNDO' }
 
     file_format = EnumProperty(name = "File format", 
-      items = FILEFORMATS)
+      items = FILEFORMATS, update = updateFileFormat)
       
     filepath = StringProperty(name = "Filepath")
       
