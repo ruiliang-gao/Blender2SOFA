@@ -1,4 +1,4 @@
-zip -r blender2sofa-$(hg id -i).zip blender2sofa.py \
+zip -r blender2sofa-$(hg id -i).zip \
   export2sofa/__init__.py\
 	export2sofa/ui.py\
   export2sofa/lua_export.py\
