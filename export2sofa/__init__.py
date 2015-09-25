@@ -67,6 +67,18 @@ def stringify_etree(node):
     for c in node:
         stringify_etree(c)
 
+def exportSeparateFile(opt, t, name):
+  base = os.path.join(opt.directory, name)
+  if opt.file_format == '.salua':
+    r = ET.Element("require", href=name)
+    export2sofa.lua_export.writeSubTreeToLua(t, base + '.lua')
+  else:
+    ext = '.xml'
+    r = ET.Element("include", href=name + ext)
+    stringify_etree(root)
+    ET.ElementTree(root).write(base + ext)
+  return r
+  
 def geometryNode(opt, t):
     """
     Special handling for geometry nodes when needed
@@ -75,9 +87,7 @@ def geometryNode(opt, t):
     and return the node.
     """
     if opt.isolate_geometry and t.get('name') != None:
-        fn = t.get('name')+"-geometry.xml"
-        writeNodesToFile(t, os.path.join(opt.directory, fn), opt)
-        return ET.Element("include", href=fn)
+        return exportSeparateFile(opt, t, t.get('name') + "-geometry")
     else:
         return t
 
@@ -892,15 +902,13 @@ def exportScene(opt):
     root.append(ET.Element("LightManager"))
     root.append(ET.Element("OglSceneFrame"))
     if (selection == True):
-        print("Use Selected")
-        print(scene)
         l = list(bpy.context.selected_objects)
     else:
         l = list(scene.objects)
     l.reverse()
     
     for o in l:
-        if(o.get("annotated_type") == 'HAPTIC'):
+        if o.get("annotated_type") == 'HAPTIC':
             hasHaptic = True;
     
     if (hasHaptic):
@@ -910,38 +918,33 @@ def exportScene(opt):
     for o in l: 
         t = exportObject(opt, o)
         name = fixName(o.name)
+        annotated_type = o.get('annotated_type')
         if (t != None):
-            if (separate):
-                writeNodesToFile(t, os.path.join(dir, name+ ".xml"), opt)
-                if(has_modifier(o,'COLLISION') or o.get("annotated_type") == 'COLLISION'):
-                    root.append(ET.Element("include", href=name+".xml"))
-                else:
-                    solverNode.append(ET.Element("include", href=name+".xml"))
+            if separate:
+              t = exportSeparateFile(opt, t, name)
+
+            if has_modifier(o,'COLLISION') or annotated_type == 'COLLISION':
+                root.append(t)
             else:
-                if(has_modifier(o,'COLLISION') or o.get("annotated_type") == 'COLLISION'):
-                    root.append(t)
-                else:
-                    solverNode.append(t)
+                solverNode.append(t)
 
     for o in l:
         t = exportConstraints(opt, o)
         name = fixName(o.name)
+        annotated_type = o.get('annotated_type')
         if (t != None):
-            if (separate):
-                writeNodesToFile(t, os.path.join(dir, name+ ".xml"), opt)
-                solverNode.append(ET.Element("include", href=name+".xml"))
-            else:
-                solverNode.append(t)
+            if separate:
+              t = exportSeparateFile(opt, t, name)
+            solverNode.append(t)
     
     root.append(solverNode)
-    
     return root    
 
 class ExportOptions:
     pass
 
 def writeNodesToFile(root, filepath, opt):
-    if opt.export_to_lua:
+    if opt.file_format == '.salua':
         export2sofa.lua_export.writeElementTreeToLua(root, filepath)
     else:
         stringify_etree(root)
@@ -964,7 +967,7 @@ class ExportToSofa(Operator, ExportHelper):
     # ExportHelper mixin class uses this
     filename_ext = EnumProperty(
       name ='File format', description='File format of the SOFA scene file to be created',
-       items = FILEFORMATS )
+       items = FILEFORMATS, default='.scn' )
 
     filter_glob = StringProperty(
             default='*.scn;*.salua',
@@ -1002,7 +1005,7 @@ class ExportToSofa(Operator, ExportHelper):
             opt.separate = self.export_separate 
             opt.selection_only = self.use_selection
             opt.directory = os.path.dirname(self.filepath)
-            opt.export_to_lua = (self.filename_ext == '.salua')
+            opt.file_format = self.filename_ext
             root = exportScene(opt)
             writeNodesToFile(root, self.filepath, opt)
 
@@ -1025,7 +1028,7 @@ class RunSofaOperator(bpy.types.Operator):
     bl_options = { 'REGISTER', 'UNDO' }
 
     file_format = EnumProperty(name = "File format", 
-      items = FILEFORMATS, update = updateFileFormat)
+      items = FILEFORMATS, update = updateFileFormat, default='.scn')
       
     filepath = StringProperty(name = "Filepath")
       
@@ -1050,7 +1053,7 @@ class RunSofaOperator(bpy.types.Operator):
             opt.separate = False 
             opt.selection_only = False
             opt.directory = os.path.dirname(self.filepath)
-            opt.export_to_lua = (self.file_format == '.salua')
+            opt.file_format = self.file_format
             root = exportScene(opt)
             writeNodesToFile(root,self.filepath, opt)
             Popen(self.filepath,shell=True)
