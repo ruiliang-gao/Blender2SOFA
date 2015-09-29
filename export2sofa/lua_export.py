@@ -61,9 +61,9 @@ def writeNode(out, n, level, parent = None, serial = 0):
         for a in n.attrib:
             if a != 'name':
                 writeln(out,level,  '{}.{} = {}'.format(var, a, luarepr(n.get(a))))
-    elif n.tag == 'include':
+    elif n.tag == 'require':
         var = "{}{}".format(n.tag, serial)
-        writeln(out, level, '{} = include "{}"'.format(var, n.get('href')))
+        writeln(out, level, '{} = require("{}")({})'.format(var, n.get('href'), parent))
     else:
         # Exporting an object
         var = "{}{}".format(n.tag, serial)
@@ -92,4 +92,12 @@ def writeElementTreeToLua(root, filepath):
     writeln(out, 0, "-- SOFA SaLua scene --")
     writeNode(out, root, 0)
     writeln(out, 0, "return root")
+    out.close()
+
+def writeSubTreeToLua(node, filepath):
+    out = open(filepath, "w")
+    writeln(out, 0, "-- SOFA SaLua subtree --")
+    writeln(out, 0, "return function (parent)")
+    writeNode(out, node, 1, parent = 'parent')
+    writeln(out, 0, "end")
     out.close()

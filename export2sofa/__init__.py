@@ -68,6 +68,18 @@ def stringify_etree(node):
     for c in node:
         stringify_etree(c)
 
+def exportSeparateFile(opt, t, name):
+  base = os.path.join(opt.directory, name)
+  if opt.file_format == '.salua':
+    r = ET.Element("require", href=name)
+    export2sofa.lua_export.writeSubTreeToLua(t, base + '.lua')
+  else:
+    ext = '.xml'
+    r = ET.Element("include", href=name + ext)
+    stringify_etree(root)
+    ET.ElementTree(root).write(base + ext)
+  return r
+  
 def geometryNode(opt, t):
     """
     Special handling for geometry nodes when needed
@@ -76,9 +88,7 @@ def geometryNode(opt, t):
     and return the node.
     """
     if opt.isolate_geometry and t.get('name') != None:
-        fn = t.get('name')+"-geometry.xml"
-        writeNodesToFile(t, os.path.join(opt.directory, fn), opt)
-        return ET.Element("include", href=fn)
+        return exportSeparateFile(opt, t, t.get('name') + "-geometry")
     else:
         return t
 
@@ -127,44 +137,71 @@ def exportTetrahedralTopology(o, opt, name):
     c.set('points', points)
     c.set('tetrahedra', tetrahedra)
     return geometryNode(opt,c)
-    
-def exportThickShellTopology(o, opt, name):
+
+# Export a HexahedronSetTopology container with the topology of a 
+# thick shell. The object is supposed to be convertible to a quad mesh.
+# The object can have two custom attributes:
+#   - thickness: total thickness of the shell multiplied by normal
+#   - layerCount: total number of layers generated. 3 means 4 layers of surfaces and 3 layers of hexahedral elements.
+#
+# Return value is three nodes, 
+#   - Volumetric topology for physical model
+#   - Outer shell topology
+#   - Inner shell topology
+def exportThickShellTopologies(o, opt, name):
     m = o.to_mesh(opt.scene, True, 'PREVIEW')
     thickness = o.get('thickness', 0.1)
+    layerCount    = o.get('layerCount', 1)
+    if layerCount < 1: raise TetException("Object '%s': Number of layers has to be a positive number" % o.name)
     V = len(m.vertices)
-    points =  empty([V * 2,3])
+    points =  empty([V * (layerCount+1),3])
     for i, v in enumerate(m.vertices):
-        v1 = v.co - v.normal * thickness / 2
-        v2 = v.co + v.normal * thickness / 2
-        points[i+0][0] = v1[0]
-        points[i+0][1] = v1[1]
-        points[i+0][2] = v1[2]
-        points[i+V][0] = v2[0]
-        points[i+V][1] = v2[1]
-        points[i+V][2] = v2[2]
-    
+      for j in range(0, layerCount+1):
+        offset = j / layerCount - 0.5
+        vn = v.co + v.normal * offset * thickness
+        points[i+V*j][0] = vn[0]
+        points[i+V*j][1] = vn[1]
+        points[i+V*j][2] = vn[2]
     
     quads = list(filter(lambda f: len(f.vertices) == 4, m.polygons))
+    quadCount = len(quads)
 
-    if len(quads) == 0 : raise TetException("Object '%s' has to be a quad mesh for a thick shell topology" % o.name)
+    if quadCount == 0 : raise TetException("Object '%s' has to be a quad mesh for a thick shell topology" % o.name)
     
-    hexahedra = empty([len(quads), 8], dtype=int)
+    hexahedra = empty([quadCount * layerCount, 8], dtype=int)
     for i, f in enumerate(quads):
+      for l in range(0, layerCount):
         for k in range(0, 2):
             for j in range(0, 4):
-                hexahedra[i][k * 4 + j] = f.vertices[j] + k * V 
+                hexahedra[l*quadCount+i][k * 4 + j] = f.vertices[j] + (l+k) * V 
 
+    # first one is inner, second one is outer shell
+    shell = [ empty([quadCount*2, 3], dtype=int), empty([quadCount*2, 3], dtype=int) ]
+    double_tri_to_quad = [ 0, 1, 2, 2, 3, 0 ]
+   
+    for i, f in enumerate(quads):
+      for k in range(0, 2):
+        for l in range(0, 2):
+          for j in range(0, 3):
+            # jj has to be the inverse direction of j for inner
+            # because the inner surface has the opposite winding order
+            # compared to outer
+            jj = (3 - (1-k*2) * j) % 3
+            shell[k][i*2+l][jj] = f.vertices[double_tri_to_quad[l*3+j]]
+    
+    oshell = ET.Element('MeshTopology', name = name + "-outer", triangles = shell[1], points = points[V*layerCount:V*(layerCount+1), ...])
+    ishell = ET.Element('MeshTopology', name = name + "-inner", triangles = shell[0], points = points[0:V, ...])
     c =  ET.Element('HexahedronSetTopologyContainer', name= name)
     c.set('points', points)
     c.set('hexahedra', hexahedra)
-    return geometryNode(opt,c)
+    return geometryNode(opt,c), geometryNode(opt, oshell), geometryNode(opt, ishell)
         
 def exportThickQuadShell(o, opt):
     name = fixName(o.name)
     t = ET.Element("Node", name = name)
 
     topo = name + '-hexahedral-topology'
-    c = exportThickShellTopology(o, opt, topo)
+    c, oshell, ishell = exportThickShellTopologies(o, opt, topo)
     t.append(c)
     
     mo = createMechanicalObject(o)
@@ -193,16 +230,19 @@ def exportThickQuadShell(o, opt):
     
     addConstraints(o, t)
     
-    n = ET.Element('Node', name="Collision")
-    n.append(exportTopology(o,opt))
-    n.append(ET.Element("MechanicalObject",template="Vec3d",name="MOC"))
-    n.extend(collisionModelParts(o))
-    n.append(ET.Element("BarycentricMapping",object1="../MO",object2="MOC"))
-    t.append(n)
+    for i, tp in enumerate([ oshell, ishell ]):
+      n = ET.Element('Node', name= 'Collision %d' % i )
+      n.append(tp)
+      moc = createMechanicalObject(o)
+      moc.set('name', 'MOC')
+      n.append(moc)
+      n.extend(collisionModelParts(o, group = i + 1, bothSide = 1))
+      n.append(ET.Element("BarycentricMapping",input="@../MO",output="@MOC"))
+      t.append(n)
     
     v = ET.Element('Node', name="Visual")
     v.append(exportVisual(o, opt, name = name + "-visual"))
-    v.append(ET.Element("BarycentricMapping",template="Vec3d,ExtVec3f",object1="../MO",object2=name + "-visual"))
+    v.append(ET.Element("BarycentricMapping",template="Vec3d,ExtVec3f",input="@../MO",output='@' + name + "-visual"))
     t.append(v)
         
         
@@ -248,43 +288,49 @@ def exportVolumetric(o, opt):
         n.append(ET.Element("TriangleSetTopologyAlgorithms", template="Vec3d" ))
         n.append(ET.Element("TriangleSetGeometryAlgorithms", template="Vec3d"))
 
-        n.append(ET.Element('Tetra2TriangleTopologicalMapping', object1="../../"+topotetra, object2="topotri", flipNormals='1'))
+        n.append(ET.Element('Tetra2TriangleTopologicalMapping', input="@../../"+topotetra, output="@topotri", flipNormals='1'))
 
         ogl = ET.Element("OglModel", name="Visual", genTex3d = "1");
         addMaterial(o.data, ogl);
         n.append(ogl)
-        n.append(ET.Element("IdentityMapping",object1="../MO",object2="Visual"))
+        n.append(ET.Element("IdentityMapping",input="@../MO",output="@Visual"))
         n.extend(collisionModelParts(o))
         t.append(n)
         
     else:
         n = ET.Element('Node', name="Collision")
         n.append(exportTopology(o,opt))
-        n.append(ET.Element("MechanicalObject",template="Vec3d",name="MOC"))
+        moc = createMechanicalObject(o)
+        moc.set('name', 'MOC')
+        n.append(moc)
         n.extend(collisionModelParts(o))
-        n.append(ET.Element("BarycentricMapping",object1="../MO",object2="MOC"))
+        n.append(ET.Element("BarycentricMapping",input="@../MO",output="@MOC"))
         t.append(n)
         
         v = ET.Element('Node', name="Visual")
         v.append(exportVisual(o, opt, name = name + "-visual"))
-        v.append(ET.Element("BarycentricMapping",template="Vec3d,ExtVec3f",object1="../MO",object2=name + "-visual"))
+        v.append(ET.Element("BarycentricMapping",template="Vec3d,ExtVec3f",input="@../MO",output='@' + name + "-visual"))
         t.append(v)
         
         
     return t
+    
+def cwisemul(a, b):
+  return Vector([ a.x * b.x, a.y * b.y, a.z * b.z ])
 
 def addConstraints(o, t):
     for q in o.children:
+      if not q.hide_render:
         if q.name.startswith('BoxConstraint'):
             tl = q.matrix_world * Vector(q.bound_box[0])
             br = q.matrix_world * Vector(q.bound_box[6])
             t.append(ET.Element("BoxConstraint",box=tl+br))
         elif q.name.startswith('SphereConstraint'):
             n = q.name.replace('.', '_')
-            t.append(ET.Element("SphereROI",name=n,centers=(q.location),radii=(max(q.scale))))
+            t.append(ET.Element("SphereROI",name=n,centers=(q.matrix_world.translation),radii=(max(cwisemul(q.parent.scale, q.scale)))))
             t.append(ET.Element("FixedConstraint", indices="@%s.indices" % n))
 
-def collisionModelParts(o, obstacle = False):
+def collisionModelParts(o, obstacle = False, group = None, bothSide = 0):
     if o.get('suture', False):
       sutureTag = 'SuturingSurface' 
     else:
@@ -294,11 +340,12 @@ def collisionModelParts(o, obstacle = False):
     else:
         M = "1"
     
-    sc = (o.get('selfCollision',0))
+    sc = o.get('selfCollision',0)
+    if group == None: group = o.get('collisionGroup','1')
     return [ 
-        ET.Element("PointModel",selfCollision=sc, contactFriction = (o.get('contactFriction', 0)), contactStiffness = (o.get('contactStiffness', 500)), group=(o.get('collisionGroup','1')), moving = M, simulated = M ), 
-        ET.Element("LineModel",selfCollision=sc, contactFriction = (o.get('contactFriction', 0)), contactStiffness = (o.get('contactStiffness', 500)), group=(o.get('collisionGroup','1')), moving = M, simulated = M), 
-        ET.Element("TriangleModel",selfCollision=sc, contactFriction = (o.get('contactFriction', 0)), contactStiffness = (o.get('contactStiffness', 500)), group=(o.get('collisionGroup','1')), moving = M, simulated = M, tags = sutureTag) 
+        ET.Element("PointModel",selfCollision=sc, contactFriction = (o.get('contactFriction', 0)), contactStiffness = (o.get('contactStiffness', 500)), group=group, moving = M, simulated = M, bothSide= bothSide ), 
+        ET.Element("LineModel",selfCollision=sc, contactFriction = (o.get('contactFriction', 0)), contactStiffness = (o.get('contactStiffness', 500)), group=group, moving = M, simulated = M, bothSide = bothSide ), 
+        ET.Element("TriangleModel",selfCollision=sc, contactFriction = (o.get('contactFriction', 0)), contactStiffness = (o.get('contactStiffness', 500)), group=group, moving = M, simulated = M, tags = sutureTag) 
     ]
 
 def exportSoftBody(o, opt):
@@ -310,7 +357,7 @@ def exportSoftBody(o, opt):
     og = exportVisual(o, opt,name = name + '-visual', with_transform = False)
     og.set('template', 'ExtVec3f')
     v.append(og)
-    v.append(ET.Element("BarycentricMapping",template="Vec3d,ExtVec3f",object1="../MO",object2=name + "-visual"))
+    v.append(ET.Element("BarycentricMapping",template="Vec3d,ExtVec3f",input="@../MO",output='@' + name + "-visual"))
     t.append(v)
 
     # set n later
@@ -331,7 +378,9 @@ def exportSoftBody(o, opt):
                 
     c = ET.Element("Node",name="Collision")    
     c.append(exportTopology(o,opt))
-    c.append(ET.Element("MechanicalObject",template="Vec3d",name="MOC"))
+    moc = createMechanicalObject(o)
+    moc.set('name', 'MOC')
+    c.append(moc)
     c.extend(collisionModelParts(o))
     c.append(ET.Element("BarycentricMapping",input="@../",output="@./"))
     t.append(c)
@@ -356,7 +405,7 @@ def exportHaptic(o, opt):
     t.append(ET.Element("UniformMass", template="Rigid", name="mass", totalmass="0.05"))
     #Visual Model
     t.append(exportVisual(o, opt, name = name + '-visual', with_transform = False))
-    t.append(ET.Element("RigidMapping", template = "Rigid,ExtVec3f", object1="instrumentstate", object2=name+"-visual"))
+    t.append(ET.Element("RigidMapping", template = "Rigid,ExtVec3f", input="@instrumentstate", output='@' + name+"-visual"))
     #Collision Model
     c = ET.Element("Node",name="Collision")    
     c.append(exportTopology(o,opt))
@@ -365,7 +414,7 @@ def exportHaptic(o, opt):
     c.append(mo)
     
     c.append(ET.Element("PointModel", template= "Vec3d",name="ParticleModel", contactStiffness="0.1", contactFriction="0.01" ))
-    c.append(ET.Element("RigidMapping",template = "Rigid,ExtVec3f", object1="instrumentstate", object2="MO"))
+    c.append(ET.Element("RigidMapping",template = "Rigid,ExtVec3f", input="@instrumentstate", output="@MO"))
     t.append(c)  
     return t
 
@@ -373,16 +422,16 @@ def exportEmptyHaptic(o,opt):
     n = fixName(o.name)
     t = ET.Element("Node", name = n)
     omniTag = n + "__omni"
-
+    t.append(ET.Element("RequiredPlugin",name="Sensable Plugin",pluginName="Sensable"))
     ## Omni driver wrapper
     rl = ET.Element("Node", name="RigidLayer")
-    rl.append(ET.Element("RequiredPlugin",name="Sensable Plugin",pluginName="Sensable"))
-    rl.append(ET.Element("MechanicalObject", name="ToolRealPosition", tags=omniTag, template="Rigid"))
+    
     rl.append(ET.Element("NewOmniDriver",
                          deviceName = (o.get('deviceName','')), 
                          tags= omniTag, scale = (o.get("scale", 300)),
                          permanent="true", listening="true", alignOmniWithCamera="true",
                          forceScale = (o.get("forceScale", 0.01))));
+    rl.append(ET.Element("MechanicalObject", name="ToolRealPosition", tags=omniTag, template="Rigid"))
     nt = ET.Element("Node",name = "Tool");
     nt.append(ET.Element("MechanicalObject", template="Rigid", name="RealPosition"))
     nt.append(ET.Element("SubsetMapping", indices="0"));
@@ -390,24 +439,16 @@ def exportEmptyHaptic(o,opt):
     t.append(rl)
 
     # State of the tool
-    t.append(ET.Element("MechanicalObject", name = "instrumentState", 
-                        template="Rigid3d",
-                        position="0 0 0 0 0 0 1 0 0 0 0 0 0 1 0 0 0 0 0 0 1"))
-    t.append(ET.Element("UniformMass", template = "Rigid3d", name="mass", totalmass="0.05"))
-    t.append(ET.Element("LCPForceFeedback", activate=(o.get('forceFeedback',"false")), tags=omniTag, forceCoef="0.1"))
-
-    t.append(ET.Element("RestShapeSpringsForceField", 
-            template="Rigid",stiffness="10000000",angularStiffness="2000000",
-            external_rest_shape="RigidLayer/Tool/RealPosition", points = "0"))
-
-    t.append(ET.Element("UncoupleConstraintCorrection"
-                        ,compliance="0.001   0.00003 0 0   0.00003 0   0.00003"
-                        ))   
-        
+    isn = ET.Element("Node",name = "Instrument"+n);
+    isn.append(ET.Element("EulerImplicit", name="cg odesolver",rayleighStiffness="0.01",rayleighMass="1"));
+    isn.append(ET.Element("CGLinearSolver", iterations="100",name="linear solver", threshold="1e-20", tolerance="1e-20"));
+    isn.append(ET.Element("MechanicalObject", name = "instrumentState", template="Rigid3d", position="0 0 0 0 0 0 1 0 0 0 0 0 0 1 0 0 0 0 0 0 1"))
+    isn.append(ET.Element("UniformMass", template = "Rigid3d", name="mass", totalmass="0.1"))
+    isn.append(ET.Element("LCPForceFeedback", activate=(o.get('forceFeedback',"true")), tags=omniTag, forceCoef="1.0"))
+           
     for i in o.children:
-        if(i.get('index', 0) != 0): 
+        if(i.get('index', 0) == 0): 
             child = ET.Element("Node", name= fixName(i.name) + "__CM")
-            #child.append(exportTopology(i, opt))
             mo = createMechanicalObject(i)
             mo.set('name', 'CM');
             child.append(mo)
@@ -421,8 +462,8 @@ def exportEmptyHaptic(o,opt):
             if toolFunction == 'Carve': pm.set('tags', 'CarvingTool')
             elif toolFunction == 'Suture': pm.set('tags', 'SuturingTool')
             child.append(pm)
-            child.append(ET.Element("RigidMapping", input="@../instrumentState",output="@CM",index=(i.get('index', 0))))
-            t.append(child)
+            child.append(ET.Element("RigidMapping", input="@../instrumentState",output="@CM",index="0"))
+            isn.append(child)
     
     #Children start here
     #index is a custom property of a child object if index is missing, then set index=1
@@ -431,7 +472,10 @@ def exportEmptyHaptic(o,opt):
         child =  ET.Element("Node", name = fixName(i.name))
         child.append(exportVisual(i, opt, name = name + '-visual', with_transform = True))
         child.append(ET.Element("RigidMapping", input="@../instrumentState", output="@"+name+"-visual", index=(i.get('index', 0))))
-        t.append(child)
+        isn.append(child)
+    isn.append(ET.Element("RestShapeSpringsForceField", template="Rigid",stiffness="10000000",angularStiffness="2000000", external_rest_shape="../RigidLayer/ToolRealPosition", points = "0"))
+    isn.append(ET.Element("UncoupledConstraintCorrection",compliance="0.001   0.00003 0 0   0.00003 0   0.00003"))   
+    t.append(isn)
     return t
 
 def exportCM(o,opt):
@@ -468,7 +512,7 @@ def exportCM(o,opt):
                 og = exportVisual(i, opt,name = fixName(i.name)+ '-visual', with_transform = False)
                 og.set('template', 'ExtVec3f')
                 v.append(og)
-                #v.append(ET.Element("BarycentricMapping",template="Vec3d,ExtVec3f",object1="../MO",object2=fixName(i.name) + "-visual"))
+                #v.append(ET.Element("BarycentricMapping",template="Vec3d,ExtVec3f",input="@../MO",output='@' + fixName(i.name) + "-visual"))
                 t.append(v)
     return t
 
@@ -507,8 +551,9 @@ def exportCloth(o, opt):
     ogl = ET.Element("OglModel", name= name + '-visual');
     addMaterial(o.data, ogl);
     t.append(ogl)
+    
 
-    t.append(ET.Element("IdentityMapping",template="Vec3d,ExtVec3f",object1="MO",object2=name + "-visual"))
+    t.append(ET.Element("IdentityMapping",template="Vec3d,ExtVec3f",input="@MO",output='@' + name + "-visual"))
     return t
 
 def pointInsideSphere(v,s):
@@ -554,7 +599,7 @@ def exportAttachConstraint(o, o1, o2, opt):
     springs = [
         vector_to_string([i, j, stiffness, .1, d]) for (i,j,d) in matchVertices(o1,o2,o, opt)
         ]
-    ff = ET.Element("StiffSpringForceField", object1=fixName(o1.name), object2=fixName(o2.name), 
+    ff = ET.Element("StiffSpringForceField", object1='@' + fixName(o1.name), object2='@' + fixName(o2.name), 
                     spring = ' '.join(springs))  
 
     return ff
@@ -634,7 +679,6 @@ def exportObstacle(o, opt):
         t.append(ET.Element("SparseGridTopology",position="@Visual.position",quads="@Visual.quads",triangles="@Visual.triangles",n="10 10 10"))
         t.append(createMechanicalObject(o))
         t.append(ET.Element('TSphereModel'))
-    #t.append(ET.Element("BarycentricMapping",template="Vec3d,ExtVec3f",object1="MO",object2=name+'-visual'))
     t.append(ET.fromstring('<UncoupledConstraintCorrection />'))
     return t
     
@@ -647,7 +691,7 @@ def exportRigid(o, opt):
     mo = createMechanicalObject(o)
     mo.set('template','Rigid')
     t.append(mo)
-    t.append(ET.Element("RigidMapping",template='Rigid,ExtVec3f',object1="MO",object2=name + "-visual"))   
+    t.append(ET.Element("RigidMapping",template='Rigid,ExtVec3f',input="@MO",output='@' + name + "-visual"))   
     t.extend(collisionModelParts(o,obstacle = False))
     return t
     
@@ -838,36 +882,34 @@ def exportScene(opt):
             if i.strip() != "":
                 root.append(ET.Element("include", href=i))
              
-    lcp = ET.Element("LCPConstraintSolver", tolerance="1e-3", initial_guess="false", build_lcp="0",  printLog="0" )
+    lcp = ET.Element("LCPConstraintSolver", tolerance="1e-3", maxIt = "1000")
     if scene.get('mu') != None :
         lcp.set("mu",(scene.get('mu')))
+    else:
+        lcp.set("mu",1e-6)
     root.append(lcp)
     
     root.append(ET.fromstring('<FreeMotionAnimationLoop printLog = "0"/>'))
  
-    root.append(ET.Element("CollisionPipeline", depth="15"))
+    root.append(ET.Element("CollisionPipeline", depth="6"))
     root.append(ET.Element("BruteForceDetection"))
     
-    mpi = ET.Element("MinProximityIntersection",useSurfaceNormals="0")
+    mpi = ET.Element("LocalMinDistance", angleCone = "0.0")
     if scene.get('alarmDistance'):
         mpi.set("alarmDistance",(scene.get('alarmDistance')))
     if scene.get('contactDistance'):
         mpi.set("contactDistance", (scene.get('contactDistance')))
     root.append(mpi)
-    
+   
     root.append(ET.Element("CollisionGroup"))
 
     #root.append(ET.Element("DefaultContactManager"))    
     root.append(ET.fromstring('<CollisionResponse name="Response" response="FrictionContact"  printLog="1"/>'))
-    root.append(ET.Element("GraspingManager",name="graspingManager0",listening="1"))
-    #This doesen't work without haptic device
      
     hasHaptic = False;
       
-  
     root.append(ET.Element("RequiredPlugin", pluginName="SofaCarving"))
-    root.append(ET.Element("CarvingManager"))
-
+   
     # TODO: put all the objects that need a solver e.g. soft bodies, volumetric and attach constraints
     #  into a separate node call it "solverNode"
     # and keep the obstacles in the root.
@@ -878,46 +920,39 @@ def exportScene(opt):
     root.append(ET.Element("LightManager"))
     root.append(ET.Element("OglSceneFrame"))
     if (selection == True):
-        print("Use Selected")
-        print(scene)
         l = list(bpy.context.selected_objects)
     else:
         l = list(scene.objects)
     l.reverse()
     
     for o in l:
-        if(o.get("annotated_type") == 'HAPTIC'):
+        if o.get("annotated_type") == 'HAPTIC':
             hasHaptic = True;
     
     if (hasHaptic):
         root.append(ET.Element("RequiredPlugin", pluginName="SofaSuturing"))
-        root.append(ET.Element("SuturingManager", attachStiffness="200000", sutureKey="["))
+        root.append(ET.Element("SuturingManager", attachStiffness="1e12", sutureKey="["))
     
     for o in l: 
         t = exportObject(opt, o)
         name = fixName(o.name)
+        annotated_type = o.get('annotated_type')
         if (t != None):
-            if (separate):
-                writeNodesToFile(t, os.path.join(dir, name+ ".xml"), opt)
-                if(has_modifier(o,'COLLISION') or o.get("annotated_type") == 'COLLISION'):
-                    root.append(ET.Element("include", href=name+".xml"))
-                else:
-                    solverNode.append(ET.Element("include", href=name+".xml"))
+            if separate:
+              t = exportSeparateFile(opt, t, name)
+            if(has_modifier(o,'COLLISION') or o.get("annotated_type") == 'COLLISION') or o.get("annotated_type") == 'HAPTIC':
+                root.append(t)
             else:
-                if(has_modifier(o,'COLLISION') or o.get("annotated_type") == 'COLLISION'):
-                    root.append(t)
-                else:
-                    solverNode.append(t)
+                solverNode.append(t)
 
     for o in l:
         t = exportConstraints(opt, o)
         name = fixName(o.name)
+        annotated_type = o.get('annotated_type')
         if (t != None):
-            if (separate):
-                writeNodesToFile(t, os.path.join(dir, name+ ".xml"), opt)
-                solverNode.append(ET.Element("include", href=name+".xml"))
-            else:
-                solverNode.append(t)
+            if separate:
+              t = exportSeparateFile(opt, t, name)
+            solverNode.append(t)
                 
     for o in l:
         t = exportConnective(opt, o)
@@ -930,32 +965,17 @@ def exportScene(opt):
                 solverNode.append(t)
     
     root.append(solverNode)
-    
     return root    
 
 class ExportOptions:
     pass
 
 def writeNodesToFile(root, filepath, opt):
-    if opt.export_to_lua:
+    if opt.file_format == '.salua':
         export2sofa.lua_export.writeElementTreeToLua(root, filepath)
     else:
         stringify_etree(root)
         ET.ElementTree(root).write(filepath)
-
-def exportSceneToFile(C, filepath, selection, separate, isolate_geometry, export_to_lua):
-
-    opt = ExportOptions()
-    opt.isolate_geometry = isolate_geometry
-    opt.scene = C.scene   
-    opt.separate = separate 
-    opt.selection_only = selection
-    opt.directory = os.path.dirname(filepath)
-    opt.export_to_lua = export_to_lua
-    root = exportScene(opt)
-    writeNodesToFile(root, filepath, opt)
-
-    return {'FINISHED'}
 
 # ExportHelper is a helper class, defines filename and
 # invoke() function which calls the file selector.
@@ -964,17 +984,20 @@ from bpy.props import StringProperty, BoolProperty, EnumProperty
 from bpy.types import Operator
 
 
+FILEFORMATS = [ ('.salua', 'SaLua', 'Lua based scene file'), ('.scn', 'XML', 'XML scene file') ]
 
 class ExportToSofa(Operator, ExportHelper):
-    """Export to Sofa XML scene format"""
+    """Export to SOFA scene"""
     bl_idname = "export.tosofa"  # important since its how bpy.ops.import_test.some_data is constructed
-    bl_label = "Export To Sofa XML"
+    bl_label = "Export To SOFA"
 
     # ExportHelper mixin class uses this
-    filename_ext = ".scn"
+    filename_ext = EnumProperty(
+      name ='File format', description='File format of the SOFA scene file to be created',
+       items = FILEFORMATS, default='.scn' )
 
     filter_glob = StringProperty(
-            default="*.scn",
+            default='*.scn;*.salua',
             options={'HIDDEN'},
             )
             
@@ -985,14 +1008,14 @@ class ExportToSofa(Operator, ExportHelper):
             )
     
     export_separate = BoolProperty(
-            name="Export to Separate Files",
+            name="Isolate objects into separate files",
             description="Export Objects into Separate Files and Include all in one *.scn File",
             default=False,
             )
 
     isolate_geometry = BoolProperty(
             name="Isolate geometry into separate files",
-            description="Put geometry components of the scene into separate files",
+            description="Put each geometry components of objects into separate files",
             default=False,
             )
 
@@ -1003,87 +1026,75 @@ class ExportToSofa(Operator, ExportHelper):
     def execute(self, context):
         self.report({'INFO'}, "Exporting to %s" % self.filepath)
         try:
-            return exportSceneToFile(context, self.filepath, self.use_selection, self.export_separate, self.isolate_geometry, False)
+            opt = ExportOptions()
+            opt.isolate_geometry = self.isolate_geometry
+            opt.scene = context.scene   
+            opt.separate = self.export_separate 
+            opt.selection_only = self.use_selection
+            opt.directory = os.path.dirname(self.filepath)
+            opt.file_format = self.filename_ext
+            root = exportScene(opt)
+            writeNodesToFile(root, self.filepath, opt)
+
+            return {'FINISHED'}
         except TetException as et:
             self.report({'ERROR'}, "Export failed: %s" % et.message)
             return { 'CANCELLED' }
-
-class ExportToSaLua(Operator, ExportHelper):
-    """Export to Sofa Lua scene format"""
-    bl_idname = "export.tosalua"  
-    bl_label = "Export To Sofa SaLua"
-
-    # ExportHelper mixin class uses this
-    filename_ext = ".salua"
-
-    filter_glob = StringProperty(
-            default="*.salua",
-            options={'HIDDEN'},
-            )
-            
-    use_selection = BoolProperty(
-            name="Selection Only",
-            description="Export Selected Objects Only",
-            default=False,
-            )
-    
-    export_separate = BoolProperty(
-            name="Export to Separate Files",
-            description="Export Objects into Separate Files and Include all in one *.scn File",
-            default=False,
-            )
-
-    isolate_geometry = BoolProperty(
-            name="Isolate geometry into separate files",
-            description="Put geometry components of the scene into separate files",
-            default=False,
-            )
-    @classmethod
-    def poll(cls, context):
-        return context.scene is not None
- 
-    def execute(self, context):
-        self.report({'INFO'}, "Exporting to %s" % self.filepath)
-        try:
-            return exportSceneToFile(context, self.filepath, self.use_selection, self.export_separate, self.isolate_geometry, True)
-        except TetException as et:
-            self.report({'ERROR'}, "Export failed: %s" % et.message)
-            return { 'CANCELLED' }
-
 
 from subprocess import Popen
 from tempfile import mktemp
 
+
+def updateFileFormat(self, context):
+  base, ext = os.path.splitext(self.filepath)
+  self.filepath = base + self.file_format
+    
 class RunSofaOperator(bpy.types.Operator):
     bl_idname = "scene.runsofa"
     bl_label = "Run Simulation in Sofa"
+    bl_options = { 'REGISTER', 'UNDO' }
 
+    file_format = EnumProperty(name = "File format", 
+      items = FILEFORMATS, update = updateFileFormat, default='.scn')
+      
+    filepath = StringProperty(name = "Filepath")
+      
     @classmethod
     def poll(cls, context):
         return context.scene is not None
 
-    def execute(self, context):
+    def invoke(self, context, event):
+        ext = self.file_format
         if bpy.data.filepath == '':
-            fn = mktemp(suffix='.scn')
+            self.filepath = mktemp(suffix=ext)
         else:
-            fn = bpy.data.filepath + '.scn'
-        self.report({'INFO'}, "Exporting to %s" % fn)
+            self.filepath = bpy.data.filepath + ext
+        return self.execute(context)
+
+    def execute(self, context):
+        self.report({'INFO'}, "Exporting to %s" % self.filepath)
         try:
-            exportSceneToFile(context, fn, False, False, False, False)
+            opt = ExportOptions()
+            opt.isolate_geometry = False
+            opt.scene = context.scene   
+            opt.separate = False 
+            opt.selection_only = False
+            opt.directory = os.path.dirname(self.filepath)
+            opt.file_format = self.file_format
+            root = exportScene(opt)
+            writeNodesToFile(root,self.filepath, opt)
+            Popen(self.filepath,shell=True)
+            return {'FINISHED'}
         except TetException as et:
             self.report({'ERROR'}, "Export failed: %s" % et.message)
             return { 'CANCELLED' }
-
-        Popen(fn,shell=True)
-        return {'FINISHED'}
 
 
 ############## Register/Unregister add-on ###########################################
 
 # Only needed if you want to add into a dynamic menu
 def menu_func_export(self, context):
-    self.layout.operator(ExportToSofa.bl_idname, text="SOFA XML Scene (.scn)")
-    self.layout.operator(ExportToSaLua.bl_idname, text="SOFA SaLua Scene (.salua)")
+    self.layout.operator(ExportToSofa.bl_idname, text="SOFA Scene (.scn;.salua)")
 
 addon_keymaps = []
 
@@ -1094,7 +1105,6 @@ def register():
     
 
     bpy.utils.register_class(ExportToSofa)
-    bpy.utils.register_class(ExportToSaLua)
     bpy.types.INFO_MT_file_export.append(menu_func_export)
 
     bpy.utils.register_class(RunSofaOperator)
@@ -1112,7 +1122,6 @@ def register():
 
 def unregister():
     bpy.utils.unregister_class(ExportToSofa)
-    bpy.utils.unregister_class(ExportToSaLua)
     bpy.types.INFO_MT_file_export.remove(menu_func_export)
 
     # handle the keymap
