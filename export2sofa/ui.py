@@ -15,18 +15,18 @@ OBJECT_MAP = {
     'ATTACHCONSTRAINT': ("Attach Constraint",'LINKED', {'stiffness':1000, 'object1':'', 'object2':''}), 
     'SPHERECONSTRAINT': ("Sphere Constraint",'SURFACE_NSPHERE', {}),
     'VOLUMETRIC': ("Volumetic",'SNAP_VOLUME', { 'selfCollision': False, 'precomputeConstraints' : False, 'carvable': False, 'youngModulus': 300 , 'poissonRatio':0.45, 'damping': 0.1, 'contactFriction': 0.01, 'contactStiffness':500, 'collisionGroup':1, 'suture': False} ), 
-    'THICKSHELL': ("Thick Shell",'MOD_CLOTH', { 'selfCollision': False, 'precomputeConstraints' : False, 'youngModulus': 300 , 'poissonRatio':0.45, 'damping': 0.1, 'contactFriction': 0.01, 'contactStiffness':500, 'collisionGroup':1, 'thickness': 0.1 , 'suture': False} ), 
+    'THICKSHELL': ("Thick Shell",'MOD_CLOTH', { 'selfCollision': False, 'precomputeConstraints' : False, 'youngModulus': 300 , 'poissonRatio':0.45, 'damping': 0.1, 'contactFriction': 0.01, 'contactStiffness':500, 'collisionGroup':1, 'thickness': 0.1 , 'suture': False, 'layerCount': 1 } ), 
     'HAPTIC':("Haptic",'SCULPTMODE_HLT', {'scale':300, 'forceScale': 0.1, 'forceFeedback' : False, 'toolFunction': 'Grasp', 'deviceName': '', 'collisionGroup':1}), 
     'HAPTICPART': ("HapticPart",'OOPS',{'index':{'default':0,'min':0,'max':2,'step':1}}),
     'THICKCURVE': ("Thick Curve", 'ROOTCURVE', { 'thickness': 0.1 }),
-    'RIGID':("Rigid",'MESH_ICOSPHERE', {'collisionGroup':1})
+    'RIGID':("Rigid",'MESH_ICOSPHERE', {'collisionGroup':1}),
 }
 
 OBJECT_LIST = [ 
   'SOFT_BODY', 'VOLUMETRIC', 'THICKSHELL', 'THICKCURVE',
   'CLOTH', 'COLLISION', 'RIGID',
   'HAPTIC', 'HAPTICPART',
-  'SPHERECONSTRAINT', 'ATTACHCONSTRAINT',
+  'SPHERECONSTRAINT', 'ATTACHCONSTRAINT'
   ]
 
 class MakeSofaSceneOperator(bpy.types.Operator):
@@ -92,6 +92,9 @@ class SofaPropertyPanel(bpy.types.Panel):
                   if type(p[e]) == str:
                     c.label(text=e + ':')
                     c.prop(obj, '["'+ e +'"]', '')
+        
+        layout.separator()
+        layout.operator("mesh.construct_con_tissue", icon='OUTLINER_OB_META')
         
         s = context.scene
         if s != None:
