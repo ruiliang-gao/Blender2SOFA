@@ -76,8 +76,8 @@ def exportSeparateFile(opt, t, name):
   else:
     ext = '.xml'
     r = ET.Element("include", href=name + ext)
-    stringify_etree(root)
-    ET.ElementTree(root).write(base + ext)
+    stringify_etree(t)
+    ET.ElementTree(t).write(base + ext)
   return r
   
 def geometryNode(opt, t):
