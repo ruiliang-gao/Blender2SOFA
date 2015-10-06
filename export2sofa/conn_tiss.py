@@ -6,22 +6,19 @@ from mathutils import Vector
 class ConnectiveTissue(bpy.types.Operator):
     bl_idname = "mesh.construct_con_tissue"
     bl_label = "Construct Connective Tissue"
+    bl_options = { 'UNDO' }
 
-    def obj_list_cb(self, context):  
-        return [(obj.name, obj.name, obj.name) for obj in bpy.data.objects]  
-    
-    object1 = bpy.props.EnumProperty(items=obj_list_cb, name = "Object 1", description = "Choose Object 1 here")   
-    object2 = bpy.props.EnumProperty(items=obj_list_cb, name = "Object 2", description = "Choose Object 2 here")  
+    object1 = bpy.props.StringProperty(name = "Object 1", description = "Choose Object 1 here")   
+    object2 = bpy.props.StringProperty(name = "Object 2", description = "Choose Object 2 here")  
 
     def invoke(self, context, event):
         return context.window_manager.invoke_props_dialog(self)
 
     def draw(self, context):
-        print(self.obj_list_cb(context))
         layout = self.layout
         col = layout.column_flow(align=True, columns=1)
-        col.prop(self, "object1")
-        col.prop(self, "object2")
+        col.prop_search(self, "object1", context.scene, "objects")
+        col.prop_search(self, "object2", context.scene, "objects")
     
     @classmethod
     def poll(self, context):
