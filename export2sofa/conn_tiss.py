@@ -7,9 +7,15 @@ class ConnectiveTissue(bpy.types.Operator):
     bl_idname = "mesh.construct_con_tissue"
     bl_label = "Construct Connective Tissue"
     
-    object1 = bpy.props.StringProperty(name="Object 1")
-    object2 = bpy.props.StringProperty(name="Object 2")
+    #object1 = bpy.props.StringProperty(name="Object 1")
+    #object2 = bpy.props.StringProperty(name="Object 2")
+    obj_list = [(obj.name, obj.name, obj.name) for obj in bpy.data.objects]  
 
+    def obj_list_cb(self, context):  
+        return ConnectiveTissue.obj_list 
+
+    object1 = bpy.props.EnumProperty(items=obj_list_cb, name = "Object 1", description = "Choose Object 1 here")   
+    object2 = bpy.props.EnumProperty(items=obj_list_cb, name = "Object 2", description = "Choose Object 2 here")  
 
     def invoke(self, context, event):
         return context.window_manager.invoke_props_dialog(self)

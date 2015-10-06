@@ -12,7 +12,7 @@ OBJECT_MAP = {
     'SOFT_BODY': ( "Soft Body", 'MOD_SOFT', {'resX':10, 'resY':10, 'resZ':10, 'youngModulus':300, 'poissonRatio':0.45, 'rayleighStiffness':0, 'contactFriction':0.01, 'contactStiffness':500, 'collisionGroup':1}), 
     'CLOTH' : ("Cloth",'OUTLINER_OB_SURFACE', {'youngModulus':300, 'poissonRatio': { 'default': 0.45, 'min': 0.0, 'max' : 0.5, 'step': 0.001 }, 'bendingStiffness':300, 'stretchDamping':0.1, 'bendingDamping':0.1, 'collisionGroup':1}),
     'COLLISION': ("Obstacle",'SOLID', {'collisionGroup':1}),
-    'ATTACHCONSTRAINT': ("Attach Constraint",'LINKED', {'stiffness':1000, 'object1':'', 'object2':'', 'alwaysMatchFor': { 'default': 0, 'min': 0, 'max' : 2, 'step': 1 }}), 
+    'ATTACHCONSTRAINT': ("Attach Constraint",'LINKED', {'stiffness':1000, 'object1':'', 'object2':'', 'alwaysMatchFor': { 'default': 0, 'min': 0, 'max' : 2, 'step': 1, 'description': 'Always find springs for object x' }}), 
     'SPHERECONSTRAINT': ("Sphere Constraint",'SURFACE_NSPHERE', {}),
     'VOLUMETRIC': ("Volumetic",'SNAP_VOLUME', { 'selfCollision': False, 'precomputeConstraints' : False, 'carvable': False, 'youngModulus': 300 , 'poissonRatio':0.45, 'damping': 0.1, 'contactFriction': 0.01, 'contactStiffness':500, 'collisionGroup':1, 'suture': False} ), 
     'THICKSHELL': ("Thick Shell",'MOD_CLOTH', { 'selfCollision': False, 'precomputeConstraints' : False, 'youngModulus': 300 , 'poissonRatio':0.45, 'damping': 0.1, 'contactFriction': 0.01, 'contactStiffness':500, 'collisionGroup':1, 'thickness': 0.1 , 'suture': False, 'layerCount': 1 } ), 
