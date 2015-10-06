@@ -22,6 +22,7 @@ from numpy import ndarray, empty
 import export2sofa.io_msh
 import export2sofa.ui
 import export2sofa.lua_export
+import export2sofa.conn_tiss
 #from export2sofa import io_msh
 #from export2sofa import ui
 
@@ -259,7 +260,7 @@ def exportVolumetric(o, opt):
     
     mo.set('position','@'+topotetra+'.position')
     t.append(mo)
-    t.append(ET.Element('TetrahedronSetTopologyModifier'))
+    t.append(ET.Element('TetrahedronSetTopologyModifier', removeIsolated = "false"))
     t.append(ET.Element('TetrahedronSetTopologyAlgorithms', template = 'Vec3d'))
     t.append(ET.Element('TetrahedronSetGeometryAlgorithms', template = 'Vec3d'))
     
@@ -283,7 +284,7 @@ def exportVolumetric(o, opt):
     if o.get('carvable'):
         n = ET.Element('Node', name="triangle-surface")
         n.append(ET.Element("TriangleSetTopologyContainer",name="topotri"))
-        n.append(ET.Element("TriangleSetTopologyModifier",))
+        n.append(ET.Element("TriangleSetTopologyModifier"))
         n.append(ET.Element("TriangleSetTopologyAlgorithms", template="Vec3d" ))
         n.append(ET.Element("TriangleSetGeometryAlgorithms", template="Vec3d"))
 
@@ -389,7 +390,7 @@ def exportHaptic(o, opt):
     name=fixName(o.name)
     t = ET.Element("Node",name=name)
     t.append(ET.Element("RequiredPlugin",name="Sensable Plugin",pluginName="Sensable"))
-    newOmniDriver = ET.Element("NewOmniDriver",name="Omni Driver",deviceName=o.get('deviceName',''),listening="true",tags="Omni", permanent="true")
+    newOmniDriver = ET.Element("NewOmniDriver",name="Omni Driver",deviceName=o.get('deviceName',''),listening="true",tags="Omni", permanent="true", printLog="1")
     newOmniDriver.set("forceScale", (o.get('forceScale')))
     newOmniDriver.set("scale", (o.get('scale')))
     t.append(newOmniDriver)
@@ -518,12 +519,12 @@ def exportCM(o,opt):
 def exportCloth(o, opt):
     name=fixName(o.name)
     t = ET.Element("Node",name=name)
-    t.append(ET.Element("EulerImplicitSolver"))
+    t.append(ET.Element("EulerImplicitSolver", printLog="0"))
     t.append(ET.Element("CGLinearSolver", template="GraphScattered", iterations="25",  tolerance="1e-009",  threshold="1e-009"))
     
     t.append(exportTopologyContainer(o,opt))
     
-    t.append(ET.Element("TriangleSetTopologyModifier",))
+    t.append(ET.Element("TriangleSetTopologyModifier", removeIsolated = "false"))
     t.append(ET.Element("TriangleSetTopologyAlgorithms", template="Vec3d" ))
     t.append(ET.Element("TriangleSetGeometryAlgorithms", template="Vec3d"))
     
@@ -550,6 +551,7 @@ def exportCloth(o, opt):
     ogl = ET.Element("OglModel", name= name + '-visual');
     addMaterial(o.data, ogl);
     t.append(ogl)
+    
 
     t.append(ET.Element("IdentityMapping",template="Vec3d,ExtVec3f",input="@MO",output='@' + name + "-visual"))
     return t
@@ -599,6 +601,16 @@ def exportAttachConstraint(o, o1, o2, opt):
         ]
     ff = ET.Element("StiffSpringForceField", object1='@' + fixName(o1.name), object2='@' + fixName(o2.name), 
                     spring = ' '.join(springs))  
+
+    return ff
+    
+def exportConnectiveTissue(o, o1, o2, opt):
+    stiffness = o.get('stiffness', 500)
+    # springs = [
+        # vector_to_string([i, j, stiffness, .1, d]) for (i,j,d) in matchVertices(o1,o2,o, opt)
+        # ]
+    # ff = ET.Element("StiffSpringForceField", object1=fixName(o1.name), object2=fixName(o2.name), 
+                    # spring = ' '.join(springs))  
 
     return ff
     
@@ -835,6 +847,19 @@ def exportConstraints(opt, o):
             else:
                 return None
     return None
+    
+def exportConnective(opt, o):
+    if not o.hide_render and o.parent == None:
+        annotated_type = o.get('annotated_type')
+        name = fixName(o.name)
+        if  has_modifier(o,'CONNECTIVETISSUE') or annotated_type == 'CONNECTIVETISSUE':
+            if (isinstance(o.get('object1'),str) and isinstance(o.get('object2'),str)):
+                o1 = bpy.data.objects[o.get('object1')]
+                o2 = bpy.data.objects[o.get('object2')]
+                return exportConnectiveTissue(o, o1, o2, opt)
+            else:
+                return None
+    return None
 
 
 def exportScene(opt):
@@ -864,7 +889,7 @@ def exportScene(opt):
         lcp.set("mu",1e-6)
     root.append(lcp)
     
-    root.append(ET.Element('FreeMotionAnimationLoop'))
+    root.append(ET.fromstring('<FreeMotionAnimationLoop printLog = "0"/>'))
  
     root.append(ET.Element("CollisionPipeline", depth="6"))
     root.append(ET.Element("BruteForceDetection"))
@@ -879,7 +904,7 @@ def exportScene(opt):
     root.append(ET.Element("CollisionGroup"))
 
     #root.append(ET.Element("DefaultContactManager"))    
-    root.append(ET.fromstring('<CollisionResponse name="Response" response="FrictionContact"/>'))
+    root.append(ET.fromstring('<CollisionResponse name="Response" response="FrictionContact"  printLog="1"/>'))
      
     hasHaptic = False;
       
@@ -928,6 +953,16 @@ def exportScene(opt):
             if separate:
               t = exportSeparateFile(opt, t, name)
             solverNode.append(t)
+                
+    for o in l:
+        t = exportConnective(opt, o)
+        name = fixName(o.name)
+        if (t != None):
+            if (separate):
+                writeNodesToFile(t, os.path.join(dir, name+ ".xml"), opt)
+                solverNode.append(ET.Element("include", href=name+".xml"))
+            else:
+                solverNode.append(t)
     
     root.append(solverNode)
     return root    
@@ -1066,6 +1101,8 @@ addon_keymaps = []
 def register():
     export2sofa.io_msh.register()
     export2sofa.ui.register()
+    export2sofa.conn_tiss.register()
+    
 
     bpy.utils.register_class(ExportToSofa)
     bpy.types.INFO_MT_file_export.append(menu_func_export)
@@ -1096,6 +1133,7 @@ def unregister():
 
     export2sofa.io_msh.unregister()
     export2sofa.ui.unregister()    
+    export2sofa.conn_tiss.unregister()
     
 if __name__ == "__main__":
     register()
