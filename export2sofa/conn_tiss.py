@@ -1,5 +1,7 @@
 import bpy
 import math
+import numpy as np
+from mathutils import Vector
 
 class ConnectiveTissue(bpy.types.Operator):
     bl_idname = "mesh.construct_con_tissue"
@@ -31,12 +33,12 @@ class ConnectiveTissue(bpy.types.Operator):
 
 def construct(context,options):
 
-    bpy.ops.object.mode_set(mode = 'OBJECT')
-    bpy.ops.object.select_all(action='DESELECT')
+    #bpy.ops.object.mode_set(mode = 'OBJECT')
+    #bpy.ops.object.select_all(action='DESELECT')
 
-    plane_top = bpy.data.objects['Grid.001'] # later replaced by "o"
-    plane_top.select = True
-    #plane_top = context.selected_objects[0]
+    #plane_top = bpy.data.objects['Grid.001'] # later replaced by "o"
+    #plane_top.select = True
+    plane_top = context.selected_objects[0]
     bpy.ops.object.duplicate()
     plane_bot = context.selected_objects[0]
 
@@ -44,16 +46,16 @@ def construct(context,options):
     context.scene.objects.active = plane_top
     bpy.ops.object.modifier_add(type='SHRINKWRAP')
     context.object.modifiers["Shrinkwrap"].use_keep_above_surface = True
-    context.object.modifiers["Shrinkwrap"].target = bpy.data.objects["adrenal gland"]   # later replaced by "o1"
-    #context.object.modifiers["Shrinkwrap"].target = bpy.data.objects[options.object1]
+    #context.object.modifiers["Shrinkwrap"].target = bpy.data.objects["adrenal gland"]   # later replaced by "o1"
+    context.object.modifiers["Shrinkwrap"].target = bpy.data.objects[options.object1]
     bpy.ops.object.modifier_apply(apply_as='DATA', modifier="Shrinkwrap")
 
     # shrinkwrap object 2
     context.scene.objects.active = plane_bot
     bpy.ops.object.modifier_add(type='SHRINKWRAP')
     context.object.modifiers["Shrinkwrap"].use_keep_above_surface = True
-    context.object.modifiers["Shrinkwrap"].target = bpy.data.objects["kidney_hollow"]   # later replaced by "o2"
-    #context.object.modifiers["Shrinkwrap"].target = bpy.data.objects[options.object2]
+    #context.object.modifiers["Shrinkwrap"].target = bpy.data.objects["kidney_hollow"]   # later replaced by "o2"
+    context.object.modifiers["Shrinkwrap"].target = bpy.data.objects[options.object2]
     bpy.ops.object.modifier_apply(apply_as='DATA', modifier="Shrinkwrap")
 
   #------ create connective tissue
@@ -62,9 +64,39 @@ def construct(context,options):
     plane_mid = context.selected_objects[0]
     for i in range(len(plane_top.data.vertices)):
         plane_mid.data.vertices[i].co = (plane_top.data.vertices[i].co + plane_bot.data.vertices[i].co)/2
-
+    
+    #-- create attach constraints
+    num_vert = int(math.sqrt(len(plane_top.data.vertices)))
+    indices = np.linspace(0, num_vert-1,int(num_vert/1.5), dtype=int)
+    for i in indices:
+        for j in indices:
+            pt_top = plane_top.data.vertices[i*num_vert + j].co
+            pt_mid = plane_mid.data.vertices[i*num_vert + j].co
+            pt_bot = plane_bot.data.vertices[i*num_vert + j].co
+            maxradius_top = (pt_top-pt_mid).length
+            maxradius_bot = (pt_mid-pt_bot).length
+            
+            #displ = Vector((0.0, 0.0, maxradius_top-maxradius_top*0.1))
+            bpy.ops.mesh.primitive_ico_sphere_add(size=1.0, location=pt_top)
+            sph_top = context.selected_objects[0]
+            sph_top.scale = ((maxradius_top*0.99),(maxradius_top*0.99),(maxradius_top*0.99))
+            sph_top['annotated_type'] = 'ATTACHCONSTRAINT'
+            sph_top['object1'] = 'ConnectiveTissue'
+            sph_top['object2'] = options.object1#"adrenal gland"
+            sph_top['alwaysMatchFor'] = 2   # expand search space (sphere radius) for object 2 until vertex is found 
+            
+            bpy.ops.mesh.primitive_ico_sphere_add(size=1.0, location=pt_bot)
+            sph_bot = context.selected_objects[0]
+            sph_bot.scale = ((maxradius_bot*0.99),(maxradius_bot*0.99),(maxradius_bot*0.99))
+            sph_bot['annotated_type'] = 'ATTACHCONSTRAINT'
+            sph_bot['object1'] = 'ConnectiveTissue'
+            sph_bot['object2'] = options.object2#"kidney_hollow"
+            sph_bot['alwaysMatchFor'] = 2  
+    
     #-- join the three planes. NOTE: polygon indexing: middle 0..w^2-1, bottom w^2..2*(w^2)-1, top 2*(w^2)..3*(w^2)-1)
-    w = int(math.sqrt(len(plane_top.data.vertices)) - 1)
+    bpy.ops.object.select_all(action='DESELECT')
+    context.scene.objects.active = plane_mid
+    plane_mid.select = True
     plane_bot.select = True
     plane_top.select = True
     bpy.ops.object.join()
@@ -76,6 +108,7 @@ def construct(context,options):
     for i, v in enumerate(three_planes.data.vertices):
         M.vertices[i].co = v.co
 
+    w = num_vert - 1
     for i in range(w*w):
         top_quad = three_planes.data.polygons[2*w*w + i]
         mid_quad = three_planes.data.polygons[i]
@@ -85,8 +118,10 @@ def construct(context,options):
         createTets(M, (mid_quad, top_quad),i+1)
     
     make_outer_surface(M)
-    o = bpy.data.objects.new("ConnectiveTissue", M)
-    context.scene.objects.link(o)
+    ct = bpy.data.objects.new("ConnectiveTissue", M)
+    ct['annotated_type'] = 'VOLUMETRIC'
+    ct['carvable'] = 1
+    context.scene.objects.link(ct)
     
     bpy.ops.object.select_all(action='DESELECT')
     three_planes.select = True
@@ -184,4 +219,4 @@ def unregister():
 
 if __name__ == "__main__":
     register()
-    bpy.ops.mesh.construct_con_tissue()
+    #bpy.ops.mesh.construct_con_tissue()

@@ -284,16 +284,16 @@ def exportVolumetric(o, opt):
     if o.get('carvable'):
         n = ET.Element('Node', name="triangle-surface")
         n.append(ET.Element("TriangleSetTopologyContainer",name="topotri"))
-        n.append(ET.Element("TriangleSetTopologyModifier"))
+        n.append(ET.Element("TriangleSetTopologyModifier",))
         n.append(ET.Element("TriangleSetTopologyAlgorithms", template="Vec3d" ))
         n.append(ET.Element("TriangleSetGeometryAlgorithms", template="Vec3d"))
 
-        n.append(ET.Element('Tetra2TriangleTopologicalMapping', input="@../../"+topotetra, output="@topotri", flipNormals='1'))
+        n.append(ET.Element('Tetra2TriangleTopologicalMapping', object1="../../"+topotetra, object2="topotri", flipNormals='1'))
 
         ogl = ET.Element("OglModel", name="Visual", genTex3d = "1");
         addMaterial(o.data, ogl);
         n.append(ogl)
-        n.append(ET.Element("IdentityMapping",input="@../MO",output="@Visual"))
+        n.append(ET.Element("IdentityMapping",object1="../MO",object2="Visual"))
         n.extend(collisionModelParts(o))
         t.append(n)
         
@@ -304,12 +304,12 @@ def exportVolumetric(o, opt):
         moc.set('name', 'MOC')
         n.append(moc)
         n.extend(collisionModelParts(o))
-        n.append(ET.Element("BarycentricMapping",input="@../MO",output="@MOC"))
+        n.append(ET.Element("BarycentricMapping",object1="../MO",object2="MOC"))
         t.append(n)
         
         v = ET.Element('Node', name="Visual")
         v.append(exportVisual(o, opt, name = name + "-visual"))
-        v.append(ET.Element("BarycentricMapping",template="Vec3d,ExtVec3f",input="@../MO",output='@' + name + "-visual"))
+        v.append(ET.Element("BarycentricMapping",template="Vec3d,ExtVec3f",object1="../MO",object2=name + "-visual"))
         t.append(v)
         
         
@@ -390,7 +390,7 @@ def exportHaptic(o, opt):
     name=fixName(o.name)
     t = ET.Element("Node",name=name)
     t.append(ET.Element("RequiredPlugin",name="Sensable Plugin",pluginName="Sensable"))
-    newOmniDriver = ET.Element("NewOmniDriver",name="Omni Driver",deviceName=o.get('deviceName',''),listening="true",tags="Omni", permanent="true", printLog="1")
+    newOmniDriver = ET.Element("NewOmniDriver",name="Omni Driver",deviceName=o.get('deviceName',''),listening="true",tags="Omni", permanent="true")
     newOmniDriver.set("forceScale", (o.get('forceScale')))
     newOmniDriver.set("scale", (o.get('scale')))
     t.append(newOmniDriver)
@@ -519,7 +519,7 @@ def exportCM(o,opt):
 def exportCloth(o, opt):
     name=fixName(o.name)
     t = ET.Element("Node",name=name)
-    t.append(ET.Element("EulerImplicitSolver", printLog="0"))
+    t.append(ET.Element("EulerImplicitSolver"))
     t.append(ET.Element("CGLinearSolver", template="GraphScattered", iterations="25",  tolerance="1e-009",  threshold="1e-009"))
     
     t.append(exportTopologyContainer(o,opt))
@@ -551,7 +551,6 @@ def exportCloth(o, opt):
     ogl = ET.Element("OglModel", name= name + '-visual');
     addMaterial(o.data, ogl);
     t.append(ogl)
-    
 
     t.append(ET.Element("IdentityMapping",template="Vec3d,ExtVec3f",input="@MO",output='@' + name + "-visual"))
     return t
@@ -574,19 +573,26 @@ def verticesInsideSphere(o, m, s):
     return vindex
     
 def matchVertices(o1, o2, s, opt):
-    m1 = o1.to_mesh(opt.scene, True, 'PREVIEW')
-    m2 = o2.to_mesh(opt.scene, True, 'PREVIEW')
-    v1 = verticesInsideSphere(o1, m1, s)
-    v2 = verticesInsideSphere(o2, m2, s)
-    #print(list(o1.data.vertices))
+    afm = s.get('alwaysMatchFor')
+    
+    o = [o1, o2]
+    m = [o1.to_mesh(opt.scene, True, 'PREVIEW'), o2.to_mesh(opt.scene, True, 'PREVIEW')]
+    v = [verticesInsideSphere(o1, m[0], s), verticesInsideSphere(o2, m[1], s)]
+    
+    sph = s.copy()
+    while (afm and len(v[afm-1]) == 0):
+        sph.scale = sph.scale*2.0
+        v[afm-1] = verticesInsideSphere(o[afm-1], m[afm-1], sph)
+    #TODO: DELETE sph!
+
     v3 = []   
-    for i in v1:
+    for i in v[0]:
         mindist = 1E+38
         minindex = -1
-        for j in v2:
+        for j in v[1]:
             #print(i)
             #print(j)
-            dist = (o1.matrix_world*m1.vertices[i].co - o2.matrix_world*m2.vertices[j].co).length
+            dist = (o1.matrix_world*m[0].vertices[i].co - o2.matrix_world*m[1].vertices[j].co).length
             if dist < mindist :
                 minindex = j
                 mindist = dist
@@ -601,16 +607,6 @@ def exportAttachConstraint(o, o1, o2, opt):
         ]
     ff = ET.Element("StiffSpringForceField", object1='@' + fixName(o1.name), object2='@' + fixName(o2.name), 
                     spring = ' '.join(springs))  
-
-    return ff
-    
-def exportConnectiveTissue(o, o1, o2, opt):
-    stiffness = o.get('stiffness', 500)
-    # springs = [
-        # vector_to_string([i, j, stiffness, .1, d]) for (i,j,d) in matchVertices(o1,o2,o, opt)
-        # ]
-    # ff = ET.Element("StiffSpringForceField", object1=fixName(o1.name), object2=fixName(o2.name), 
-                    # spring = ' '.join(springs))  
 
     return ff
     
@@ -847,19 +843,6 @@ def exportConstraints(opt, o):
             else:
                 return None
     return None
-    
-def exportConnective(opt, o):
-    if not o.hide_render and o.parent == None:
-        annotated_type = o.get('annotated_type')
-        name = fixName(o.name)
-        if  has_modifier(o,'CONNECTIVETISSUE') or annotated_type == 'CONNECTIVETISSUE':
-            if (isinstance(o.get('object1'),str) and isinstance(o.get('object2'),str)):
-                o1 = bpy.data.objects[o.get('object1')]
-                o2 = bpy.data.objects[o.get('object2')]
-                return exportConnectiveTissue(o, o1, o2, opt)
-            else:
-                return None
-    return None
 
 
 def exportScene(opt):
@@ -889,7 +872,7 @@ def exportScene(opt):
         lcp.set("mu",1e-6)
     root.append(lcp)
     
-    root.append(ET.fromstring('<FreeMotionAnimationLoop printLog = "0"/>'))
+    root.append(ET.Element('FreeMotionAnimationLoop'))
  
     root.append(ET.Element("CollisionPipeline", depth="6"))
     root.append(ET.Element("BruteForceDetection"))
@@ -904,7 +887,7 @@ def exportScene(opt):
     root.append(ET.Element("CollisionGroup"))
 
     #root.append(ET.Element("DefaultContactManager"))    
-    root.append(ET.fromstring('<CollisionResponse name="Response" response="FrictionContact"  printLog="1"/>'))
+    root.append(ET.fromstring('<CollisionResponse name="Response" response="FrictionContact"/>'))
      
     hasHaptic = False;
       
@@ -953,16 +936,6 @@ def exportScene(opt):
             if separate:
               t = exportSeparateFile(opt, t, name)
             solverNode.append(t)
-                
-    for o in l:
-        t = exportConnective(opt, o)
-        name = fixName(o.name)
-        if (t != None):
-            if (separate):
-                writeNodesToFile(t, os.path.join(dir, name+ ".xml"), opt)
-                solverNode.append(ET.Element("include", href=name+".xml"))
-            else:
-                solverNode.append(t)
     
     root.append(solverNode)
     return root    
@@ -1102,7 +1075,6 @@ def register():
     export2sofa.io_msh.register()
     export2sofa.ui.register()
     export2sofa.conn_tiss.register()
-    
 
     bpy.utils.register_class(ExportToSofa)
     bpy.types.INFO_MT_file_export.append(menu_func_export)
@@ -1132,8 +1104,8 @@ def unregister():
     bpy.utils.unregister_class(RunSofaOperator)
 
     export2sofa.io_msh.unregister()
-    export2sofa.ui.unregister()    
-    export2sofa.conn_tiss.unregister()
+    export2sofa.ui.unregister() 
+    export2sofa.conn_tiss.unregister()    
     
 if __name__ == "__main__":
     register()
