@@ -26,7 +26,7 @@ OBJECT_LIST = [
   'SOFT_BODY', 'VOLUMETRIC', 'THICKSHELL', 'THICKCURVE',
   'CLOTH', 'COLLISION', 'RIGID',
   'HAPTIC', 'HAPTICPART',
-  'SPHERECONSTRAINT', 'ATTACHCONSTRAINT',
+  'SPHERECONSTRAINT', 'ATTACHCONSTRAINT'
   ]
 
 
@@ -75,9 +75,7 @@ class SofaPropertyPanel(bpy.types.Panel):
                 (t,i,p) = OBJECT_MAP[n]
                 if(antype == n):
                     c.operator("tips.setannotatedtype", text=t, icon='X').kind = n
-                
                 else:
-
                     c.operator("tips.setannotatedtype", text=t, icon=i).kind = n
             
             if antype != None:

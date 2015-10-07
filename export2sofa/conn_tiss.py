@@ -57,7 +57,6 @@ def construct(context,options):
     context.scene.objects.active = plane_top
     bpy.ops.object.modifier_add(type='SHRINKWRAP')
     context.object.modifiers["Shrinkwrap"].use_keep_above_surface = True
-    #context.object.modifiers["Shrinkwrap"].target = bpy.data.objects["adrenal gland"]   # later replaced by "o1"
     context.object.modifiers["Shrinkwrap"].target = o1
     bpy.ops.object.modifier_apply(apply_as='DATA', modifier="Shrinkwrap")
 
@@ -65,7 +64,6 @@ def construct(context,options):
     context.scene.objects.active = plane_bot
     bpy.ops.object.modifier_add(type='SHRINKWRAP')
     context.object.modifiers["Shrinkwrap"].use_keep_above_surface = True
-    #context.object.modifiers["Shrinkwrap"].target = bpy.data.objects["kidney_hollow"]   # later replaced by "o2"
     context.object.modifiers["Shrinkwrap"].target = o2
     bpy.ops.object.modifier_apply(apply_as='DATA', modifier="Shrinkwrap")
 
@@ -78,6 +76,8 @@ def construct(context,options):
         plane_mid.data.vertices[i].co = (plane_top.data.vertices[i].co + plane_bot.data.vertices[i].co)/2
     
     ctac_parent = bpy.data.objects.new("ConnTissAttConstr", None)
+    ctac_parent['annotated_type'] = 'ATTACHCONSTRAINTGROUP'
+    ctac_parent.hide = True
     context.scene.objects.link(ctac_parent)
     
     #-- create attach constraints
@@ -95,7 +95,7 @@ def construct(context,options):
             sph_top = context.selected_objects[0]
             sph_top.scale = ((maxradius_top*0.99),(maxradius_top*0.99),(maxradius_top*0.99))
             sph_top.hide = True
-            #sph_top.parent = ctac_parent
+            sph_top.parent = ctac_parent
             sph_top['annotated_type'] = 'ATTACHCONSTRAINT'
             sph_top['object1'] = ct.name
             sph_top['object2'] = o1.name#"adrenal gland"
@@ -105,7 +105,7 @@ def construct(context,options):
             sph_bot = context.selected_objects[0]
             sph_bot.scale = ((maxradius_bot*0.99),(maxradius_bot*0.99),(maxradius_bot*0.99))
             sph_bot.hide = True
-            #sph_bot.parent = ctac_parent
+            sph_bot.parent = ctac_parent
             sph_bot['annotated_type'] = 'ATTACHCONSTRAINT'
             sph_bot['object1'] = ct.name
             sph_bot['object2'] = o2.name#"kidney_hollow"

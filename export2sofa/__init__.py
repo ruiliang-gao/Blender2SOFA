@@ -832,17 +832,22 @@ def exportObject(opt, o):
 
 
 def exportConstraints(opt, o):
+    result = []
     if not o.hide_render and o.parent == None:
         annotated_type = o.get('annotated_type')
-        name = fixName(o.name)
+        o_list = []
         if  has_modifier(o,'ATTACHCONSTRAINT') or annotated_type == 'ATTACHCONSTRAINT':
+            o_list.append(o)       
+        elif  has_modifier(o,'ATTACHCONSTRAINTGROUP') or annotated_type == 'ATTACHCONSTRAINTGROUP':
+            o_list = o.children
+
+        for o in o_list:
             if (isinstance(o.get('object1'),str) and isinstance(o.get('object2'),str)):
                 o1 = bpy.data.objects[o.get('object1')]
                 o2 = bpy.data.objects[o.get('object2')]
-                return exportAttachConstraint(o, o1, o2, opt)
-            else:
-                return None
-    return None
+                result.append(exportAttachConstraint(o, o1, o2, opt)) 
+                
+    return result
 
 
 def exportScene(opt):
@@ -929,10 +934,9 @@ def exportScene(opt):
                 solverNode.append(t)
 
     for o in l:
-        t = exportConstraints(opt, o)
+        t_list = exportConstraints(opt, o)
         name = fixName(o.name)
-        annotated_type = o.get('annotated_type')
-        if (t != None):
+        for t in t_list:
             if separate:
               t = exportSeparateFile(opt, t, name)
             solverNode.append(t)
