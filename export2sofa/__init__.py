@@ -573,16 +573,16 @@ def verticesInsideSphere(o, m, s):
     return vindex
     
 def matchVertices(o1, o2, s, opt):
-    afm = s.get('alwaysMatchFor')
+    amf = s.get('alwaysMatchFor')
     
     o = [o1, o2]
     m = [o1.to_mesh(opt.scene, True, 'PREVIEW'), o2.to_mesh(opt.scene, True, 'PREVIEW')]
     v = [verticesInsideSphere(o1, m[0], s), verticesInsideSphere(o2, m[1], s)]
     
     sph = s.copy()
-    while (afm and len(v[afm-1]) == 0):
+    while (amf and len(v[amf-1]) == 0):
         sph.scale = sph.scale*2.0
-        v[afm-1] = verticesInsideSphere(o[afm-1], m[afm-1], sph)
+        v[amf-1] = verticesInsideSphere(o[amf-1], m[amf-1], sph)
     #TODO: DELETE sph!
 
     v3 = []   
@@ -832,17 +832,22 @@ def exportObject(opt, o):
 
 
 def exportConstraints(opt, o):
+    result = []
     if not o.hide_render and o.parent == None:
         annotated_type = o.get('annotated_type')
-        name = fixName(o.name)
+        o_list = []
         if  has_modifier(o,'ATTACHCONSTRAINT') or annotated_type == 'ATTACHCONSTRAINT':
+            o_list.append(o)       
+        elif  has_modifier(o,'ATTACHCONSTRAINTGROUP') or annotated_type == 'ATTACHCONSTRAINTGROUP':
+            o_list = o.children
+
+        for o in o_list:
             if (isinstance(o.get('object1'),str) and isinstance(o.get('object2'),str)):
                 o1 = bpy.data.objects[o.get('object1')]
                 o2 = bpy.data.objects[o.get('object2')]
-                return exportAttachConstraint(o, o1, o2, opt)
-            else:
-                return None
-    return None
+                result.append(exportAttachConstraint(o, o1, o2, opt)) 
+                
+    return result
 
 
 def exportScene(opt):
@@ -929,10 +934,9 @@ def exportScene(opt):
                 solverNode.append(t)
 
     for o in l:
-        t = exportConstraints(opt, o)
+        t_list = exportConstraints(opt, o)
         name = fixName(o.name)
-        annotated_type = o.get('annotated_type')
-        if (t != None):
+        for t in t_list:
             if separate:
               t = exportSeparateFile(opt, t, name)
             solverNode.append(t)

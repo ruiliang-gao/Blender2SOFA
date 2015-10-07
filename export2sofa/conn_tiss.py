@@ -7,6 +7,7 @@ class ConnectiveTissue(bpy.types.Operator):
     bl_idname = "mesh.construct_con_tissue"
     bl_label = "Construct Connective Tissue"
     bl_options = { 'UNDO' }
+    bl_description = "Works with SQUARE Grid meshes, appropriately placed between 2 objects as to avoid shrinkwrap wraparounds (overlapping vertices/degenerate tetra/hexahedra)"
 
     object1 = bpy.props.StringProperty(name = "Object 1", description = "Choose Object 1 here")   
     object2 = bpy.props.StringProperty(name = "Object 2", description = "Choose Object 2 here")  
@@ -33,25 +34,27 @@ class ConnectiveTissue(bpy.types.Operator):
 
 def construct(context,options):
 
-    #bpy.ops.object.mode_set(mode = 'OBJECT')
-    #bpy.ops.object.select_all(action='DESELECT')
-
-    #plane_top = bpy.data.objects['Grid.001'] # later replaced by "o"
-    #plane_top.select = True
-    
-    o1 = bpy.data.objects[options.object1]
+    o1 = bpy.data.objects[options.object1]  # cache the objects as dictionary indexing will change
     o2 = bpy.data.objects[options.object2]
     
+    bpy.ops.object.transform_apply(location=True, rotation=True, scale=True)
     plane_top = context.selected_objects[0]
     bpy.ops.object.duplicate()
     plane_bot = context.selected_objects[0]
 
+    # create connective tissue object (mesh to be filled in later)
+    bpy.ops.object.add(type='MESH')
+    bpy.ops.object.transform_apply(location=True, rotation=True, scale=True)
+    ct = bpy.context.object
+    ct.name = 'ConnectiveTissue'
+    ct['annotated_type'] = 'VOLUMETRIC'
+    ct['carvable'] = 1
+    bpy.ops.object.select_all(action='DESELECT')
+    
     # shrinkwrap object 1
     context.scene.objects.active = plane_top
     bpy.ops.object.modifier_add(type='SHRINKWRAP')
     context.object.modifiers["Shrinkwrap"].use_keep_above_surface = True
-    print(o1)
-    #context.object.modifiers["Shrinkwrap"].target = bpy.data.objects["adrenal gland"]   # later replaced by "o1"
     context.object.modifiers["Shrinkwrap"].target = o1
     bpy.ops.object.modifier_apply(apply_as='DATA', modifier="Shrinkwrap")
 
@@ -59,17 +62,21 @@ def construct(context,options):
     context.scene.objects.active = plane_bot
     bpy.ops.object.modifier_add(type='SHRINKWRAP')
     context.object.modifiers["Shrinkwrap"].use_keep_above_surface = True
-    print(o2)
-    #context.object.modifiers["Shrinkwrap"].target = bpy.data.objects["kidney_hollow"]   # later replaced by "o2"
     context.object.modifiers["Shrinkwrap"].target = o2
     bpy.ops.object.modifier_apply(apply_as='DATA', modifier="Shrinkwrap")
 
   #------ create connective tissue
     #-- create mid plane as average of top and bottom
+    plane_bot.select = True
     bpy.ops.object.duplicate()
     plane_mid = context.selected_objects[0]
     for i in range(len(plane_top.data.vertices)):
         plane_mid.data.vertices[i].co = (plane_top.data.vertices[i].co + plane_bot.data.vertices[i].co)/2
+    
+    ctac_parent = bpy.data.objects.new("ConnTissAttConstr", None)
+    ctac_parent['annotated_type'] = 'ATTACHCONSTRAINTGROUP'
+    ctac_parent.hide = True
+    context.scene.objects.link(ctac_parent)
     
     #-- create attach constraints
     num_vert = int(math.sqrt(len(plane_top.data.vertices)))
@@ -81,21 +88,24 @@ def construct(context,options):
             pt_bot = plane_bot.data.vertices[i*num_vert + j].co
             maxradius_top = (pt_top-pt_mid).length
             maxradius_bot = (pt_mid-pt_bot).length
-            
-            #displ = Vector((0.0, 0.0, maxradius_top-maxradius_top*0.1))
+
             bpy.ops.mesh.primitive_ico_sphere_add(size=1.0, location=pt_top)
             sph_top = context.selected_objects[0]
             sph_top.scale = ((maxradius_top*0.99),(maxradius_top*0.99),(maxradius_top*0.99))
+            sph_top.hide = True
+            sph_top.parent = ctac_parent
             sph_top['annotated_type'] = 'ATTACHCONSTRAINT'
-            sph_top['object1'] = 'ConnectiveTissue'
+            sph_top['object1'] = ct.name
             sph_top['object2'] = o1.name#"adrenal gland"
             sph_top['alwaysMatchFor'] = 2   # expand search space (sphere radius) for object 2 until vertex is found 
             
             bpy.ops.mesh.primitive_ico_sphere_add(size=1.0, location=pt_bot)
             sph_bot = context.selected_objects[0]
             sph_bot.scale = ((maxradius_bot*0.99),(maxradius_bot*0.99),(maxradius_bot*0.99))
+            sph_bot.hide = True
+            sph_bot.parent = ctac_parent
             sph_bot['annotated_type'] = 'ATTACHCONSTRAINT'
-            sph_bot['object1'] = 'ConnectiveTissue'
+            sph_bot['object1'] = ct.name
             sph_bot['object2'] = o2.name#"kidney_hollow"
             sph_bot['alwaysMatchFor'] = 2  
     
@@ -124,10 +134,7 @@ def construct(context,options):
         createTets(M, (mid_quad, top_quad),i+1)
     
     make_outer_surface(M)
-    ct = bpy.data.objects.new("ConnectiveTissue", M)
-    ct['annotated_type'] = 'VOLUMETRIC'
-    ct['carvable'] = 1
-    context.scene.objects.link(ct)
+    ct.data = M
     
     bpy.ops.object.select_all(action='DESELECT')
     three_planes.select = True
