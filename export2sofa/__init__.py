@@ -573,16 +573,16 @@ def verticesInsideSphere(o, m, s):
     return vindex
     
 def matchVertices(o1, o2, s, opt):
-    afm = s.get('alwaysMatchFor')
+    amf = s.get('alwaysMatchFor')
     
     o = [o1, o2]
     m = [o1.to_mesh(opt.scene, True, 'PREVIEW'), o2.to_mesh(opt.scene, True, 'PREVIEW')]
     v = [verticesInsideSphere(o1, m[0], s), verticesInsideSphere(o2, m[1], s)]
     
     sph = s.copy()
-    while (afm and len(v[afm-1]) == 0):
+    while (amf and len(v[amf-1]) == 0):
         sph.scale = sph.scale*2.0
-        v[afm-1] = verticesInsideSphere(o[afm-1], m[afm-1], sph)
+        v[amf-1] = verticesInsideSphere(o[amf-1], m[amf-1], sph)
     #TODO: DELETE sph!
 
     v3 = []   
