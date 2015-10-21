@@ -111,8 +111,8 @@ def createMechanicalObject(o):
     return t
 
 def addSolvers(t):
-    t.append(ET.Element("EulerImplicitSolver", vdamping = "0.0"))
-    t.append(ET.Element("CGLinearSolver",template="GraphScattered"))
+    t.append(ET.Element("EulerImplicitSolver", rayleighMass="0.1", rayleighStiffness="0.1"))
+    t.append(ET.Element("CGLinearSolver",iterations="25", tolerance="1.0e-9", threshold="1.0e-9"))
 
 def exportTetrahedralTopology(o, opt, name):
     if o.type == 'MESH' and hasattr(o.data,'tetrahedra') and len(o.data.tetrahedra) > 0:
@@ -154,10 +154,12 @@ def exportThickShellTopologies(o, opt, name):
     layerCount    = o.get('layerCount', 1)
     if layerCount < 1: raise TetException("Object '%s': Number of layers has to be a positive number" % o.name)
     V = len(m.vertices)
+    r = (layerCount+1)//2
+    rj = list(range(-r,r+1))
+    if (layerCount%2==1) : del rj[r]
     points =  empty([V * (layerCount+1),3])
     for i, v in enumerate(m.vertices):
-      for j in range(0, layerCount+1):
-        offset = j / layerCount - 0.5
+      for j, offset in enumerate(rj):
         vn = v.co + v.normal * offset * thickness
         points[i+V*j][0] = vn[0]
         points[i+V*j][1] = vn[1]
@@ -171,23 +173,16 @@ def exportThickShellTopologies(o, opt, name):
     hexahedra = empty([quadCount * layerCount, 8], dtype=int)
     for i, f in enumerate(quads):
       for l in range(0, layerCount):
-        for k in range(0, 2):
-            for j in range(0, 4):
-                hexahedra[l*quadCount+i][k * 4 + j] = f.vertices[j] + (l+k) * V 
+        hexahedra[l*quadCount+i] = [f.vertices[0]+l*V,f.vertices[1]+l*V,f.vertices[2]+l*V,f.vertices[3]+l*V,f.vertices[0]+(l+1)*V,f.vertices[1]+(l+1)*V,f.vertices[2]+(l+1)*V,f.vertices[3]+(l+1)*V]
 
     # first one is inner, second one is outer shell
     shell = [ empty([quadCount*2, 3], dtype=int), empty([quadCount*2, 3], dtype=int) ]
-    double_tri_to_quad = [ 0, 1, 2, 2, 3, 0 ]
-   
+    
     for i, f in enumerate(quads):
-      for k in range(0, 2):
-        for l in range(0, 2):
-          for j in range(0, 3):
-            # jj has to be the inverse direction of j for inner
-            # because the inner surface has the opposite winding order
-            # compared to outer
-            jj = (3 - (1-k*2) * j) % 3
-            shell[k][i*2+l][jj] = f.vertices[double_tri_to_quad[l*3+j]]
+      shell[1][i*2] = [f.vertices[0],f.vertices[1],f.vertices[2]]
+      shell[1][i*2+1] = [f.vertices[0],f.vertices[2],f.vertices[3]]
+      shell[0][i*2] = [f.vertices[0],f.vertices[2],f.vertices[1]]
+      shell[0][i*2+1] = [f.vertices[0],f.vertices[3],f.vertices[2]]
     
     oshell = ET.Element('MeshTopology', name = name + "-outer", triangles = shell[1], points = points[V*layerCount:V*(layerCount+1), ...])
     ishell = ET.Element('MeshTopology', name = name + "-inner", triangles = shell[0], points = points[0:V, ...])
@@ -219,7 +214,7 @@ def exportThickQuadShell(o, opt):
     h = ET.Element("HexahedronFEMForceField",template="Vec3d", method="large")
     generateYoungModulus(o,h)
     generatePoissonRatio(o,h)
-    h.set("rayleighStiffness", (o.get('rayleighStiffness')))
+    #h.set("rayleighStiffness", (o.get('rayleighStiffness')))
     t.append(h)
     
     if o.get('precomputeConstraints') == True:
@@ -233,11 +228,13 @@ def exportThickQuadShell(o, opt):
     for i, tp in enumerate([ oshell, ishell ]):
       n = ET.Element('Node', name= 'Collision %d' % i )
       n.append(tp)
+      n.append(ET.Element('TriangleSetTopologyContainer', src = "@" + tp.get('name')))
+      n.append(ET.Element('EdgeSetTopologyModifier'))
       moc = createMechanicalObject(o)
       moc.set('name', 'MOC')
       n.append(moc)
       n.extend(collisionModelParts(o, group = i + 1, bothSide = 1))
-      n.append(ET.Element("BarycentricMapping",input="@../MO",output="@MOC"))
+      n.append(ET.Element("BarycentricMapping",object1="../MO",object2="MOC"))
       t.append(n)
     
     v = ET.Element('Node', name="Visual")
@@ -771,12 +768,13 @@ def exportCurveTopology(o, opt):
     return geometryNode(opt, t)    
 
 def exportThickCurve(o, opt):
-    thickness = o.get('thickness', 0.1)
+
+    thickness = o.get('thickness', 0.3)
     t = ET.Element("Node", name = fixName(o.name))
     t.append(exportCurveTopology(o, opt))
     t.append(createMechanicalObject(o))
-    t.append(ET.Element("Line", proximity = thickness))
-    t.append(ET.Element("Point", proximity = thickness))
+    t.append(ET.Element("Line", proximity = thickness, moving="0", simulated="0"))
+    t.append(ET.Element("Point", proximity = thickness, moving="0", simulated="0"))
     return t;
     
 def has_modifier(o,name_of_modifier):
@@ -871,7 +869,7 @@ def exportScene(opt):
                 root.append(ET.Element("include", href=i))
              
     lcp = ET.Element("LCPConstraintSolver", tolerance="1e-3", maxIt = "1000")
-    if scene.get('mu') != None :
+    if scene.get('mu') < 1e-6 :
         lcp.set("mu",(scene.get('mu')))
     else:
         lcp.set("mu",1e-6)
@@ -919,7 +917,7 @@ def exportScene(opt):
     
     if (hasHaptic):
         root.append(ET.Element("RequiredPlugin", pluginName="SofaSuturing"))
-        root.append(ET.Element("SuturingManager", attachStiffness="1e12", sutureKey="["))
+        root.append(ET.Element("SuturingManager", printLog="1", graspStiffness = "1e12", attachStiffness="1e12", sutureStiffness = "1e12", grasp_force_scale = "0.0", sutureKey="["))
     
     for o in l: 
         t = exportObject(opt, o)
