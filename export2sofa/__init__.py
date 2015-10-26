@@ -452,7 +452,7 @@ def exportEmptyHaptic(o,opt):
             pm = ET.Element("TPointModel",
                                  template="Vec3d",  
                                  contactStiffness="0.01", bothSide="true",
-                                 group="0"
+                                 group= o.get('collisionGroup')
                                  )
     
             toolFunction = o.get('toolFunction', 'Grasp');
