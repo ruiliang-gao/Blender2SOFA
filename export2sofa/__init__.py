@@ -418,6 +418,8 @@ def exportHaptic(o, opt):
     t.append(c)  
     return t
 
+# Export a Haptic object from an type 'empty' Blender object
+# that has haptic parts in its hierarchy
 def exportEmptyHaptic(o,opt):
     n = fixName(o.name)
     t = ET.Element("Node", name = n)
@@ -454,8 +456,8 @@ def exportEmptyHaptic(o,opt):
             child.append(mo)
             pm = ET.Element("TPointModel",
                                  template="Vec3d",  
-                                 contactStiffness="0.01", bothSide="true",
-                                 group="0"
+                                 contactStiffness="0.01", bothSide="true", proximity = o.get('proximity', 0.1),
+                                 group= o.get('group', 0)
                                  )
     
             toolFunction = o.get('toolFunction', 'Grasp');
