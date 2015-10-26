@@ -46,7 +46,7 @@ def construct(context,options):
     bpy.ops.object.add(type='MESH')
     bpy.ops.object.transform_apply(location=True, rotation=True, scale=True)
     ct = bpy.context.object
-    ct.name = 'ConnectiveTissue'
+    #ct.name = 'ConnectiveTissue'
     ct['annotated_type'] = 'VOLUMETRIC'
     ct['carvable'] = 1
     bpy.ops.object.select_all(action='DESELECT')
