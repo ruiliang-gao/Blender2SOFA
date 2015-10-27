@@ -428,7 +428,7 @@ def exportEmptyHaptic(o,opt):
                          tags= omniTag, scale = (o.get("scale", 300)),
                          permanent="true", listening="true", alignOmniWithCamera="true",
                          forceScale = (o.get("forceScale", 0.01))));
-    rl.append(ET.Element("MechanicalObject", name="ToolRealPosition", tags=omniTag, template="Rigid"))
+    rl.append(ET.Element("MechanicalObject", name="ToolRealPosition", tags=omniTag, template="Rigid", position="0 0 0 0 0 0 1",free_position="0 0 0 0 0 0 1"))
     nt = ET.Element("Node",name = "Tool");
     nt.append(ET.Element("MechanicalObject", template="Rigid", name="RealPosition"))
     nt.append(ET.Element("SubsetMapping", indices="0"));
@@ -439,14 +439,15 @@ def exportEmptyHaptic(o,opt):
     isn = ET.Element("Node",name = "Instrument"+n);
     isn.append(ET.Element("EulerImplicit", name="cg odesolver",rayleighStiffness="0.01",rayleighMass="1"));
     isn.append(ET.Element("CGLinearSolver", iterations="100",name="linear solver", threshold="1e-20", tolerance="1e-20"));
-    isn.append(ET.Element("MechanicalObject", name = "instrumentState", template="Rigid3d", position="0 0 0 0 0 0 1 0 0 0 0 0 0 1 0 0 0 0 0 0 1"))
+    isn.append(ET.Element("MechanicalObject", name = "instrumentState", template="Rigid3d", position="0 0 0 0 0 0 1 0 0 0 0 0 0 1 0 0 0 0 0 0 1", free_position="0 0 0 0 0 0 1 0 0 0 0 0 0 1 0 0 0 0 0 0 1" ))
     isn.append(ET.Element("UniformMass", template = "Rigid3d", name="mass", totalmass="0.1"))
     isn.append(ET.Element("LCPForceFeedback", activate=(o.get('forceFeedback',"true")), tags=omniTag, forceCoef="1.0"))
            
     for i in o.children:
-        if(i.get('index', 0) == 0): 
+        if(i.name.startswith("Collision") or i.get('index') == 0): 
             child = ET.Element("Node", name= fixName(i.name) + "__CM")
             mo = createMechanicalObject(i)
+
             mo.set('name', 'CM');
             child.append(mo)
             pm = ET.Element("TPointModel",
@@ -459,7 +460,7 @@ def exportEmptyHaptic(o,opt):
             if toolFunction == 'Carve': pm.set('tags', 'CarvingTool')
             elif toolFunction == 'Suture': pm.set('tags', 'SuturingTool')
             child.append(pm)
-            child.append(ET.Element("RigidMapping", input="@../instrumentState",output="@CM",index="0"))
+            child.append(ET.Element("RigidMapping", input="@../instrumentState",output="@CM",index=i.get('index', 0)))
             isn.append(child)
     
     #Children start here
@@ -728,11 +729,15 @@ def exportVisual(o, opt, name = None,with_transform = True):
         t.set("rotation", (rotation_to_XYZ_euler(o)))
         t.set("scale3d", (o.scale))
 
-    position = array('d')
-    for v in m.vertices:
-        position.extend(v.co)
+    position = empty([len(m.vertices),3],dtype=float)
+    for i,v in enumerate(m.vertices):
+        position[i] = v.co
+
     t.set("position", position)
-    normal   = [ v.normal for v in m.vertices]
+    normal   = empty([len(m.vertices),3],dtype=float)
+    for i,v in enumerate(m.vertices):
+        normal[i] = v.normal
+
     t.set("normal", normal)
 
     triangles = [ (f.vertices) for f in m.polygons if len(f.vertices) == 3 ]
