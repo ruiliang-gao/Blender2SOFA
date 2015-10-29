@@ -287,8 +287,8 @@ def exportVolumetric(o, opt):
 
         n.append(ET.Element('Tetra2TriangleTopologicalMapping', object1="../../"+topotetra, object2="topotri", flipNormals='1'))
 
-        ogl = ET.Element("OglModel", name="Visual", genTex3d = "1");
-        addMaterial(o.data, ogl);
+        ogl = ET.Element("OglModel", name="Visual");
+        addMaterial(o, ogl);
         n.append(ogl)
         n.append(ET.Element("IdentityMapping",object1="../MO",object2="Visual"))
         n.extend(collisionModelParts(o))
@@ -549,7 +549,7 @@ def exportCloth(o, opt):
     t.append(ET.fromstring('<UncoupledConstraintCorrection compliance="0.001   0.00003 0 0   0.00003 0   0.00003" />'))
     
     ogl = ET.Element("OglModel", name= name + '-visual');
-    addMaterial(o.data, ogl);
+    addMaterial(o, ogl);
     t.append(ogl)
 
     t.append(ET.Element("IdentityMapping",template="Vec3d,ExtVec3f",input="@MO",output='@' + name + "-visual"))
@@ -699,7 +699,8 @@ def exportTopology(o,opt):
 def fixName(name):
     return name.replace(".","_")    
 
-def addMaterial(m, t):
+def addMaterial(o, t):
+    m = o.data
     if len(m.materials) >= 1 :
         mat = m.materials[0]
         
@@ -719,7 +720,9 @@ def addMaterial(m, t):
             if tex.type == 'IMAGE' :
                 t.set("texturename", bpy.path.abspath(tex.image.filepath))
                 t.set("material","")
-
+    if o.get('3dtexture','') != '':
+        t.set("texturename", o.get('3dtexture'))
+        t.set("genTex3d", '1')
     
 def exportVisual(o, opt, name = None,with_transform = True):
 
@@ -755,7 +758,7 @@ def exportVisual(o, opt, name = None,with_transform = True):
         texcoords = [ (uvl[mapping[i]].uv) for i in range(0,len(m.vertices))]
         t.set("texcoords", (texcoords))
 
-    addMaterial(m, t);
+    addMaterial(o, t);
     return geometryNode(opt, t)
     
 def exportCurveTopology(o, opt):
