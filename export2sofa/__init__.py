@@ -439,7 +439,7 @@ def exportEmptyHaptic(o,opt):
     isn = ET.Element("Node",name = "Instrument"+n);
     isn.append(ET.Element("EulerImplicit", name="cg odesolver",rayleighStiffness="0.01",rayleighMass="1"));
     isn.append(ET.Element("CGLinearSolver", iterations="100",name="linear solver", threshold="1e-20", tolerance="1e-20"));
-    isn.append(ET.Element("MechanicalObject", name = "instrumentState", template="Rigid3d", position="0 0 0 0 0 0 1 0 0 0 0 0 0 1 0 0 0 0 0 0 1", free_position="0 0 0 0 0 0 1 0 0 0 0 0 0 1 0 0 0 0 0 0 1" ))
+    isn.append(ET.Element("MechanicalObject", name = "instrumentState", template="Rigid3d", position="0 0 0 0 0 0 1 0 0 0 0 0 0 1 0 0 0 0 0 0 1 0 0 0 0 0 0 1", free_position="0 0 0 0 0 0 1 0 0 0 0 0 0 1 0 0 0 0 0 0 1 0 0 0 0 0 0 1" ))
     isn.append(ET.Element("UniformMass", template = "Rigid3d", name="mass", totalmass="0.1"))
     isn.append(ET.Element("LCPForceFeedback", activate=(o.get('forceFeedback',"true")), tags=omniTag, forceCoef="1.0"))
            
@@ -447,7 +447,11 @@ def exportEmptyHaptic(o,opt):
         if(i.name.startswith("Collision") or i.get('index') == 0): 
             child = ET.Element("Node", name= fixName(i.name) + "__CM")
             mo = createMechanicalObject(i)
-
+            #m = i.to_mesh(opt.scene, True, 'RENDER')
+            #position = empty([len(m.vertices),3],dtype=float)
+            #for i,v in enumerate(m.vertices):
+            #    position[i] = v.co
+            #mo.set('position', position)
             mo.set('name', 'CM');
             child.append(mo)
             pm = ET.Element("TPointModel",
@@ -469,7 +473,10 @@ def exportEmptyHaptic(o,opt):
         name = fixName(i.name)
         child =  ET.Element("Node", name = fixName(i.name))
         child.append(exportVisual(i, opt, name = name + '-visual', with_transform = True))
-        child.append(ET.Element("RigidMapping", input="@../instrumentState", output="@"+name+"-visual", index=(i.get('index', 0))))
+        if i.get('index',0) == 0:
+            child.append(ET.Element("RigidMapping", input="@../instrumentState", output="@"+name+"-visual", index=3))
+        else:
+            child.append(ET.Element("RigidMapping", input="@../instrumentState", output="@"+name+"-visual", index= i.get('index')))
         isn.append(child)
     isn.append(ET.Element("RestShapeSpringsForceField", template="Rigid",stiffness="10000000",angularStiffness="2000000", external_rest_shape="../RigidLayer/ToolRealPosition", points = "0"))
     isn.append(ET.Element("UncoupledConstraintCorrection",compliance="0.001   0.00003 0 0   0.00003 0   0.00003"))   
