@@ -590,8 +590,8 @@ def matchVertices(o1, o2, s, opt):
     while (amf and len(v[amf-1]) == 0):
         sph.scale = sph.scale*2.0
         v[amf-1] = verticesInsideSphere(o[amf-1], m[amf-1], sph)
-    #TODO: DELETE sph!
-
+    bpy.data.objects.remove(sph)
+    
     v3 = []   
     for i in v[0]:
         mindist = 1E+38
