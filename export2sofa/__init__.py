@@ -318,12 +318,16 @@ def cwisemul(a, b):
 def addConstraints(o, t):
     for q in o.children:
       if not q.hide_render:
+        n = fixName(q.name)
         if q.name.startswith('BoxConstraint'):
             tl = q.matrix_world * Vector(q.bound_box[0])
             br = q.matrix_world * Vector(q.bound_box[6])
-            t.append(ET.Element("BoxConstraint",box=tl+br))
+            b = array('d')
+            b.extend(tl)
+            b.extend(br)
+            t.append(ET.Element("BoxROI",name=n,box=b))
+            t.append(ET.Element("FixedConstraint", indices="@%s.indices" % n))
         elif q.name.startswith('SphereConstraint'):
-            n = q.name.replace('.', '_')
             t.append(ET.Element("SphereROI",name=n,centers=(q.matrix_world.translation),radii=(max(cwisemul(q.parent.scale, q.scale)))))
             t.append(ET.Element("FixedConstraint", indices="@%s.indices" % n))
 
@@ -885,11 +889,7 @@ def exportScene(opt):
             if i.strip() != "":
                 root.append(ET.Element("include", href=i))
              
-    lcp = ET.Element("LCPConstraintSolver", tolerance="1e-3", maxIt = "1000")
-    if scene.get('mu') < 1e-6 :
-        lcp.set("mu",(scene.get('mu')))
-    else:
-        lcp.set("mu",1e-6)
+    lcp = ET.Element("LCPConstraintSolver", tolerance="1e-3", maxIt = "1000", mu = scene.get('mu', '1e-6'))
     root.append(lcp)
     
     root.append(ET.Element('FreeMotionAnimationLoop'))
