@@ -23,3 +23,4 @@ specify the name of your .SCN file
 To launch Sofa simulation directly from Blender, hit _F5_
 
 ## Supported functionality
+Tutorials and documentation are avaliable at http://www.cise.ufl.edu/~dxie/mastersproject/index.shtml
