@@ -57,7 +57,7 @@ def writeNode(out, n, level, parent = None, serial = 0):
             writeln(out, level, 'local root = sofa.simulation:newGraph({})'.format(name))
         else:
             var = "node{}".format(serial)
-            writeln(out,level, 'local {} = {}:createChild({})'.format(var, parent, name))
+            writeln(out,level, 'local {} = {}:newChild({})'.format(var, parent, name))
         for a in n.attrib:
             if a != 'name':
                 writeln(out,level,  '{}.{} = {}'.format(var, a, luarepr(n.get(a))))
