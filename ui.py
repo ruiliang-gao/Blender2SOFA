@@ -185,6 +185,3 @@ def unregister():
     bpy.utils.unregister_class(SetAnnotatedTypeButton)
     bpy.utils.unregister_class(SofaPropertyPanel)
     bpy.utils.unregister_class(MakeSofaSceneOperator)
-
-if __name__ == "__main__":
-    register()
