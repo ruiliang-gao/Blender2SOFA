@@ -53,7 +53,7 @@ def exportSeparateFile(opt, t, name):
   base = os.path.join(opt.directory, name)
   if opt.file_format == '.salua':
     r = ET.Element("require", href=name)
-    lua_export.writeSubTreeToLua(t, base + '.lua')
+    writeSubTreeToLua(t, base + '.lua')
   else:
     ext = '.xml'
     r = ET.Element("include", href=name + ext)
@@ -378,7 +378,7 @@ def exportInstrument(o, opt):
             mo = createMechanicalObject(i)
             mo.set('name', 'CM');
             child.append(mo)
-            pm = ET.Element("TPointModel",
+            pm = ET.Element("TPointModel", name = 'toolTip',
                                  template="Vec3d",  
                                  contactStiffness="0.01", bothSide="true", proximity = o.get('proximity', 0.1),
                                  group= o.get('collisionGroup')
@@ -391,6 +391,7 @@ def exportInstrument(o, opt):
               pm.set('tags', 'SuturingTool')
             child.append(pm)
             child.append(ET.Element("RigidMapping", input="@../../instrumentState",output="@CM",index= 0))
+            child.append(ET.Element("SuturingManager", toolModel = '@toolTip' , omniDriver = '@../../../RigidLayer/driver', graspStiffness = "1e12", attachStiffness="1e12", sutureStiffness = "1e12", grasp_force_scale = "0.0"))
             t.append(child)
             
             break
@@ -792,18 +793,17 @@ def exportHaptic(l, scene, opt):
     # Stuff at the root that are needed for a haptic scene 
     nodes.append(ET.Element("RequiredPlugin", pluginName="Sensable"))
     nodes.append(ET.Element("RequiredPlugin", pluginName="SofaSuturing"))
-    nodes.append(ET.Element("SuturingManager", printLog="1", graspStiffness = "1e12", attachStiffness="1e12", sutureStiffness = "1e12", grasp_force_scale = "0.0", sutureKey="["))
 
     # Prepare the instruments, they are included in each haptic
     for o in l:
-        if o.get("annotated_type") == 'INSTRUMENT':
+        if not o.hide_render and o.get("annotated_type") == 'INSTRUMENT':
             t = exportInstrument(o, opt)
             if opt.separate:
               t = exportSeparateFile(opt, t, o.name)
             instruments.append(t)
     
     for o in l:
-        if o.get("annotated_type") == 'HAPTIC':
+        if not o.hide_render and o.get("annotated_type") == 'HAPTIC':
             n = fixName(o.name)
             t = ET.Element("Node", name = n)
             omniTag = n + "__omni"
@@ -811,6 +811,7 @@ def exportHaptic(l, scene, opt):
             rl = ET.Element("Node", name="RigidLayer")
             
             rl.append(ET.Element("NewOmniDriver",
+                                 name = 'driver',
                                  deviceName = (o.get('deviceName',o.name)), 
                                  tags= omniTag, scale = (o.get("scale", 300)),
                                  permanent="true", listening="true", alignOmniWithCamera="true",
