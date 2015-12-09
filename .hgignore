@@ -1,20 +1,2 @@
 syntax: glob
-tetgen/tetgen
-*.dll
-*.o
-*.os
-*.dblite
-*.a
-*.so
 *.pyc
-*.swp
-tetgen\tetgen.pyproj
-tetgen\tetgen.exp
-tetgen\tetgen.sln
-x64
-*.sln
-*.sdf
-*.exp
-*.suo
-*.zip
-*.opensdf

@@ -18,7 +18,9 @@ OBJECT_MAP = {
     'VOLUMETRIC': ("Volumetic",'SNAP_VOLUME', { '3dtexture': '', 'selfCollision': False, 'precomputeConstraints' : False, 'carvable': False, 'youngModulus': 300 , 'poissonRatio':0.45, 'damping': 0.1, 'contactFriction': 0.01, 'contactStiffness':500, 'collisionGroup':1, 'suture': False} ), 
     'THICKSHELL': ("Thick Shell",'MOD_CLOTH', { 'selfCollision': False, 'precomputeConstraints' : False, 'youngModulus': 300 , 'poissonRatio':0.45, 'damping': 0.1, 'contactFriction': 0.01, 'contactStiffness':500, 'collisionGroup':1, 'thickness': 0.1 , 'suture': False, 'layerCount': 1 } ), 
     'HAPTIC':("Haptic",'SCULPTMODE_HLT', {'scale':300, 'forceScale': 0.1, 'forceFeedback' : False, 'toolFunction': 'Grasp', 'deviceName': '', 'collisionGroup':1}), 
-    'HAPTICPART': ("HapticPart",'OOPS',{'index':{'default':0,'min':0,'max':2,'step':1}}),
+    'INSTRUMENT':("Instrument", 'SCULPTMODE_HLT', { 'collisionGroup':1, 'function': 'suture' }), 
+    'INSTRUMENTPART': ("Instrument Part",'OOPS',{'index':{'default':3,'min':1,'max':3,'step':1}}),
+    'INSTRUMENTTIP': ("Instrument Tip",'OOPS',{}),
     'THICKCURVE': ("Thick Curve", 'ROOTCURVE', { 'thickness': 0.1 }),
     'RIGID':("Rigid",'MESH_ICOSPHERE', {'collisionGroup':1})
 }
@@ -26,7 +28,7 @@ OBJECT_MAP = {
 OBJECT_LIST = [ 
   'SOFT_BODY', 'VOLUMETRIC', 'THICKSHELL', 'THICKCURVE', 'CONNECTIVETISSUE',
   'CLOTH', 'COLLISION', 'RIGID',
-  'HAPTIC', 'HAPTICPART',
+  'HAPTIC',  'INSTRUMENT', 'INSTRUMENTPART', 'INSTRUMENTTIP',
   'SPHERECONSTRAINT', 'ATTACHCONSTRAINT'
   ]
 
@@ -184,6 +186,3 @@ def unregister():
     bpy.utils.unregister_class(SetAnnotatedTypeButton)
     bpy.utils.unregister_class(SofaPropertyPanel)
     bpy.utils.unregister_class(MakeSofaSceneOperator)
-
-if __name__ == "__main__":
-    register()

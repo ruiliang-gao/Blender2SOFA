@@ -283,7 +283,3 @@ def register():
     
 def unregister():
     bpy.utils.unregister_class(ConnectiveTissue)
-
-if __name__ == "__main__":
-    register()
-    #bpy.ops.mesh.construct_con_tissue()

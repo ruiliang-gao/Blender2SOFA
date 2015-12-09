@@ -187,7 +187,3 @@ def unregister():
     bpy.utils.unregister_class(ImportMSH)
     bpy.utils.unregister_class(TetrahedralMeshPanel)    
     bpy.utils.unregister_class(MeshTetrahedron)
-    
-if __name__ == "__main__":
-    register()
-        

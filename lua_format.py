@@ -54,16 +54,16 @@ def writeNode(out, n, level, parent = None, serial = 0):
     if n.tag == 'Node':
         if level == 0:
             var = 'root'
-            writeln(out, level, 'root = sofa.simulation:newGraph({})'.format(name))
+            writeln(out, level, 'local root = sofa.simulation:newGraph({})'.format(name))
         else:
             var = "node{}".format(serial)
-            writeln(out,level, '{} = {}:createChild({})'.format(var, parent, name))
+            writeln(out,level, 'local {} = {}:createChild({})'.format(var, parent, name))
         for a in n.attrib:
             if a != 'name':
                 writeln(out,level,  '{}.{} = {}'.format(var, a, luarepr(n.get(a))))
     elif n.tag == 'require':
         var = "{}{}".format(n.tag, serial)
-        writeln(out, level, '{} = require("{}")({})'.format(var, n.get('href'), parent))
+        writeln(out, level, 'require("{}")({})'.format(var, n.get('href'), parent))
     else:
         # Exporting an object
         var = "{}{}".format(n.tag, serial)
@@ -73,7 +73,7 @@ def writeNode(out, n, level, parent = None, serial = 0):
         for a in n.attrib:
             if isinstance(n.get(a), str):
                 string_attributes = string_attributes + ', {} = {}'.format(a,repr(n.get(a)))
-        writeln(out,level,'{} = {}:newObject{{ {} {} }}'.format(var, parent, repr(n.tag), string_attributes)) 
+        writeln(out,level,'local {} = {}:newObject{{ {} {} }}'.format(var, parent, repr(n.tag), string_attributes)) 
         
         # Non-string attributes must be set via __newindex
         for a in n.attrib:
@@ -82,14 +82,14 @@ def writeNode(out, n, level, parent = None, serial = 0):
 
     # Output the children of the node
     for c in n:
-        serial = writeNode(out, c, level+1, var, serial+1)
+        serial, v = writeNode(out, c, level+1, var, serial+1)
     
-    return serial
+    return serial, var
 
 def writeElementTreeToLua(root, filepath):
     out = open(filepath, "w")
 
-    writeln(out, 0, "-- SOFA SaLua scene --")
+    writeln(out, 0, "-- SOFA SaLua scene for {}:{}".format(node.tag,node.get('name', 'unnamed')))
     writeNode(out, root, 0)
     writeln(out, 0, "return root")
     out.close()
@@ -98,6 +98,7 @@ def writeSubTreeToLua(node, filepath):
     out = open(filepath, "w")
     writeln(out, 0, "-- SOFA SaLua subtree --")
     writeln(out, 0, "return function (parent)")
-    writeNode(out, node, 1, parent = 'parent')
+    serial, var = writeNode(out, node, 1, parent = 'parent')
+    writeln(out, 1, 'return {}'.format(var))
     writeln(out, 0, "end")
     out.close()
