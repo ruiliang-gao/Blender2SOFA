@@ -93,7 +93,7 @@ def createMechanicalObject(o):
 
 def addSolvers(t):
     t.append(ET.Element("EulerImplicitSolver", rayleighMass="0.1", rayleighStiffness="0.1"))
-    t.append(ET.Element("CGLinearSolver",iterations="25", tolerance="1.0e-9", threshold="1.0e-9"))
+    t.append(ET.Element("CGLinearSolver",iterations="20", tolerance="1.0e-10", threshold="1.0e-6"))
 
 def exportTetrahedralTopology(o, opt, name):
     if o.type == 'MESH' and hasattr(o.data,'tetrahedra') and len(o.data.tetrahedra) > 0:
@@ -206,16 +206,22 @@ def exportThickQuadShell(o, opt):
     
     addConstraints(o, t)
     
+    collisionGroup = int(o.get('collisionGroup', 1))
+    
     for i, tp in enumerate([ oshell, ishell ]):
-      n = ET.Element('Node', name= 'Collision %d' % i )
+      n = ET.Element('Node')
+      if i == 0:
+        n.set('name', 'Collision Outer')
+      else:
+        n.set('name', 'Collision Inner')
       n.append(tp)
       n.append(ET.Element('TriangleSetTopologyContainer', src = "@" + tp.get('name')))
       n.append(ET.Element('EdgeSetTopologyModifier'))
       moc = createMechanicalObject(o)
       moc.set('name', 'MOC')
       n.append(moc)
-      n.extend(collisionModelParts(o, group = i + 1, bothSide = 1))
-      n.append(ET.Element("BarycentricMapping",object1="../MO",object2="MOC"))
+      n.extend(collisionModelParts(o, group = collisionGroup + i, bothSide = 1))
+      n.append(ET.Element("BarycentricMapping",input="@../MO",output="@MOC"))
       t.append(n)
     
     v = ET.Element('Node', name="Visual")
@@ -371,7 +377,7 @@ def exportSoftBody(o, opt):
     
 def exportInstrument(o, opt):
     n = fixName(o.name)
-    t = ET.Element("Node", name = n)
+    t = ET.Element("Node", name = n, tags='instrument')
     for i in o.children:
         if i.get('annotated_type') == 'INSTRUMENTTIP': 
             child = ET.Element("Node", name= fixName(i.name) + "__CM")
@@ -450,8 +456,6 @@ def exportCM(o,opt):
 def exportCloth(o, opt):
     name=fixName(o.name)
     t = ET.Element("Node",name=name)
-    t.append(ET.Element("EulerImplicitSolver"))
-    t.append(ET.Element("CGLinearSolver", template="GraphScattered", iterations="25",  tolerance="1e-009",  threshold="1e-009"))
     
     t.append(exportTopologyContainer(o,opt))
     
@@ -793,6 +797,8 @@ def exportHaptic(l, scene, opt):
     # Stuff at the root that are needed for a haptic scene 
     nodes.append(ET.Element("RequiredPlugin", pluginName="Sensable"))
     nodes.append(ET.Element("RequiredPlugin", pluginName="SofaSuturing"))
+    nodes.append(ET.Element("RequiredPlugin", pluginName="SaLua"))
+    nodes.append(ET.Element("LuaController", source = "changeInstrumentController.lua", listening=1))
 
     # Prepare the instruments, they are included in each haptic
     for o in l:
@@ -805,7 +811,7 @@ def exportHaptic(l, scene, opt):
     for o in l:
         if not o.hide_render and o.get("annotated_type") == 'HAPTIC':
             n = fixName(o.name)
-            t = ET.Element("Node", name = n)
+            t = ET.Element("Node", name = n, tags='haptic')
             omniTag = n + "__omni"
             ## Omni driver wrapper
             rl = ET.Element("Node", name="RigidLayer")
@@ -825,8 +831,6 @@ def exportHaptic(l, scene, opt):
 
             # State of the tool
             isn = ET.Element("Node",name = "Instrument__"+n);
-            isn.append(ET.Element("EulerImplicit", name="cg odesolver",rayleighStiffness="0.01",rayleighMass="1"));
-            isn.append(ET.Element("CGLinearSolver", iterations="100",name="linear solver", threshold="1e-20", tolerance="1e-20"));
             isn.append(ET.Element("MechanicalObject", name = "instrumentState", template="Rigid3d", position="0 0 0 0 0 0 1 0 0 0 0 0 0 1 0 0 0 0 0 0 1 0 0 0 0 0 0 1", free_position="0 0 0 0 0 0 1 0 0 0 0 0 0 1 0 0 0 0 0 0 1 0 0 0 0 0 0 1" ))
             isn.append(ET.Element("UniformMass", template = "Rigid3d", name="mass", totalmass="0.1"))
             isn.append(ET.Element("LCPForceFeedback", activate=(o.get('forceFeedback',"true")), tags=omniTag, forceCoef="1.0"))
