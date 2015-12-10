@@ -886,8 +886,7 @@ def exportHaptic(l, scene, opt):
             n = fixName(o.name)
             t = ET.Element("Node", name = n, tags='haptic')
             omniTag = n + "__omni"
-            addSolvers(t)
-
+           
             ## Omni driver wrapper
             rl = ET.Element("Node", name="RigidLayer")
             
@@ -906,12 +905,13 @@ def exportHaptic(l, scene, opt):
 
             # State of the tool
             isn = ET.Element("Node",name = "Instrument__"+n);
+            addSolvers(isn)
             isn.append(ET.Element("MechanicalObject", name = "instrumentState", template="Rigid3d", position="0 0 0 0 0 0 1 0 0 0 0 0 0 1 0 0 0 0 0 0 1 0 0 0 0 0 0 1", free_position="0 0 0 0 0 0 1 0 0 0 0 0 0 1 0 0 0 0 0 0 1 0 0 0 0 0 0 1" ))
             isn.append(ET.Element("UniformMass", template = "Rigid3d", name="mass", totalmass="0.1"))
             isn.append(ET.Element("LCPForceFeedback", activate=(o.get('forceFeedback',"true")), tags=omniTag, forceCoef="1.0"))
             isn.extend(instruments)
             isn.append(ET.Element("RestShapeSpringsForceField", template="Rigid",stiffness="10000000",angularStiffness="2000000", external_rest_shape="../RigidLayer/ToolRealPosition", points = "0"))
-            isn.append(ET.Element("UncoupledConstraintCorrection"))   
+            isn.append(ET.Element("UncoupledConstraintCorrection", compliance = "0.001   0.00003 0 0   0.00003 0   0.00003"))   
             t.append(isn)
             
             hapticExists = True
