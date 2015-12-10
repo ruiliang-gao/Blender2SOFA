@@ -911,7 +911,7 @@ def exportHaptic(l, scene, opt):
             isn.append(ET.Element("LCPForceFeedback", activate=(o.get('forceFeedback',"true")), tags=omniTag, forceCoef="1.0"))
             isn.extend(instruments)
             isn.append(ET.Element("RestShapeSpringsForceField", template="Rigid",stiffness="10000000",angularStiffness="2000000", external_rest_shape="../RigidLayer/ToolRealPosition", points = "0"))
-            isn.append(ET.Element("UncoupledConstraintCorrection"))   
+            #isn.append(ET.Element("UncoupledConstraintCorrection"))   
             t.append(isn)
             
             hapticExists = True

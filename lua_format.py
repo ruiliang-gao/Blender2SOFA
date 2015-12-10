@@ -89,7 +89,7 @@ def writeNode(out, n, level, parent = None, serial = 0):
 def writeElementTreeToLua(root, filepath):
     out = open(filepath, "w")
 
-    writeln(out, 0, "-- SOFA SaLua scene for {}:{}".format(node.tag,node.get('name', 'unnamed')))
+    writeln(out, 0, "-- SOFA SaLua scene for {}:{}".format(root.tag,root.get('name', 'unnamed')))
     writeNode(out, root, 0)
     writeln(out, 0, "return root")
     out.close()
