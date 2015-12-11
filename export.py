@@ -135,9 +135,10 @@ def exportThickShellTopologies(o, opt, name):
     layerCount    = o.get('layerCount', 1)
     if layerCount < 1: raise ExportException("Object '%s': Number of layers has to be a positive number" % o.name)
     V = len(m.vertices)
-    r = (layerCount+1)//2
-    rj = list(range(-r,r+1))
-    if (layerCount%2==1) : del rj[r]
+    #r = (layerCount+1)//2
+    #rj = list(range(-r,r+1))
+    #if (layerCount%2==1) : del rj[r]
+    rj = list(range(-layerCount,1))
     points =  np.empty([V * (layerCount+1),3])
     for i, v in enumerate(m.vertices):
       for j, offset in enumerate(rj):
