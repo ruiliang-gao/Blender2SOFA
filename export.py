@@ -397,7 +397,7 @@ def exportInstrument(o, opt):
               pm.set('tags', 'SuturingTool')
             child.append(pm)
             child.append(ET.Element("RigidMapping", input="@../../instrumentState",output="@CM",index= 0))
-            child.append(ET.Element("SuturingManager", toolModel = '@toolTip' , omniDriver = '@../../../RigidLayer/driver', graspStiffness = "1e12", attachStiffness="1e12", sutureStiffness = "1e12", grasp_force_scale = "0.0"))
+            child.append(ET.Element("SuturingManager", toolModel = '@toolTip' , omniDriver = '@../../../RigidLayer/driver', graspStiffness = "1e6", attachStiffness="1e12", sutureStiffness = "1e6", grasp_force_scale = "0.0"))
             t.append(child)
             
             break
