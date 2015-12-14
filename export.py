@@ -382,6 +382,8 @@ def exportInstrument(o, opt):
     for i in o.children:
         if i.get('annotated_type') == 'INSTRUMENTTIP': 
             child = ET.Element("Node", name= fixName(i.name) + "__CM")
+            if i.type == 'MESH':
+                child.append(exportTopology(i, opt))
             mo = createMechanicalObject(i)
             mo.set('name', 'CM');
             child.append(mo)
