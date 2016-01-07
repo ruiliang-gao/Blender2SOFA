@@ -76,28 +76,63 @@ def construct(context,options):
     
     # re-mesh the grid with uniform quads
     print('remeshing ------------------')   
-    tol_corners = 1e-6    
+    tol_corners = 1e-6; tol_normal = 1e-16
     bpy.ops.object.origin_set(type='ORIGIN_GEOMETRY')     
     grid_center = plane_top.location   
     # - look for the 4 corners: maximum distance to center 
-    bpy.ops.mesh.primitive_uv_sphere_add(size=.2, location=grid_center)
-    nv = len(plane_top.data.vertices)
+    # bpy.ops.mesh.primitive_uv_sphere_add(size=.2, location=grid_center)
+    gdata = plane_top.data
+    nv = len(gdata.vertices)
     diagDis = -1; grid_corners = []   
     for i in range(nv):
-        bpy.ops.mesh.primitive_uv_sphere_add(size=.1, location=plane_top.matrix_world * plane_top.data.vertices[i].co)
-        tentativeDis = (plane_top.matrix_world * plane_top.data.vertices[i].co - grid_center).length
-        if tentativeDis >= diagDis: diagDis = tentativeDis; 
+        # bpy.ops.mesh.primitive_uv_sphere_add(size=.1, location=plane_top.matrix_world * gdata.vertices[i].co)
+        tDis = (plane_top.matrix_world * gdata.vertices[i].co - grid_center).length
+        if tDis >= diagDis: diagDis = tDis; 
     print(diagDis)
     for i in range(nv):
-        tentativeDis = (plane_top.matrix_world * plane_top.data.vertices[i].co - grid_center).length
-        if abs(tentativeDis - diagDis) <= tol_corners: grid_corners.append(i)
-    
-    bpy.ops.mesh.primitive_uv_sphere_add(size=.3, location=plane_top.matrix_world * plane_top.data.vertices[grid_corners[0]].co)
-
+        tDis = (plane_top.matrix_world * gdata.vertices[i].co - grid_center).length
+        if abs(tDis - diagDis) <= tol_corners: grid_corners.append(i)
+    # * grid_verts: rearrange grid_corners so that they agree with grid's normal    
+    # bpy.ops.mesh.primitive_uv_sphere_add(size=.3, location=plane_top.matrix_world * gdata.vertices[grid_corners[0]].co)
+    # bpy.ops.mesh.primitive_uv_sphere_add(size=.3, location=plane_top.matrix_world * gdata.vertices[grid_corners[1]].co)
+    # bpy.ops.mesh.primitive_uv_sphere_add(size=.3, location=plane_top.matrix_world * gdata.vertices[grid_corners[2]].co)
+    # bpy.ops.mesh.primitive_uv_sphere_add(size=.3, location=plane_top.matrix_world * gdata.vertices[grid_corners[3]].co)
+    grid_normal = gdata.polygons[0].normal
+    point_out = [] # 4 vectors pointing from grid_center to grid_corners
+    for i in range(4): point_out.append(plane_top.matrix_world*gdata.vertices[grid_corners[i]].co-grid_center)
+    grid_vert0 = 0 # starting vertex, now look for next one 
+    grid_vert2 = -1    
+    for i in range(1,4):         
+        tDis = (plane_top.matrix_world*gdata.vertices[grid_corners[i]].co - plane_top.matrix_world*gdata.vertices[grid_vert0].co).length        
+        if abs(tDis-2*diagDis) <= 2*tol_corners: grid_vert2 = i; break             
+    if grid_vert2 == -1: print('error: conn_tiss.py: opposite vertex not found, perhaps change tol_corners'); return 
+    print(grid_vert2)
+    remainVerts = [0,1,2,3]; remainVerts.remove(grid_vert2); remainVerts.remove(grid_vert0)
+    grid_vert1 = -1
+    print(remainVerts)
+    print(point_out)
+    for i in remainVerts:   
+        print(i)
+        print(crossProd(point_out[grid_vert0],point_out[i]))
+        print(dotProd(crossProd(point_out[grid_vert0],point_out[i]),grid_normal))
+        if dotProd(crossProd(point_out[grid_vert0],point_out[i]),grid_normal) > tol_normal: grid_vert1 = i;break 
+    if grid_vert1 == -1: print('error: conn_tiss.py: next vertex not found, perhaps change tol_corners'); return 
+    remainVerts.remove(grid_vert1)
+    grid_vert3 = remainVerts[0]
+    grid_vert0 = grid_corners[grid_vert0]
+    grid_vert1 = grid_corners[grid_vert1]
+    grid_vert2 = grid_corners[grid_vert2]
+    grid_vert3 = grid_corners[grid_vert3]
+    # bpy.ops.mesh.primitive_uv_sphere_add(size=.3, location=plane_top.matrix_world * gdata.vertices[grid_vert0].co)
+    # bpy.ops.mesh.primitive_uv_sphere_add(size=.4, location=plane_top.matrix_world * gdata.vertices[grid_vert1].co)
+    # bpy.ops.mesh.primitive_uv_sphere_add(size=.5, location=plane_top.matrix_world * gdata.vertices[grid_vert2].co)
+    # bpy.ops.mesh.primitive_uv_sphere_add(size=.6, location=plane_top.matrix_world * gdata.vertices[grid_vert3].co)    
     
     print(grid_corners)
+    print(grid_normal)
+    
     if len(grid_corners) != 4:
-       print('Error: conn_tiss.py: did not detect 4 corners of the grid'); return 
+       print('Error: conn_tiss.py: did not detect 4 corners of the grid, perhaps change tol_corners'); return 
          
     # 
     # grid_center = plane_top.data.vertices[nv-1].co/nv          
@@ -309,6 +344,12 @@ def make_outer_surface(M):
     
   M.update(calc_edges=True)           
   M.calc_normals()  
+  
+def crossProd(v1,v2):
+    return [v1[1]*v2[2] - v1[2]*v2[1],-(v1[0]*v2[2] - v1[2]*v2[0]),v1[0]*v2[1] - v1[1]*v2[0]]     
+    
+def dotProd(v1,v2):
+    return v1[0]*v2[0]+v1[1]*v2[1]+v1[2]*v2[2]
 
 def register():
     bpy.utils.register_class(ConnectiveTissue)
