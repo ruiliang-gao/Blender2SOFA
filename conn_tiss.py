@@ -36,12 +36,13 @@ def construct(context,options):
 
     autoDefinePlane = False
     defineSpringDirectly = True
-    maxDim = 1e+6
+    maxDim = 1e+16
 
-    o1 = bpy.data.objects[options.object1]  # cache the objects as dictionary indexing will change
-    o2 = bpy.data.objects[options.object2]
-    # o1 = bpy.data.objects['Sphere']
-    # o2 = bpy.data.objects['Sphere.001']
+    if False: 
+        o1 = bpy.data.objects[options.object1]  # cache the objects as dictionary indexing will change
+        o2 = bpy.data.objects[options.object2]
+    else:
+        o1 = bpy.data.objects['Sphere']; o2 = bpy.data.objects['Sphere.001']
     
     bpy.ops.object.transform_apply(location=True, rotation=True, scale=True)	
     if autoDefinePlane:           
@@ -58,8 +59,7 @@ def construct(context,options):
         center2 = Vector((center2t[0],center2t[1],center2t[2]))
         bpy.ops.object.transform_apply(location=True, rotation=True, scale=True)
         o2.select = False
-               
-        tol = 1e-16
+                       
         footprint1 = o1.closest_point_on_mesh(center2,maxDim)
         dualfp1 = o2.closest_point_on_mesh(footprint1[0],maxDim)
         footprint2 = o2.closest_point_on_mesh(center1,maxDim)
@@ -73,7 +73,39 @@ def construct(context,options):
         bpy.ops.object.transform_apply(location=True, rotation=True, scale=True)
     else:
         plane_top = context.selected_objects[0]        
-        
+    
+    # re-mesh the grid with uniform quads
+    print('remeshing ------------------')   
+    tol_corners = 1e-6    
+    bpy.ops.object.origin_set(type='ORIGIN_GEOMETRY')     
+    grid_center = plane_top.location   
+    # - look for the 4 corners: maximum distance to center 
+    bpy.ops.mesh.primitive_uv_sphere_add(size=.2, location=grid_center)
+    nv = len(plane_top.data.vertices)
+    diagDis = -1; grid_corners = []   
+    for i in range(nv):
+        bpy.ops.mesh.primitive_uv_sphere_add(size=.1, location=plane_top.matrix_world * plane_top.data.vertices[i].co)
+        tentativeDis = (plane_top.matrix_world * plane_top.data.vertices[i].co - grid_center).length
+        if tentativeDis >= diagDis: diagDis = tentativeDis; 
+    print(diagDis)
+    for i in range(nv):
+        tentativeDis = (plane_top.matrix_world * plane_top.data.vertices[i].co - grid_center).length
+        if abs(tentativeDis - diagDis) <= tol_corners: grid_corners.append(i)
+    
+    bpy.ops.mesh.primitive_uv_sphere_add(size=.3, location=plane_top.matrix_world * plane_top.data.vertices[grid_corners[0]].co)
+
+    
+    print(grid_corners)
+    if len(grid_corners) != 4:
+       print('Error: conn_tiss.py: did not detect 4 corners of the grid'); return 
+         
+    # 
+    # grid_center = plane_top.data.vertices[nv-1].co/nv          
+    # for i in range(nv-1):
+        # grid_center = grid_center + plane_top.data.vertices[i].co/nv          
+    
+    return 
+    
     # context.scene.objects.link(plane_top)
     bpy.ops.object.duplicate()
     plane_bot = context.selected_objects[0]
