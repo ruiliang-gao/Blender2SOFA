@@ -38,13 +38,14 @@ def construct(context,options):
     defineSpringDirectly = True
     maxDim = 1e+16
 
-    if True: 
+    if True:
         o1 = bpy.data.objects[options.object1]  # cache the objects as dictionary indexing will change
         o2 = bpy.data.objects[options.object2]
     else:
         # o1 = bpy.data.objects['Sphere']; o2 = bpy.data.objects['Sphere.001']
+        o1 = bpy.data.objects['Icosphere']; o2 = bpy.data.objects['Icosphere.001']
         # o1 = bpy.data.objects['Spleen']; o2 = bpy.data.objects['fundus']
-        o2 = bpy.data.objects['Spleen']; o1 = bpy.data.objects['fundus']
+        # o2 = bpy.data.objects['Spleen']; o1 = bpy.data.objects['fundus']
     
     bpy.ops.object.transform_apply(location=True, rotation=True, scale=True)	
     if autoDefinePlane:           
@@ -227,6 +228,7 @@ def construct(context,options):
     # plane_bot.select = True
     # plane_top.select = True
     # bpy.ops.object.join()
+    # return 
     
     #-- construct tetrahedra
     # three_planes = context.scene.objects.active
@@ -251,21 +253,34 @@ def construct(context,options):
         # bot_quad = three_planes.data.polygons[w*w + i]
     w = num_vert - 1
     for i in range(w*w):
+        # for j in range(4):
+            # plane_bot.data.polygons[i].vertices[j] = plane_bot.data.polygons[i].vertices[j] + nPlaneVert
+            # plane_top.data.polygons[i].vertices[j] = plane_top.data.polygons[i].vertices[j] + 2*nPlaneVert    
         mid_quad = plane_mid.data.polygons[i]
         bot_quad = plane_bot.data.polygons[i]        
         top_quad = plane_top.data.polygons[i]  
         for j in range(4):
             bot_quad.vertices[j] = bot_quad.vertices[j] + nPlaneVert
-            top_quad.vertices[j] = top_quad.vertices[j] + 2*nPlaneVert        
+            top_quad.vertices[j] = top_quad.vertices[j] + 2*nPlaneVert         
+
+        # if defineSpringDirectly:            
+            # for j in range(0,4):
+                # topVertices.append(top_quad.vertices[j])
+                # botVertices.append(bot_quad.vertices[j])
+                # if True:
+                    # bpy.ops.mesh.primitive_uv_sphere_add(size=.1,location=M.vertices[top_quad.vertices[j]].co)     
+                    # bpy.ops.mesh.primitive_uv_sphere_add(size=.1,location=M.vertices[mid_quad.vertices[j]].co)     
+                    # bpy.ops.mesh.primitive_uv_sphere_add(size=.1,location=M.vertices[bot_quad.vertices[j]].co)     
+        
         createTets(M, (bot_quad, mid_quad),i)
         createTets(M, (mid_quad, top_quad),i+1)    
        
     make_outer_surface(M)    
-    ct.data = M   
+    ct.data = M
     
-    print('name of objectssssssssssssssssssssssssssssssssssss')
-    print(o1.name)
-    print(o2.name)
+    # print('name of objectssssssssssssssssssssssssssssssssssss')
+    # print(o1.name)
+    # print(o2.name)
     # for i, v in enumerate(topVertices):       
         # if i % 10 == 1:
             # bpy.ops.mesh.primitive_uv_sphere_add(size=.1,location=ct.data.vertices[v].co)  
@@ -284,6 +299,7 @@ def construct(context,options):
     plane_mid.select = True; bpy.context.object.hide_render = True; bpy.context.object.hide = True
     plane_top.select = True; bpy.ops.object.delete()
     plane_bot.select = True; bpy.ops.object.delete()    
+    
     # three_planes.select = True
     # bpy.ops.object.delete()
 
