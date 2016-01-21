@@ -42,10 +42,8 @@ def construct(context,options):
         o1 = bpy.data.objects[options.object1]  # cache the objects as dictionary indexing will change
         o2 = bpy.data.objects[options.object2]
     else:
-        # o1 = bpy.data.objects['Sphere']; o2 = bpy.data.objects['Sphere.001']
-        o1 = bpy.data.objects['Icosphere']; o2 = bpy.data.objects['Icosphere.001']
+        o1 = bpy.data.objects['Sphere']; o2 = bpy.data.objects['Sphere.001']
         # o1 = bpy.data.objects['Spleen']; o2 = bpy.data.objects['fundus']
-        # o2 = bpy.data.objects['Spleen']; o1 = bpy.data.objects['fundus']
     
     bpy.ops.object.transform_apply(location=True, rotation=True, scale=True)	
     if autoDefinePlane:           
@@ -222,21 +220,10 @@ def construct(context,options):
     #-- join the three planes. NOTE: polygon indexing: middle 0..w^2-1, bottom w^2..2*(w^2)-1, top 2*(w^2)..3*(w^2)-1)
     nPlaneVert = len(plane_top.data.vertices)
     nMvert = 3*nPlaneVert 
-    # bpy.ops.object.select_all(action='DESELECT')
-    # context.scene.objects.active = plane_mid    
-    # plane_mid.select = True
-    # plane_bot.select = True
-    # plane_top.select = True
-    # bpy.ops.object.join()
-    # return 
     
     #-- construct tetrahedra
-    # three_planes = context.scene.objects.active
     M = bpy.data.meshes.new(name = "tet_mesh")
-    # M.vertices.add(len(three_planes.data.vertices))   
     M.vertices.add(nMvert) 
-    # for i, v in enumerate(three_planes.data.vertices):
-        # M.vertices[i].co = v.co
     for i in range(0,nPlaneVert):
         M.vertices[i].co = plane_mid.data.vertices[i].co   
         M.vertices[nPlaneVert + i].co = plane_bot.data.vertices[i].co   
@@ -244,33 +231,14 @@ def construct(context,options):
 
     botVertices = [i + nPlaneVert for i in range(nPlaneVert)]      
     topVertices = [i + 2*nPlaneVert for i in range(nPlaneVert)]
-    # botVertices1 = [] 
-    # topVertices1 = []
-    # w = num_vert - 1
-    # for i in range(w*w):
-        # top_quad = three_planes.data.polygons[2*w*w + i]
-        # mid_quad = three_planes.data.polygons[i]
-        # bot_quad = three_planes.data.polygons[w*w + i]
     w = num_vert - 1
-    for i in range(w*w):
-        # for j in range(4):
-            # plane_bot.data.polygons[i].vertices[j] = plane_bot.data.polygons[i].vertices[j] + nPlaneVert
-            # plane_top.data.polygons[i].vertices[j] = plane_top.data.polygons[i].vertices[j] + 2*nPlaneVert    
+    for i in range(w*w): 
         mid_quad = plane_mid.data.polygons[i]
         bot_quad = plane_bot.data.polygons[i]        
         top_quad = plane_top.data.polygons[i]  
         for j in range(4):
             bot_quad.vertices[j] = bot_quad.vertices[j] + nPlaneVert
             top_quad.vertices[j] = top_quad.vertices[j] + 2*nPlaneVert         
-
-        # if defineSpringDirectly:            
-            # for j in range(0,4):
-                # topVertices.append(top_quad.vertices[j])
-                # botVertices.append(bot_quad.vertices[j])
-                # if True:
-                    # bpy.ops.mesh.primitive_uv_sphere_add(size=.1,location=M.vertices[top_quad.vertices[j]].co)     
-                    # bpy.ops.mesh.primitive_uv_sphere_add(size=.1,location=M.vertices[mid_quad.vertices[j]].co)     
-                    # bpy.ops.mesh.primitive_uv_sphere_add(size=.1,location=M.vertices[bot_quad.vertices[j]].co)     
         
         createTets(M, (bot_quad, mid_quad),i)
         createTets(M, (mid_quad, top_quad),i+1)    
@@ -278,16 +246,6 @@ def construct(context,options):
     make_outer_surface(M)    
     ct.data = M
     
-    # print('name of objectssssssssssssssssssssssssssssssssssss')
-    # print(o1.name)
-    # print(o2.name)
-    # for i, v in enumerate(topVertices):       
-        # if i % 10 == 1:
-            # bpy.ops.mesh.primitive_uv_sphere_add(size=.1,location=ct.data.vertices[v].co)  
-    # for i, v in enumerate(botVertices):       
-        # if i % 10 == 1:
-            # bpy.ops.mesh.primitive_uv_sphere_add(size=.1,location=ct.data.vertices[v].co)     
-    # return 
     if defineSpringDirectly:
         ct['annotated_type'] = 'CONNECTIVETISSUE'
         ct['topObject'] = o1.name 
@@ -299,10 +257,6 @@ def construct(context,options):
     plane_mid.select = True; bpy.context.object.hide_render = True; bpy.context.object.hide = True
     plane_top.select = True; bpy.ops.object.delete()
     plane_bot.select = True; bpy.ops.object.delete()    
-    
-    # three_planes.select = True
-    # bpy.ops.object.delete()
-
     
 def createTets(m, quad_tuple, iteration):
     def isOdd(x): return (x % 2 != 0)
