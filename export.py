@@ -389,7 +389,7 @@ def exportInstrument(o, opt):
             child.append(mo)
             pm = ET.Element("TPointModel", name = 'toolTip',
                                  template="Vec3d",  
-                                 contactStiffness="0.01", bothSide="true", proximity = o.get('proximity', 0.1),
+                                 contactStiffness="0.01", bothSide="true", proximity = o.get('proximity', 0.02),
                                  group= o.get('collisionGroup')
                                  )
     
@@ -849,7 +849,7 @@ def exportConnectiveTissue(o, opt):
         if optimalVert > 0:
             map2bot.append((v,optimalVert,smallestDistance))     
     
-    stiffness = oTop.get('stiffness', 500)
+    stiffness = o.get('attach_stiffness', 500)
     springsTop = [
         vector_to_string([i, j, stiffness, .1, d]) for (i,j,d) in map2top
         ]    
@@ -947,7 +947,7 @@ def exportScene(opt):
             if i.strip() != "":
                 root.append(ET.Element("include", href=i))
              
-    lcp = ET.Element("LCPConstraintSolver", tolerance="1e-3", maxIt = "1000", mu = scene.get('mu', '1e-6'))
+    lcp = ET.Element("LCPConstraintSolver", tolerance="1e-6", maxIt = "1000", mu = scene.get('mu', '1e-6'))
     root.append(lcp)
     
     root.append(ET.Element('FreeMotionAnimationLoop'))
