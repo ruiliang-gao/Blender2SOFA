@@ -109,46 +109,7 @@ def construct(context,options):
     plane_mid = context.selected_objects[0]
     for i in range(len(plane_top.data.vertices)):
         plane_mid.data.vertices[i].co = (plane_top.data.vertices[i].co + plane_bot.data.vertices[i].co)/2
-    
-    if not(defineSpringDirectly):
-        ctac_parent = bpy.data.objects.new("ConnTissAttConstr", None)
-        ctac_parent['annotated_type'] = 'ATTACHCONSTRAINTGROUP'
-        ctac_parent.hide = True
-        context.scene.objects.link(ctac_parent)   
-    
-    #-- create attach constraints
-    num_vert = int(math.sqrt(len(plane_top.data.vertices)))
-        
-    if not(defineSpringDirectly):
-        indices = np.linspace(0, num_vert-1,int(num_vert/1.5), dtype=int)
-        for i in indices:
-            for j in indices:
-                pt_top = plane_top.data.vertices[i*num_vert + j].co
-                pt_mid = plane_mid.data.vertices[i*num_vert + j].co
-                pt_bot = plane_bot.data.vertices[i*num_vert + j].co
-                maxradius_top = (pt_top-pt_mid).length
-                maxradius_bot = (pt_mid-pt_bot).length
-
-                bpy.ops.mesh.primitive_ico_sphere_add(size=1.0, location=pt_top)
-                sph_top = context.selected_objects[0]
-                sph_top.scale = ((maxradius_top*0.99),(maxradius_top*0.99),(maxradius_top*0.99))
-                sph_top.hide = True
-                sph_top.parent = ctac_parent
-                sph_top['annotated_type'] = 'ATTACHCONSTRAINT'
-                sph_top['object1'] = ct.name
-                sph_top['object2'] = o1.name#"adrenal gland"
-                sph_top['alwaysMatchFor'] = 2   # expand search space (sphere radius) for object 2 until vertex is found 
-                
-                bpy.ops.mesh.primitive_ico_sphere_add(size=1.0, location=pt_bot)
-                sph_bot = context.selected_objects[0]
-                sph_bot.scale = ((maxradius_bot*0.99),(maxradius_bot*0.99),(maxradius_bot*0.99))
-                sph_bot.hide = True
-                sph_bot.parent = ctac_parent
-                sph_bot['annotated_type'] = 'ATTACHCONSTRAINT'
-                sph_bot['object1'] = ct.name
-                sph_bot['object2'] = o2.name#"kidney_hollow"
-                sph_bot['alwaysMatchFor'] = 2  
-    
+         
     #-- join the three planes
     nPlaneVert = len(plane_top.data.vertices)
     nMvert = 3*nPlaneVert 
