@@ -73,13 +73,7 @@ def construct(context,options):
         plane_top = context.selected_objects[0]
         bpy.ops.object.transform_apply(location=True, rotation=True, scale=True)
     else:
-        plane_top = context.selected_objects[0]            
-    
-    # # back up the plane_top 
-    # bpy.ops.object.duplicate()
-    # plane_top_backup = context.selected_objects[0]
-    # plane_top_backup.select = True; bpy.context.object.hide_render = True; bpy.context.object.hide = True
-    # plane_top.select = True 
+        plane_top = context.selected_objects[0]                
     
     # context.scene.objects.link(plane_top)
     bpy.ops.object.duplicate()
@@ -219,7 +213,7 @@ def createTets(m, quad_tuple, iteration):
         tet.vertices[0], tet.vertices[2] = tet.vertices[2], tet.vertices[0]
     
     tet = m.tetrahedra.add()
-    tetet.vertices[0] = quad_tuple[int(q_idx)].vertices[2]
+    tet.vertices[0] = quad_tuple[int(q_idx)].vertices[2]
     tet.vertices[1] = quad_tuple[int(q_idx)].vertices[3]
     tet.vertices[2] = quad_tuple[int(q_idx)].vertices[0]
     tet.vertices[3] = quad_tuple[int(not q_idx)].vertices[3]
