@@ -35,15 +35,13 @@ class ConnectiveTissue(bpy.types.Operator):
 def construct(context,options):
 
     autoDefinePlane = False
-    defineSpringDirectly = True
     maxDim = 1e+16
 
-    if True:
+    if False:
         o1 = bpy.data.objects[options.object1]  # cache the objects as dictionary indexing will change
         o2 = bpy.data.objects[options.object2]
     else:
-        o1 = bpy.data.objects['Sphere']; o2 = bpy.data.objects['Sphere.001']
-        # o1 = bpy.data.objects['Spleen']; o2 = bpy.data.objects['fundus']
+        o1 = bpy.data.objects['a1']; o2 = bpy.data.objects['a2']        
     
     bpy.ops.object.transform_apply(location=True, rotation=True, scale=True)	
     if autoDefinePlane:           
@@ -109,14 +107,15 @@ def construct(context,options):
     plane_mid = context.selected_objects[0]
     for i in range(len(plane_top.data.vertices)):
         plane_mid.data.vertices[i].co = (plane_top.data.vertices[i].co + plane_bot.data.vertices[i].co)/2
-         
-    #-- join the three planes
+             
     nPlaneVert = len(plane_top.data.vertices)
     nMvert = 3*nPlaneVert 
     
-    #-- construct tetrahedra
+    #-- construct hexahedra
     M = bpy.data.meshes.new(name = "tet_mesh")
+    H = bpy.data.meshes.new(name = "hex_mesh")
     M.vertices.add(nMvert) 
+    H.vertices.add(nMvert) 
     for i in range(0,nPlaneVert):
         M.vertices[i].co = plane_mid.data.vertices[i].co   
         M.vertices[nPlaneVert + i].co = plane_bot.data.vertices[i].co   
@@ -134,17 +133,30 @@ def construct(context,options):
             top_quad.vertices[j] = top_quad.vertices[j] + 2*nPlaneVert         
         
         createTets(M, (bot_quad, mid_quad),i)
-        createTets(M, (mid_quad, top_quad),i+1)    
+        # createHexs(H, (bot_quad, mid_quad),i)
+        createTets(M, (mid_quad, top_quad),i+1)  
+
+        hex = H.hexahedra.add()
+        for j in range(4):
+            # bot-mid hex
+            hex.vertices[j] = bot_quad.vertices[j]
+            hex.vertices[4+j] = mid_quad.vertices[j]
+            # mid-top hex
+            hex.vertices[j] = mid_quad.vertices[j]
+            hex.vertices[4+j] = top_quad.vertices[j]            
        
-    make_outer_surface(M)    
-    ct.data = M
+    if True:
+        make_outer_surface(M)    
+        ct.data = M
+    else: 
+        make_outer_surface(H)    
+        ct.data = H        
     
-    if defineSpringDirectly:
-        ct['annotated_type'] = 'CONNECTIVETISSUE'
-        ct['topObject'] = o1.name 
-        ct['botObject'] = o2.name
-        ct['topVertices'] = topVertices
-        ct['botVertices'] = botVertices
+    ct['annotated_type'] = 'CONNECTIVETISSUE'
+    ct['topObject'] = o1.name 
+    ct['botObject'] = o2.name
+    ct['topVertices'] = topVertices
+    ct['botVertices'] = botVertices
         
     bpy.ops.object.select_all(action='DESELECT')
     plane_top.select = True; bpy.ops.object.delete()
