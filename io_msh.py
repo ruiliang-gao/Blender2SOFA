@@ -59,11 +59,15 @@ class MeshTetrahedron(bpy.types.PropertyGroup):
     """Represent a tetrahedron in a mesh"""
     vertices = bpy.props.IntVectorProperty(size=4)
     
+class MeshHexahedron(bpy.types.PropertyGroup):
+    """Represent a hexahedron in a mesh"""
+    vertices = bpy.props.IntVectorProperty(size=8)
+
 # A panel will give us a permanent place in the data tab for meshes
-class TetrahedralMeshPanel(bpy.types.Panel):
-    """A panel to edit tetrahedral properties"""
-    bl_label = "Tetrahedral Mesh"
-    bl_idname = "MESH_PT_Tetrahedral"
+class VolumetricMeshPanel(bpy.types.Panel):
+    """A panel to edit tetrahedral and hexahedral mesh properties"""
+    bl_label = "Volumetric Mesh"
+    bl_idname = "MESH_PT_Volumetric"
     bl_space_type = 'PROPERTIES'
     bl_region_type = 'WINDOW'
     bl_context = "data"
@@ -78,7 +82,8 @@ class TetrahedralMeshPanel(bpy.types.Panel):
         layout = self.layout
         M = context.object.data
         row = layout.row()
-        row.label("Tetrahedron count: %d" % len(M.tetrahedra));
+        row.label("Tetrahedron count: %d" % len(M.tetrahedra))
+        row.label("Hexahedron count: %d" % len(M.hexahedra))
 
 
 class ExportMSHOperator(bpy.types.Operator):
@@ -143,17 +148,19 @@ class ImportMSH(bpy.types.Operator, bpy_extras.io_utils.ImportHelper):
           return {'CANCELLED'}
       elif mode == 'ELM':
         if re.match('^\d+(\s+\d+)+\s*$', line):
-          # TODO: what about triangle elements
           idx, count, _, _, _, a, b, c, d = line.split()
-          i = int(idx)
-          t = M.tetrahedra.add()
-          if i != len(M.tetrahedra):
-            self.report({'ERROR'}, "%s:%d: Elements must come in proper order, %d" %(objName,lineno,i))
-            return {'CANCELLED'}
-          t.vertices[0] = int(a) - 1
-          t.vertices[1] = int(b) - 1
-          t.vertices[2] = int(c) - 1
-          t.vertices[3] = int(d) - 1
+          # TODO: what about triangle elements count=3
+          # TODO: what about hexahedral elements count=8
+          if count == 4:
+              i = int(idx)
+              t = M.tetrahedra.add()
+              if i != len(M.tetrahedra):
+                self.report({'ERROR'}, "%s:%d: Elements must come in proper order, %d" %(objName,lineno,i))
+                return {'CANCELLED'}
+              t.vertices[0] = int(a) - 1
+              t.vertices[1] = int(b) - 1
+              t.vertices[2] = int(c) - 1
+              t.vertices[3] = int(d) - 1
         elif line == '$ENDELM':
           mode = ''
         else:
@@ -177,13 +184,17 @@ def menu_func_import(self, context):
 def register():
     bpy.utils.register_class(ImportMSH)
     bpy.utils.register_class(MeshTetrahedron)
-    bpy.utils.register_class(TetrahedralMeshPanel)    
+    bpy.utils.register_class(MeshHexahedron)
+    bpy.utils.register_class(VolumetricMeshPanel)    
     bpy.types.INFO_MT_file_import.append(menu_func_import)
     bpy.types.Mesh.tetrahedra = bpy.props.CollectionProperty(name="Tetrahedra", type=MeshTetrahedron)
+    bpy.types.Mesh.hexahedra = bpy.props.CollectionProperty(name="Hexahedra", type=MeshHexahedron)
 
 def unregister():
     del bpy.types.Mesh.tetrahedra
+    del bpy.types.Mesh.hexahedra
     bpy.types.INFO_MT_file_import.remove(menu_func_import)
     bpy.utils.unregister_class(ImportMSH)
-    bpy.utils.unregister_class(TetrahedralMeshPanel)    
+    bpy.utils.unregister_class(VolumetricMeshPanel)    
     bpy.utils.unregister_class(MeshTetrahedron)
+    bpy.utils.unregister_class(MeshHexahedron)
