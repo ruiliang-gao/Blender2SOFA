@@ -35,7 +35,7 @@ class ConnectiveTissue(bpy.types.Operator):
 def construct(context,options):
 
     autoDefinePlane = False
-    maxDim = 1e+16
+    maxDim = 1e+16    
 
     if False:
         o1 = bpy.data.objects[options.object1]  # cache the objects as dictionary indexing will change
@@ -82,6 +82,7 @@ def construct(context,options):
     bpy.ops.object.transform_apply(location=True, rotation=True, scale=True)
     ct = bpy.context.object
     #ct.name = 'ConnectiveTissue'
+    ct.name = 'ct'
     ct['annotated_type'] = 'VOLUMETRIC'
     ct['carvable'] = 1
     bpy.ops.object.select_all(action='DESELECT')
@@ -120,6 +121,9 @@ def construct(context,options):
         M.vertices[i].co = plane_mid.data.vertices[i].co   
         M.vertices[nPlaneVert + i].co = plane_bot.data.vertices[i].co   
         M.vertices[2*nPlaneVert + i].co = plane_top.data.vertices[i].co   
+        H.vertices[i].co = plane_mid.data.vertices[i].co   
+        H.vertices[nPlaneVert + i].co = plane_bot.data.vertices[i].co   
+        H.vertices[2*nPlaneVert + i].co = plane_top.data.vertices[i].co          
 
     botVertices = [i + nPlaneVert for i in range(nPlaneVert)]      
     topVertices = [i + 2*nPlaneVert for i in range(nPlaneVert)]
@@ -145,12 +149,12 @@ def construct(context,options):
             hex.vertices[j] = mid_quad.vertices[j]
             hex.vertices[4+j] = top_quad.vertices[j]            
        
-    if True:
+    if False:
         make_outer_surface(M)    
         ct.data = M
     else: 
-        make_outer_surface(H)    
-        ct.data = H        
+        make_hex_outer_surface(H)    
+        ct.data = H   
     
     ct['annotated_type'] = 'CONNECTIVETISSUE'
     ct['topObject'] = o1.name 
@@ -159,8 +163,7 @@ def construct(context,options):
     ct['botVertices'] = botVertices
         
     bpy.ops.object.select_all(action='DESELECT')
-    plane_top.select = True; bpy.ops.object.delete()
-    # bpy.context.object.hide_render = True; bpy.context.object.hide = True
+    plane_top.select = True; bpy.ops.object.delete()    
     plane_mid.select = True; bpy.ops.object.delete()
     plane_bot.select = True; bpy.ops.object.delete()    
     
@@ -247,6 +250,36 @@ def make_outer_surface(M):
     
   M.update(calc_edges=True)           
   M.calc_normals()  
+  
+def encodeHexFacet(a, b, c, d):
+  return a << 60 | b << 40 | c << 20 | d    
+  
+def decodeHexFacet(f):
+  a = f >> 60 & ( (1 << 20) - 1 ) 
+  b = f >> 40 & ( (1 << 20) - 1 ) 
+  c = f >> 20 & ( (1 << 20) - 1 ) 
+  d = f       & ( (1 << 20) - 1 ) 
+  return a,b,c,d    
+  
+hex_faces = [ [0,1,2,3],[4,7,6,5],[0,4,5,1],[1,5,6,2],[3,2,6,7],[0,3,7,4] ]
+def make_hex_outer_surface(H):
+  faceSet = set()
+  for t in H.hexahedra:
+    for l in hex_faces:
+      f = encodeHexFacet(t.vertices[l[0]],t.vertices[l[1]],t.vertices[l[2]],t.vertices[l[3]])
+      rf = encodeHexFacet(t.vertices[l[0]],t.vertices[l[3]],t.vertices[l[2]],t.vertices[l[1]])
+      if rf in faceSet:
+        faceSet.remove(rf)
+      else:
+        faceSet.add(f)
+  
+  H.tessfaces.add(len(faceSet))
+  for i,f in enumerate(faceSet):
+    a, b, c, d = decodeHexFacet(f)
+    H.tessfaces[i].vertices =  (int(a), int(d), int(c), int(b))
+    
+  H.update(calc_edges=True)           
+  H.calc_normals()    
   
 def crossProd(v1,v2):
     return [v1[1]*v2[2] - v1[2]*v2[1],-(v1[0]*v2[2] - v1[2]*v2[0]),v1[0]*v2[1] - v1[1]*v2[0]]     
