@@ -252,13 +252,31 @@ def make_outer_surface(M):
   M.calc_normals()  
   
 def encodeHexFacet(a, b, c, d):
-  return a << 60 | b << 40 | c << 20 | d    
+  # rearrange the vertices so that: the first is the smallest, orientation is preserved
+  vt = [a,b,c,d]
+  vf = map(float,[a,b,c,d])
+  mv = min(vf)
+  minIdx = -1 
+  for vi,v in enumerate(vt):
+    if abs(mv-v)<.1:
+        minIdx = vi; break 
+  if minIdx == 0:
+    i,j,k,l = a,b,c,d
+  elif minIdx == 1:
+    i,j,k,l = b,c,d,a
+  elif minIdx == 2:
+    i,j,k,l = c,d,a,b 
+  elif minIdx == 3: 
+    i,j,k,l = d,a,b,c
+  print(i,j,k,l)
+  # assert(max(vf) < 32768) # max index < 2^15
+  return i << 45 | j << 30 | k << 15 | l    
   
 def decodeHexFacet(f):
-  a = f >> 60 & ( (1 << 20) - 1 ) 
-  b = f >> 40 & ( (1 << 20) - 1 ) 
-  c = f >> 20 & ( (1 << 20) - 1 ) 
-  d = f       & ( (1 << 20) - 1 ) 
+  a = f >> 45 & ( (1 << 15) - 1 ) 
+  b = f >> 30 & ( (1 << 15) - 1 ) 
+  c = f >> 15 & ( (1 << 15) - 1 ) 
+  d = f       & ( (1 << 15) - 1 ) 
   return a,b,c,d    
   
 hex_faces = [ [0,1,2,3],[4,7,6,5],[0,4,5,1],[1,5,6,2],[3,2,6,7],[0,3,7,4] ]

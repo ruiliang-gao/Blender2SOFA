@@ -97,33 +97,6 @@ class ExportMSHOperator(bpy.types.Operator):
         
 def encodeHexFacet(a, b, c, d):
   return a << 60 | b << 40 | c << 20 | d    
-  
-def decodeHexFacet(f):
-  a = f >> 60 & ( (1 << 20) - 1 ) 
-  b = f >> 40 & ( (1 << 20) - 1 ) 
-  c = f >> 20 & ( (1 << 20) - 1 ) 
-  d = f       & ( (1 << 20) - 1 ) 
-  return a,b,c,d    
-  
-hex_faces = [ [0,1,2,3],[4,7,6,5],[0,4,5,1],[1,5,6,2],[3,2,6,7],[0,3,7,4] ]
-def make_hex_outer_surface(H):
-  faceSet = set()
-  for t in H.hexahedra:
-    for l in hex_faces:
-      f = encodeHexFacet(t.vertices[l[0]],t.vertices[l[1]],t.vertices[l[2]],t.vertices[l[3]])
-      rf = encodeHexFacet(t.vertices[l[0]],t.vertices[l[3]],t.vertices[l[2]],t.vertices[l[1]])
-      if rf in faceSet:
-        faceSet.remove(rf)
-      else:
-        faceSet.add(f)
-  
-  H.tessfaces.add(len(faceSet))
-  for i,f in enumerate(faceSet):
-    a, b, c, d = decodeHexFacet(f)
-    H.tessfaces[i].vertices =  (int(a), int(d), int(c), int(b))
-    
-  H.update(calc_edges=True)           
-  H.calc_normals()    
 
 class ImportMSH(bpy.types.Operator, bpy_extras.io_utils.ImportHelper):
   """Load a tetrahedral mesh from GMSH file"""
@@ -198,8 +171,7 @@ class ImportMSH(bpy.types.Operator, bpy_extras.io_utils.ImportHelper):
       else:
         assert("This line" == "Never reached")
     f.close()
-    # make_outer_surface(M)
-    make_hex_outer_surface(M)
+    make_outer_surface(M)
     o = bpy.data.objects.new(objName, M)
     context.scene.objects.link(o)
     return { 'FINISHED' }
