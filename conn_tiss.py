@@ -268,7 +268,6 @@ def encodeHexFacet(a, b, c, d):
     i,j,k,l = c,d,a,b 
   elif minIdx == 3: 
     i,j,k,l = d,a,b,c
-  print(i,j,k,l)
   # assert(max(vf) < 32768) # max index < 2^15
   return i << 45 | j << 30 | k << 15 | l    
   

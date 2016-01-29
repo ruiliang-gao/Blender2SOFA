@@ -118,6 +118,28 @@ def exportTetrahedralTopology(o, opt, name):
     c.set('points', points)
     c.set('tetrahedra', tetrahedra)
     return geometryNode(opt,c)
+    
+def exportHexahedralTopology(o, opt, name):
+    if o.type == 'MESH' and hasattr(o.data,'hexahedra') and len(o.data.hexahedra) > 0:
+      m = o.data
+    else:
+      raise ExportException("While processing %s: Hexahedral mesh expected!" % o.name)
+      
+    points =  np.empty((len(m.vertices),3))
+    for i, v in enumerate(m.vertices):
+      for j in range(3):
+        points[i][j] = v.co[j]
+
+    hexahedra = np.empty([len(m.hexahedra), 8],dtype=int)
+    for i, f in enumerate(m.hexahedra): 
+      for j in range(8):    
+        hexahedra[i][j] = f.vertices[j]        
+
+    # c =  ET.Element('HexahedronSetTopologyContainer', name= name, createTriangleArray='1')    
+    c =  ET.Element('HexahedronSetTopologyContainer', name= name)
+    c.set('points', points)
+    c.set('hexahedra', hexahedra)
+    return geometryNode(opt,c)    
 
 # Export a HexahedronSetTopology container with the topology of a 
 # thick shell. The object is supposed to be convertible to a quad mesh.
@@ -237,7 +259,7 @@ def exportVolumetric(o, opt):
     name = fixName(o.name)
     t = ET.Element("Node", name = name)
 
-    topotetra = name + '-topology'
+    topotetra = name + '-topology'    
     c = exportTetrahedralTopology(o, opt, topotetra)
     t.append(c)
     
@@ -299,6 +321,83 @@ def exportVolumetric(o, opt):
         
         
     return t
+    
+def exportHexVolumetric(o, opt):
+    name = fixName(o.name)
+    t = ET.Element("Node", name = name)
+
+    topotetra = name + '-topology'    
+    c = exportHexahedralTopology(o, opt, topotetra)
+    t.append(c)
+    
+    mo = createMechanicalObject(o)
+    
+    mo.set('position','@'+topotetra+'.position')
+    t.append(mo)
+    # t.append(ET.Element('TetrahedronSetTopologyModifier', removeIsolated = "false"))
+    # t.append(ET.Element('TetrahedronSetTopologyAlgorithms', template = 'Vec3d'))
+    # t.append(ET.Element('TetrahedronSetGeometryAlgorithms', template = 'Vec3d'))
+    t.append(ET.Element('HexahedronSetTopologyModifier'))
+    t.append(ET.Element('HexahedronSetTopologyAlgorithms', template = 'Vec3d'))
+    t.append(ET.Element('HexahedronSetGeometryAlgorithms', template = 'Vec3d'))    
+    
+    # set massDensity later
+    t.append(ET.Element("DiagonalMass"))
+    
+    # set youngModulus and poissonRatio later, and method=large
+    # tetrahedralCorotationalFEMForceField = ET.Element('TetrahedralCorotationalFEMForceField')
+    # generateYoungModulus(o,tetrahedralCorotationalFEMForceField)
+    # generatePoissonRatio(o,tetrahedralCorotationalFEMForceField)
+    # t.append(tetrahedralCorotationalFEMForceField)
+    h = ET.Element("HexahedronFEMForceField",template="Vec3d", method="large")
+    generateYoungModulus(o,h)
+    generatePoissonRatio(o,h)
+    #h.set("rayleighStiffness", (o.get('rayleighStiffness')))
+    t.append(h)    
+    
+    if o.get('precomputeConstraints') == True:
+        t.append(ET.Element('PrecomputedConstraintCorrection', rotations="true", recompute="0"))
+    else:
+        t.append(ET.Element('UncoupledConstraintCorrection',compliance="0.001   0.00003 0 0   0.00003 0   0.00003"))
+    
+    
+    addConstraints(o, t)
+    
+    # collisionGroup = int(o.get('collisionGroup', 1)); # not sure 
+    
+    # not yet done for carvable 
+    if o.get('carvable') & False:
+        n = ET.Element('Node', name="triangle-surface")
+        n.append(ET.Element("TriangleSetTopologyContainer",name="topotri"))
+        n.append(ET.Element("TriangleSetTopologyModifier",))
+        n.append(ET.Element("TriangleSetTopologyAlgorithms", template="Vec3d" ))
+        n.append(ET.Element("TriangleSetGeometryAlgorithms", template="Vec3d"))
+
+        n.append(ET.Element('Tetra2TriangleTopologicalMapping', object1="../../"+topotetra, object2="topotri", flipNormals='1'))
+
+        ogl = ET.Element("OglModel", name="Visual");
+        addMaterial(o, ogl);
+        n.append(ogl)
+        n.append(ET.Element("IdentityMapping",object1="../MO",object2="Visual"))
+        n.extend(collisionModelParts(o))
+        t.append(n)
+        
+    else:
+        n = ET.Element('Node', name="Collision")
+        n.append(exportTopology(o,opt))
+        moc = createMechanicalObject(o)
+        moc.set('name', 'MOC')
+        n.append(moc)
+        n.extend(collisionModelParts(o))
+        n.append(ET.Element("BarycentricMapping",object1="../MO",object2="MOC"))
+        t.append(n)
+        
+        v = ET.Element('Node', name="Visual")
+        v.append(exportVisual(o, opt, name = name + "-visual"))
+        v.append(ET.Element("BarycentricMapping",template="Vec3d,ExtVec3f",object1="../MO",object2=name + "-visual"))
+        t.append(v)
+               
+    return t    
     
 def cwisemul(a, b):
   return Vector([ a.x * b.x, a.y * b.y, a.z * b.z ])
@@ -796,7 +895,14 @@ def exportConstraints(opt, o):
 def exportConnectiveTissue(o, opt):    
     print('... exporting a connective tissue ...')
     scene = opt.scene
-    t = exportVolumetric(o, opt)          
+    
+    if o.type == 'MESH' and hasattr(o.data,'tetrahedra') and len(o.data.tetrahedra) > 0:
+      t = exportVolumetric(o, opt)     
+    elif o.type == 'MESH' and hasattr(o.data,'hexahedra') and len(o.data.hexahedra) > 0:
+      t = exportHexVolumetric(o, opt)     
+    else:
+      raise ExportException("While processing %s: Tetrahedral or Hexahedral mesh expected!" % o.name)    
+             
     oTop = scene.objects[o.get('topObject')]
     oBot = scene.objects[o.get('botObject')]          
     topVertices = o.get('topVertices')
