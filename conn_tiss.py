@@ -36,9 +36,9 @@ def construct(context,options):
 
     autoDefinePlane = False
     maxDim = 1e+16    
-    meshType = 8 # 8 = hex, 4 = tet 
+    meshType = 4 # 8 = hex, 4 = tet 
 
-    if False:
+    if True:
         o1 = bpy.data.objects[options.object1]  # cache the objects as dictionary indexing will change
         o2 = bpy.data.objects[options.object2]
     else:
