@@ -36,6 +36,7 @@ def construct(context,options):
 
     autoDefinePlane = False
     maxDim = 1e+16    
+    meshType = 8 # 8 = hex, 4 = tet 
 
     if False:
         o1 = bpy.data.objects[options.object1]  # cache the objects as dictionary indexing will change
@@ -113,17 +114,17 @@ def construct(context,options):
     nMvert = 3*nPlaneVert 
     
     #-- construct hexahedra
-    M = bpy.data.meshes.new(name = "tet_mesh")
-    H = bpy.data.meshes.new(name = "hex_mesh")
+    if meshType==4:
+      M = bpy.data.meshes.new(name = "tet_mesh")    
+    elif meshType==8:
+      M = bpy.data.meshes.new(name = "hex_mesh")
+    else:
+      print("unexpected meshType indicator");return 
     M.vertices.add(nMvert) 
-    H.vertices.add(nMvert) 
     for i in range(0,nPlaneVert):
         M.vertices[i].co = plane_mid.data.vertices[i].co   
         M.vertices[nPlaneVert + i].co = plane_bot.data.vertices[i].co   
-        M.vertices[2*nPlaneVert + i].co = plane_top.data.vertices[i].co   
-        H.vertices[i].co = plane_mid.data.vertices[i].co   
-        H.vertices[nPlaneVert + i].co = plane_bot.data.vertices[i].co   
-        H.vertices[2*nPlaneVert + i].co = plane_top.data.vertices[i].co          
+        M.vertices[2*nPlaneVert + i].co = plane_top.data.vertices[i].co                  
 
     botVertices = [i + nPlaneVert for i in range(nPlaneVert)]      
     topVertices = [i + 2*nPlaneVert for i in range(nPlaneVert)]
@@ -134,28 +135,24 @@ def construct(context,options):
         top_quad = plane_top.data.polygons[i]  
         for j in range(4):
             bot_quad.vertices[j] = bot_quad.vertices[j] + nPlaneVert
-            top_quad.vertices[j] = top_quad.vertices[j] + 2*nPlaneVert         
-        
-        createTets(M, (bot_quad, mid_quad),i)
-        createTets(M, (mid_quad, top_quad),i+1)  
-
-        hex = H.hexahedra.add()
-        for j in range(4):
-            # bot-mid hex
-            hex.vertices[j] = bot_quad.vertices[j]
-            hex.vertices[4+j] = mid_quad.vertices[j]      
-        hex = H.hexahedra.add()
-        for j in range(4):
-            # mid-top hex
-            hex.vertices[j] = mid_quad.vertices[j]
-            hex.vertices[4+j] = top_quad.vertices[j]               
+            top_quad.vertices[j] = top_quad.vertices[j] + 2*nPlaneVert    
+        if meshType==4:
+          createTets(M, (bot_quad, mid_quad),i)
+          createTets(M, (mid_quad, top_quad),i+1)  
+        elif meshType==8:
+          hex = M.hexahedra.add()
+          for j in range(4):
+              # bot-mid hex
+              hex.vertices[j] = bot_quad.vertices[j]
+              hex.vertices[4+j] = mid_quad.vertices[j]      
+          hex = M.hexahedra.add()
+          for j in range(4):
+              # mid-top hex
+              hex.vertices[j] = mid_quad.vertices[j]
+              hex.vertices[4+j] = top_quad.vertices[j]               
        
-    if False:
-        make_outer_surface(M)    
-        ct.data = M
-    else: 
-        make_hex_outer_surface(H)    
-        ct.data = H   
+    make_outer_surface(M)    
+    ct.data = M
     
     ct['annotated_type'] = 'CONNECTIVETISSUE'
     ct['topObject'] = o1.name 
