@@ -93,10 +93,7 @@ class ExportMSHOperator(bpy.types.Operator):
       Enabled only for tetrahedral meshes
       """
       return context.object is not None and context.object.type == 'MESH' \
-        and len(context.object.tetrahedra) > 0
-        
-def encodeHexFacet(a, b, c, d):
-  return a << 60 | b << 40 | c << 20 | d    
+        and len(context.object.tetrahedra) > 0       
 
 class ImportMSH(bpy.types.Operator, bpy_extras.io_utils.ImportHelper):
   """Load a tetrahedral mesh from GMSH file"""

@@ -41,7 +41,7 @@ def construct(context,options):
         o1 = bpy.data.objects[options.object1]  # cache the objects as dictionary indexing will change
         o2 = bpy.data.objects[options.object2]
     else:
-        o1 = bpy.data.objects['a1']; o2 = bpy.data.objects['a2']        
+        o1 = bpy.data.objects['a2']; o2 = bpy.data.objects['a1']        
     
     bpy.ops.object.transform_apply(location=True, rotation=True, scale=True)	
     if autoDefinePlane:           
@@ -137,17 +137,18 @@ def construct(context,options):
             top_quad.vertices[j] = top_quad.vertices[j] + 2*nPlaneVert         
         
         createTets(M, (bot_quad, mid_quad),i)
-        # createHexs(H, (bot_quad, mid_quad),i)
         createTets(M, (mid_quad, top_quad),i+1)  
 
         hex = H.hexahedra.add()
         for j in range(4):
             # bot-mid hex
             hex.vertices[j] = bot_quad.vertices[j]
-            hex.vertices[4+j] = mid_quad.vertices[j]
+            hex.vertices[4+j] = mid_quad.vertices[j]      
+        hex = H.hexahedra.add()
+        for j in range(4):
             # mid-top hex
             hex.vertices[j] = mid_quad.vertices[j]
-            hex.vertices[4+j] = top_quad.vertices[j]            
+            hex.vertices[4+j] = top_quad.vertices[j]               
        
     if False:
         make_outer_surface(M)    
@@ -160,7 +161,7 @@ def construct(context,options):
     ct['topObject'] = o1.name 
     ct['botObject'] = o2.name
     ct['topVertices'] = topVertices
-    ct['botVertices'] = botVertices
+    ct['botVertices'] = botVertices    
         
     bpy.ops.object.select_all(action='DESELECT')
     plane_top.select = True; bpy.ops.object.delete()    
@@ -277,6 +278,26 @@ def decodeHexFacet(f):
   c = f >> 15 & ( (1 << 15) - 1 ) 
   d = f       & ( (1 << 15) - 1 ) 
   return a,b,c,d    
+  
+# hex_faces = [ [0,1,2,3],[4,7,6,5],[0,4,5,1],[1,5,6,2],[3,2,6,7],[0,3,7,4] ]
+# def make_hex_outer_surface(H):
+  # faceSet = set()
+  # for t in H.hexahedra:
+    # for l in hex_faces:
+      # f = encodeHexFacet(t.vertices[l[0]],t.vertices[l[1]],t.vertices[l[2]],t.vertices[l[3]])
+      # rf = encodeHexFacet(t.vertices[l[0]],t.vertices[l[3]],t.vertices[l[2]],t.vertices[l[1]])
+      # if rf in faceSet:
+        # faceSet.remove(rf)
+      # else:
+        # faceSet.add(f)
+  
+  # H.tessfaces.add(len(faceSet))
+  # for i,f in enumerate(faceSet):
+    # a, b, c, d = decodeHexFacet(f)
+    # H.tessfaces[i].vertices =  (int(a), int(d), int(c), int(b))
+    
+  # H.update(calc_edges=True)           
+  # H.calc_normals()    
   
 hex_faces = [ [0,1,2,3],[4,7,6,5],[0,4,5,1],[1,5,6,2],[3,2,6,7],[0,3,7,4] ]
 def make_hex_outer_surface(H):
