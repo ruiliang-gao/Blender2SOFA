@@ -36,9 +36,9 @@ def construct(context,options):
 
     autoDefinePlane = False
     maxDim = 1e+16    
-    meshType = 4 # 8 = hex, 4 = tet 
+    meshType = 8 # 8 = hex, 4 = tet 
 
-    if True:
+    if False:
         o1 = bpy.data.objects[options.object1]  # cache the objects as dictionary indexing will change
         o2 = bpy.data.objects[options.object2]
     else:
@@ -150,8 +150,11 @@ def construct(context,options):
               # mid-top hex
               hex.vertices[j] = mid_quad.vertices[j]
               hex.vertices[4+j] = top_quad.vertices[j]               
-       
-    make_outer_surface(M)    
+     
+    if meshType==4:
+      make_outer_surface(M)    
+    elif meshType==8:
+      make_hex_outer_surface(M)
     ct.data = M
     
     ct['annotated_type'] = 'CONNECTIVETISSUE'

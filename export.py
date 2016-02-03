@@ -334,9 +334,6 @@ def exportHexVolumetric(o, opt):
     
     mo.set('position','@'+topotetra+'.position')
     t.append(mo)
-    # t.append(ET.Element('TetrahedronSetTopologyModifier', removeIsolated = "false"))
-    # t.append(ET.Element('TetrahedronSetTopologyAlgorithms', template = 'Vec3d'))
-    # t.append(ET.Element('TetrahedronSetGeometryAlgorithms', template = 'Vec3d'))
     t.append(ET.Element('HexahedronSetTopologyModifier'))
     t.append(ET.Element('HexahedronSetTopologyAlgorithms', template = 'Vec3d'))
     t.append(ET.Element('HexahedronSetGeometryAlgorithms', template = 'Vec3d'))    
@@ -345,42 +342,74 @@ def exportHexVolumetric(o, opt):
     t.append(ET.Element("DiagonalMass"))
     
     # set youngModulus and poissonRatio later, and method=large
-    # tetrahedralCorotationalFEMForceField = ET.Element('TetrahedralCorotationalFEMForceField')
-    # generateYoungModulus(o,tetrahedralCorotationalFEMForceField)
-    # generatePoissonRatio(o,tetrahedralCorotationalFEMForceField)
-    # t.append(tetrahedralCorotationalFEMForceField)
     h = ET.Element("HexahedronFEMForceField",template="Vec3d", method="large")
     generateYoungModulus(o,h)
     generatePoissonRatio(o,h)
     #h.set("rayleighStiffness", (o.get('rayleighStiffness')))
     t.append(h)    
+    # nn.append(ET.Element("IdentityMapping", object1='MO', object2='ctOglModel'))
     
     if o.get('precomputeConstraints') == True:
         t.append(ET.Element('PrecomputedConstraintCorrection', rotations="true", recompute="0"))
     else:
         t.append(ET.Element('UncoupledConstraintCorrection',compliance="0.001   0.00003 0 0   0.00003 0   0.00003"))
-    
-    
+        
     addConstraints(o, t)
     
     # collisionGroup = int(o.get('collisionGroup', 1)); # not sure 
     
-    # not yet done for carvable 
-    if o.get('carvable') & False:
-        n = ET.Element('Node', name="triangle-surface")
-        n.append(ET.Element("TriangleSetTopologyContainer",name="topotri"))
-        n.append(ET.Element("TriangleSetTopologyModifier",))
-        n.append(ET.Element("TriangleSetTopologyAlgorithms", template="Vec3d" ))
-        n.append(ET.Element("TriangleSetGeometryAlgorithms", template="Vec3d"))
+    if o.get('carvable'):     
+      # n = ET.Element('Node', name="hex-connective")
+      # n.append(ET.Element("hexahedronSetTopologyContainer",name="topohex"))
+      # n.append(ET.Element("hexahedronSetTopologyModifier",))
+      # n.append(ET.Element("hexahedronSetTopologyAlgorithms", template="Vec3d" ))            
+      # n.append(ET.Element("hexahedronFEMForceField", template="Vec3d"))
+      # n.append(ET.Element("hexahedronSetGeometryAlgorithms", template="Vec3d"))
+      
+      nn = ET.Element('Node', name="quad-surface")
+      nn.append(ET.Element("QuadSetTopologyContainer", name="quadSurf"))
+      nn.append(ET.Element("QuadSetGeometryAlgorithms", template="Vec3d"))
+      nn.append(ET.Element("QuadSetTopologyModifier", name="quadSetTopologyModifier7"))
+      nn.append(ET.Element("QuadSetTopologyAlgorithms", template="Vec3d"))
+      # nn.append(ET.Element("MechanicalObject", template="Vec3d", name="ctQuadMO"))
+      nn.append(ET.Element("Hexa2QuadTopologicalMapping", object1='@../' + topotetra, object2="quadSurf", flipNormals='1'))
+      # nn.append(ET.Element("OglModel", name="ctQuadOgl"))
+      # nn.append(ET.Element("IdentityMapping", object1='ctQuadMO', object2='ctQuadOgl'))
+      
+      nnn = ET.Element('Node', name="triangle-surface")
+      nnn.append(ET.Element('TriangleSetTopologyContainer',name='triSurf'))
+      nnn.append(ET.Element('TriangleSetTopologyModifier'))
+      nnn.append(ET.Element('TriangleSetTopologyAlgorithms', template="Vec3d"))
+      nnn.append(ET.Element('TriangleSetGeometryAlgorithms', template="Vec3d"))
+      # nnn.append(ET.Element('MechanicalObject', template="Vec3d", name="ctTriMO"))
+      nnn.append(ET.Element('Quad2TriangleTopologicalMapping', object1 = "quadSurf", object2 = "triSurf", flipNormals="1"))
+      nnn.append(ET.Element('TLineModel', bothSide="0", contactFriction="0", contactStiffness="500", group="1", moving="1", selfCollision="0", simulated="1"))
+      nnn.append(ET.Element('TPointModel', bothSide="0", contactFriction="0", contactStiffness="500", group="1", moving="1", selfCollision="0", simulated="1"))
+      nnn.append(ET.Element('TTriangleModel', bothSide="0", contactFriction="0", contactStiffness="500", group="1", moving="1", selfCollision="0", simulated="1"))
+      
+      nnnn = ET.Element('Node', name="Visu")
+      nnnn.append(ET.Element("OglModel", name="ctTriOgl"))
+      nnnn.append(ET.Element('IdentityMapping', object1="../../../../MO", object2="ctTriOgl"))
+      
+      nnn.append(nnnn)
+      nn.append(nnn)
+      t.append(nn)    
 
-        n.append(ET.Element('Tetra2TriangleTopologicalMapping', object1="../../"+topotetra, object2="topotri", flipNormals='1'))
+      
+    # n = ET.Element('Node', name="triangle-surface") # ok
+    # n.append(ET.Element("TriangleSetTopologyContainer",name="topotri")) # ok 
+    # n.append(ET.Element("TriangleSetTopologyModifier",)) # ok
+    # n.append(ET.Element("TriangleSetTopologyAlgorithms", template="Vec3d" )) # ok 
+    # n.append(ET.Element("TriangleSetGeometryAlgorithms", template="Vec3d"))
 
-        ogl = ET.Element("OglModel", name="Visual");
-        addMaterial(o, ogl);
-        n.append(ogl)
-        n.append(ET.Element("IdentityMapping",object1="../MO",object2="Visual"))
-        n.extend(collisionModelParts(o))
-        t.append(n)
+    # n.append(ET.Element('Tetra2TriangleTopologicalMapping', object1="../../"+topotetra, object2="topotri", flipNormals='1'))
+
+    # ogl = ET.Element("OglModel", name="Visual");
+    # addMaterial(o, ogl);
+    # n.append(ogl)
+    # n.append(ET.Element("IdentityMapping",object1="../MO",object2="Visual"))
+    # n.extend(collisionModelParts(o))
+    # t.append(n)
         
     else:
         n = ET.Element('Node', name="Collision")
