@@ -382,7 +382,7 @@ def exportHexVolumetric(o, opt):
       nnn.append(ET.Element('TriangleSetTopologyAlgorithms', template="Vec3d"))
       nnn.append(ET.Element('TriangleSetGeometryAlgorithms', template="Vec3d"))
       # nnn.append(ET.Element('MechanicalObject', template="Vec3d", name="ctTriMO"))
-      nnn.append(ET.Element('Quad2TriangleTopologicalMapping', object1 = "quadSurf", object2 = "triSurf", flipNormals="1"))
+      nnn.append(ET.Element('Quad2TriangleTopologicalMapping', object1 = "@../quadSurf", object2 = "triSurf", flipNormals="1"))
       nnn.append(ET.Element('TLineModel', bothSide="0", contactFriction="0", contactStiffness="500", group="1", moving="1", selfCollision="0", simulated="1"))
       nnn.append(ET.Element('TPointModel', bothSide="0", contactFriction="0", contactStiffness="500", group="1", moving="1", selfCollision="0", simulated="1"))
       nnn.append(ET.Element('TTriangleModel', bothSide="0", contactFriction="0", contactStiffness="500", group="1", moving="1", selfCollision="0", simulated="1"))

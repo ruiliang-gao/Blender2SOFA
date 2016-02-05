@@ -38,7 +38,7 @@ def construct(context,options):
     maxDim = 1e+16    
     meshType = 8 # 8 = hex, 4 = tet 
 
-    if False:
+    if True:
         o1 = bpy.data.objects[options.object1]  # cache the objects as dictionary indexing will change
         o2 = bpy.data.objects[options.object2]
     else:
@@ -128,7 +128,7 @@ def construct(context,options):
 
     botVertices = [i + nPlaneVert for i in range(nPlaneVert)]      
     topVertices = [i + 2*nPlaneVert for i in range(nPlaneVert)]
-    nquad = len(plane_mid.data.polygons)
+    nquad = len(plane_mid.data.polygons) 
     for i in range(nquad): 
         mid_quad = plane_mid.data.polygons[i]
         bot_quad = plane_bot.data.polygons[i]        
@@ -140,16 +140,51 @@ def construct(context,options):
           createTets(M, (bot_quad, mid_quad),i)
           createTets(M, (mid_quad, top_quad),i+1)  
         elif meshType==8:
+          # determine if orientation by 4 vertices of one quad agrees with the direction pointing into the hex
+          if i == 0:                     
+            # direction of the 0123 orientation
+            vec1 = plane_mid.data.vertices[mid_quad.vertices[1]].co
+            vec0 = plane_mid.data.vertices[mid_quad.vertices[0]].co
+            vec3 = plane_mid.data.vertices[mid_quad.vertices[3]].co            
+            vec01 = Vector((vec1[0]-vec0[0],vec1[1]-vec0[1],vec1[2]-vec0[2]))
+            vec03 = Vector((vec3[0]-vec0[0],vec3[1]-vec0[1],vec3[2]-vec0[2]))            
+            dir0123 =  crossProd(vec01,vec03)
+            # bottom to top direction of a hex
+            midv0 = plane_mid.data.vertices[mid_quad.vertices[0]].co
+            topv0 = plane_top.data.vertices[mid_quad.vertices[0]].co # index of mid_quad since this is the index for plane, not for mesh M
+            bot2top = Vector((topv0[0]-midv0[0],topv0[1]-midv0[1],topv0[2]-midv0[2]))            
+            dotp = dotProd(dir0123,bot2top)
+            if dotp>0:
+              coDirection  = True 
+            elif dotp<0:
+              coDirection = False 
+            else:
+              print("three planes are too close"); return 
+            print("codirection---------------------------------------")
+            print(coDirection)
+            print(dotp)
+            print(dir0123)
+            print(bot2top)
+            print(vec01)
+            print(vec03)
           hex = M.hexahedra.add()
           for j in range(4):
               # bot-mid hex
-              hex.vertices[j] = bot_quad.vertices[j]
-              hex.vertices[4+j] = mid_quad.vertices[j]      
+              if coDirection:
+                hex.vertices[j] = bot_quad.vertices[j]
+                hex.vertices[4+j] = mid_quad.vertices[j]     
+              else:
+                hex.vertices[j] = bot_quad.vertices[3-j]
+                hex.vertices[4+j] = mid_quad.vertices[3-j]     
           hex = M.hexahedra.add()
           for j in range(4):
               # mid-top hex
-              hex.vertices[j] = mid_quad.vertices[j]
-              hex.vertices[4+j] = top_quad.vertices[j]               
+              if coDirection:
+                hex.vertices[j] = mid_quad.vertices[j]
+                hex.vertices[4+j] = top_quad.vertices[j]  
+              else:
+                hex.vertices[j] = mid_quad.vertices[3-j]
+                hex.vertices[4+j] = top_quad.vertices[3-j]               
      
     if meshType==4:
       make_outer_surface(M)    
