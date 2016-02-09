@@ -160,13 +160,6 @@ def construct(context,options):
               coDirection = False 
             else:
               print("three planes are too close"); return 
-            print("codirection---------------------------------------")
-            print(coDirection)
-            print(dotp)
-            print(dir0123)
-            print(bot2top)
-            print(vec01)
-            print(vec03)
           hex = M.hexahedra.add()
           for j in range(4):
               # bot-mid hex
@@ -185,7 +178,7 @@ def construct(context,options):
               else:
                 hex.vertices[j] = mid_quad.vertices[3-j]
                 hex.vertices[4+j] = top_quad.vertices[3-j]               
-     
+         
     if meshType==4:
       make_outer_surface(M)    
     elif meshType==8:
