@@ -915,11 +915,14 @@ def exportConnectiveTissue(o, opt):
     oMesh = o.to_mesh(opt.scene, True, 'PREVIEW')    
     otopMesh = oTop.to_mesh(opt.scene, True, 'PREVIEW')    
     obotMesh = oBot.to_mesh(opt.scene, True, 'PREVIEW')    
-    ntop = len(otopMesh.vertices)
-    bpy.ops.object.select_all(action='SELECT') 
-    bpy.ops.object.transform_apply(location=True, rotation=True, scale=True)
-    bpy.ops.object.select_all(action='DESELECT') 
+    ntop = len(otopMesh.vertices) 
     
+    bpy.ops.object.select_all(action='DESELECT')
+    o.select = True 
+    oTop.select = True 
+    oBot.select = True 
+    bpy.ops.object.transform_apply(location=True, rotation=True, scale=True)
+        
     maxDim = 1e+9 # todo: maxDim = max dimension of the whole scene
     map2top = []
     for i, v in enumerate(topVertices):
