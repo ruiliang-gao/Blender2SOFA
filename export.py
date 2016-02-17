@@ -852,8 +852,15 @@ def exportObject(opt, o):
                 t = exportRigid(o, opt)
             elif annotated_type == 'CONNECTIVETISSUE':
                 t = exportConnectiveTissue(o, opt)  
-            elif annotated_type == 'VOLUMETRIC':
-                t = exportVolumetric(o, opt)
+            # elif annotated_type == 'VOLUMETRIC':
+                # t = exportVolumetric(o, opt)
+            elif annotated_type == 'VOLUMETRIC' and o.type == 'MESH' and hasattr(o.data,'tetrahedra') and len(o.data.tetrahedra) > 0:
+                t = exportVolumetric(o, opt)   
+            elif annotated_type == 'VOLUMETRIC' and o.type == 'MESH' and hasattr(o.data,'hexahedra') and len(o.data.hexahedra) > 0:
+                print("here ------------------------------------------")
+                name = fixName(o.name)
+                t = ET.Element("Node", name = name)
+                t = exportHexVolumetric(o, opt)                
             elif annotated_type == 'THICKSHELL':
                 t = exportThickQuadShell(o, opt)
             elif annotated_type == 'THICKCURVE':
