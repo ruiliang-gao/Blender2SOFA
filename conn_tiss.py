@@ -76,7 +76,7 @@ def construct(context,options):
     
     # context.scene.objects.link(plane_top)
     bpy.ops.object.duplicate()
-    plane_bot = context.selected_objects[0]
+      
 
     # create connective tissue object (mesh to be filled in later)
     bpy.ops.object.add(type='MESH')
@@ -159,7 +159,7 @@ def construct(context,options):
             elif dotp<0:
               coDirection = False 
             else:
-              print("three planes are too close"); return 
+              print("three planes are too close"); assert(False)
           hex = M.hexahedra.add()
           for j in range(4):
               # bot-mid hex
