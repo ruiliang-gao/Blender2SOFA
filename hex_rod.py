@@ -52,7 +52,6 @@ def construct(context, options):
   curveLen = 0
   for i in range(nE):
     curveLen = curveLen + (m.vertices[m.edges[i].vertices[0]].co - m.vertices[m.edges[i].vertices[1]].co).length
-  print(curveLen)
   if options.rod_radius==0:
     options.rod_radius = curveLen/30
   if options.hex_number==0:
@@ -74,10 +73,12 @@ def construct(context, options):
   nHex = int(len(tube.polygons)/4)
   # now construct the hex rod 
   M = bpy.data.meshes.new(name = "hex_mesh")
+  bpy.ops.object.transform_apply(location=True, rotation=True, scale=True)
   M.vertices.add(nMvert)
   for i in range(nMvert):
-    M.vertices[i].co = tube.vertices[i].co
-  
+    M.vertices[i].co = curve.matrix_world * tube.vertices[i].co
+    # bpy.ops.mesh.primitive_ico_sphere_add(size=.1,location=M.vertices[i].co)    
+
   # check if the orientation defined by 4 first vertices of the first 4 quads 
   # is the same as the direction pointing into the volume
   vec1 = tube.vertices[tube.polygons[1].vertices[0]].co 
@@ -111,7 +112,7 @@ def construct(context, options):
   
   # create the outcome rod 
   bpy.ops.object.add(type='MESH')
-  # bpy.ops.object.transform_apply(location=True, rotation=True, scale=True)
+  bpy.ops.object.transform_apply(location=True, rotation=True, scale=True)
   rod = bpy.context.object  
   rod.name = 'rod'
   rod.data = M
@@ -126,10 +127,11 @@ def construct(context, options):
   rod['selfCollision'] = 0
   rod['suture'] = 0
   rod['youngModulus'] = 300
-  # rod['color'] = "default"
+  rod['color'] = "white"
 
   bpy.ops.object.select_all(action='DESELECT')
-  square.select = True; curve.select = True; curve1.select = True  
+  square.select = True; curve.select = True; 
+  curve1.select = True
   bpy.ops.object.delete()
   
 

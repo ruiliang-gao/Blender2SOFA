@@ -380,8 +380,12 @@ def exportHexVolumetric(o, opt):
       nnn.append(ET.Element('PointModel', bothSide="0", contactFriction="0", contactStiffness="500", group=collisionGroup, moving="1", selfCollision="0", simulated="1"))
       nnn.append(ET.Element('TriangleModel', bothSide="0", contactFriction="0", contactStiffness="500", group=collisionGroup, moving="1", selfCollision="0", simulated="1")) 
       
+      input_color = o.get("color",-1)
+      if input_color==-1: 
+        input_color="white"
+      
       nnnn = ET.Element('Node', name="Visu")
-      nnnn.append(ET.Element("OglModel", name="ctTriOgl"))
+      nnnn.append(ET.Element("OglModel", name="ctTriOgl", color = input_color))
       nnnn.append(ET.Element('IdentityMapping', object1="@../../../MO", object2="ctTriOgl"))
       
       nnn.append(nnnn)
