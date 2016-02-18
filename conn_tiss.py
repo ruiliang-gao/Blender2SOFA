@@ -76,7 +76,7 @@ def construct(context,options):
     
     # context.scene.objects.link(plane_top)
     bpy.ops.object.duplicate()
-      
+    plane_bot = context.selected_objects[0]  
 
     # create connective tissue object (mesh to be filled in later)
     bpy.ops.object.add(type='MESH')
@@ -190,6 +190,18 @@ def construct(context,options):
     ct['botObject'] = o2.name
     ct['topVertices'] = topVertices
     ct['botVertices'] = botVertices    
+    
+    ct['carvable'] = 1       
+    ct['collisionGroup'] = 1       
+    ct['contactFriction'] = 0.010  
+    ct['contactStiffness'] = 500
+    ct['damping'] = 0.100
+    ct['poissonRatio'] = 0.450
+    ct['precomputeConstraints'] = 0
+    ct['selfCollision'] = 0
+    ct['suture'] = 0
+    ct['youngModulus'] = 300
+    ct['color'] = "white"    
         
     bpy.ops.object.select_all(action='DESELECT')
     plane_top.select = True; bpy.ops.object.delete()    
