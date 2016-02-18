@@ -8,8 +8,8 @@ class HexRod(bpy.types.Operator):
     bl_label = "Construct Hex Rod"
     bl_options = { 'UNDO' }
     bl_description = "Create a rod made of hexahedra (one per unit length) along the input curve"    
-    hex_number = bpy.props.IntProperty(name="Number of hexahedra", description = "Number of hexahedra to construct")    
-    rod_radius = bpy.props.FloatProperty(name="Radius of the rod", description = "Radius of the rod")    
+    hex_number = bpy.props.IntProperty(name="Number of hexahedra (default: 20)", description = "Number of hexahedra to construct")    
+    rod_radius = bpy.props.FloatProperty(name="Radius of the rod (default: curve length/30)", description = "Radius of the rod")    
     
     def invoke(self, context, event):
         return context.window_manager.invoke_props_dialog(self)
@@ -56,16 +56,11 @@ def construct(context, options):
   if options.rod_radius==0:
     options.rod_radius = curveLen/30
   if options.hex_number==0:
-    options.hex_number = 30
+    options.hex_number = 20
   curve1.hide = True; curve1.hide_render = True 
   # bpy.ops.object.delete(use_global=False) 
     
   curve.data.splines[0].resolution_u = options.hex_number
-  
-  # default values of hex_number and rod_radius
-  # bpy.ops.mesh.primitive_uv_sphere_add(size=1,location=curve.data.splines[0].bezier_points[0].co)
-  # bpy.ops.mesh.primitive_uv_sphere_add(size=1,location=curve.data.splines[0].bezier_points[1].co)
-  # return 
   
   # create a square 
   bpy.ops.curve.primitive_bezier_circle_add(radius=options.rod_radius)  
@@ -106,8 +101,6 @@ def construct(context, options):
     print("the test hex is too distorted"); assert(False)
     
   # here assume that tube.polygons[0].vertices[3] = tube.polygons[4].vertices[0]
-  # print(tube.vertices[tube.polygons[0].vertices[3]].co)
-  # print(tube.vertices[tube.polygons[4].vertices[0]].co)
   if (tube.vertices[tube.polygons[0].vertices[1]].co-tube.vertices[tube.polygons[4].vertices[0]].co).length > 1e-9:
     print("hex_rod.py: convention not satisfied"); assert(False)
               
@@ -128,9 +121,19 @@ def construct(context, options):
   bpy.ops.object.transform_apply(location=True, rotation=True, scale=True)
   rod = bpy.context.object  
   rod.name = 'rod'
+  rod.data = M
   rod['annotated_type'] = 'VOLUMETRIC'
   rod['carvable'] = 1       
-  rod.data = M
+  rod['collisionGroup'] = 1       
+  rod['contactFriction'] = 0.010  
+  rod['contactStiffness'] = 500
+  rod['damping'] = 0.100
+  rod['poissonRatio'] = 0.450
+  rod['precomputeConstraints'] = 0
+  rod['selfCollision'] = 0
+  rod['suture'] = 0
+  rod['youngModulus'] = 300
+  # rod['color'] = "default"
   
   curve.hide = True; curve.hide_render = True 
   
