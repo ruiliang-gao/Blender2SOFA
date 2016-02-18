@@ -8,8 +8,8 @@ class HexRod(bpy.types.Operator):
     bl_label = "Construct Hex Rod"
     bl_options = { 'UNDO' }
     bl_description = "Create a rod made of hexahedra (one per unit length) along the input curve"    
-    hex_number = bpy.props.IntProperty(name="Number of hexahedra (default: 20)", description = "Number of hexahedra to construct")    
-    rod_radius = bpy.props.FloatProperty(name="Radius of the rod (default: curve length/30)", description = "Radius of the rod")    
+    hex_number = bpy.props.IntProperty(name="Number of hexahedra (default = 20)", description = "Number of hexahedra to construct")    
+    rod_radius = bpy.props.FloatProperty(name="Radius of the rod (default = curve length/30)", description = "Radius of the rod")    
     
     def invoke(self, context, event):
         return context.window_manager.invoke_props_dialog(self)
@@ -57,8 +57,6 @@ def construct(context, options):
     options.rod_radius = curveLen/30
   if options.hex_number==0:
     options.hex_number = 20
-  curve1.hide = True; curve1.hide_render = True 
-  # bpy.ops.object.delete(use_global=False) 
     
   curve.data.splines[0].resolution_u = options.hex_number
   
@@ -69,7 +67,6 @@ def construct(context, options):
   
   curve.data.bevel_object = bpy.data.objects[square.name]
   # m.data.bevel_object = bpy.data.objects[square.name]
-  square.hide = True; square.hide_render = True 
   
   # outcome mesh from the bevel object 
   tube = curve.to_mesh(context.scene,True,"PREVIEW")
@@ -99,15 +96,11 @@ def construct(context, options):
     pointIn = False 
   else:
     print("the test hex is too distorted"); assert(False)
-    
+     
   # here assume that tube.polygons[0].vertices[3] = tube.polygons[4].vertices[0]
   if (tube.vertices[tube.polygons[0].vertices[1]].co-tube.vertices[tube.polygons[4].vertices[0]].co).length > 1e-9:
     print("hex_rod.py: convention not satisfied"); assert(False)
               
-  print("number of faces")
-  print(len(tube.polygons))
-  print("numbr of hex")
-  print(nHex)
   for i in range(nHex):
     hex = M.hexahedra.add()
     for j in range(4):
@@ -118,7 +111,7 @@ def construct(context, options):
   
   # create the outcome rod 
   bpy.ops.object.add(type='MESH')
-  bpy.ops.object.transform_apply(location=True, rotation=True, scale=True)
+  # bpy.ops.object.transform_apply(location=True, rotation=True, scale=True)
   rod = bpy.context.object  
   rod.name = 'rod'
   rod.data = M
@@ -134,8 +127,10 @@ def construct(context, options):
   rod['suture'] = 0
   rod['youngModulus'] = 300
   # rod['color'] = "default"
-  
-  curve.hide = True; curve.hide_render = True 
+
+  bpy.ops.object.select_all(action='DESELECT')
+  square.select = True; curve.select = True; curve1.select = True  
+  bpy.ops.object.delete()
   
 
 def crossProd(v1,v2):
