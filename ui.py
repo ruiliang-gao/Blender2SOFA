@@ -69,6 +69,7 @@ class SofaPropertyPanel(bpy.types.Panel):
         row.operator("scene.runsofa", icon='PLAY')
         layout.operator("mesh.construct_con_tissue", icon='OUTLINER_OB_META')        
         layout.operator("mesh.construct_hex_rod", icon='MOD_MESHDEFORM')
+        layout.operator("mesh.construct_fatty_tissue", icon='META_CUBE')
         
         if obj != None: 
             layout.separator()

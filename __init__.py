@@ -17,6 +17,7 @@ from .io_msh import *
 from .ui import *
 from .conn_tiss import *
 from .hex_rod import *
+from .fatty_tissue import *
 from .export import *
 from .runsofa import *
 
@@ -31,8 +32,9 @@ addon_keymaps = []
 def register():
     io_msh.register()
     ui.register()
-    conn_tiss.register()
+    conn_tiss.register()    
     hex_rod.register()
+    fatty_tissue.register()
 
     bpy.utils.register_class(ExportToSofa)
     bpy.types.INFO_MT_file_export.append(menu_func_export)
@@ -63,3 +65,4 @@ def unregister():
     ui.unregister() 
     conn_tiss.unregister()
     hex_rod.unregister()
+    fatty_tissue.unregister()
