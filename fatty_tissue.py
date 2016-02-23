@@ -54,13 +54,14 @@ def construct(context, options):
   
   # change the following:
   num_verts = 8
-  vert_coord = cube.data.vertices 
-  hexes = []
+  vert_coord = cube.data.vertices # list that contains coordinates of all vertices  
+  hexes = [] # list of indices of each hex 
   # ahex is a test hex ( = original cube)
   ahex = []
   for ii in range(8):
     ahex.append(ii)
   hexes.append(ahex)
+  # it won't work because of the orientation of the vertices of one hex 
   
   # build a hex mesh for the fatty tissue 
   M = bpy.data.meshes.new(name = "hex_mesh")
