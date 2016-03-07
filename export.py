@@ -503,12 +503,15 @@ def exportInstrument(o, opt):
     
             toolFunction = o.get('function', 'suture')
             if toolFunction == 'carve':
-              pm.set('tags', 'SuturingTool CarvingTool')
-            else:
+              pm.set('tags', 'CarvingTool')
+            elif toolFunction == 'suture':
               pm.set('tags', 'SuturingTool')
+            else:
+              pm.set('tags', 'GraspingTool')
+
             child.append(pm)
             child.append(ET.Element("RigidMapping", input="@../../instrumentState",output="@CM",index= 0))
-            child.append(ET.Element("SuturingManager", toolModel = '@toolTip' , omniDriver = '@../../../RigidLayer/driver', graspStiffness = "1e6", attachStiffness="1e12", sutureStiffness = "1e6", grasp_force_scale = "0.0"))
+            child.append(ET.Element("HapticManager", toolModel = '@toolTip' , omniDriver = '@../../../RigidLayer/driver', graspStiffness = "1e3", attachStiffness="1e9", grasp_force_scale = "-1e-3"))
             t.append(child)
             
             break
@@ -1072,7 +1075,8 @@ def exportScene(opt):
             if i.strip() != "":
                 root.append(ET.Element("include", href=i))
              
-    lcp = ET.Element("LCPConstraintSolver", tolerance="1e-6", maxIt = "1000", mu = scene.get('mu', '1e-6'))
+    #lcp = ET.Element("LCPConstraintSolver", tolerance="1e-6", maxIt = "1000", mu = scene.get('mu', '1e-6'))
+    lcp = ET.Element("GenericConstraintSolver", tolerance="1e-3", maxIterations = "1000")
     root.append(lcp)
     
     root.append(ET.Element('FreeMotionAnimationLoop'))
@@ -1094,8 +1098,7 @@ def exportScene(opt):
      
     hasHaptic = False;
       
-    root.append(ET.Element("RequiredPlugin", pluginName="SofaCarving"))
-   
+    #root.append(ET.Element("RequiredPlugin", pluginName="SofaCarving"))
     # TODO: put all the objects that need a solver e.g. soft bodies, volumetric and attach constraints
     #  into a separate node call it "solverNode"
     # and keep the obstacles in the root.
