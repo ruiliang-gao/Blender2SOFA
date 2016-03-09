@@ -429,7 +429,7 @@ def addConstraints(o, t):
 
 def collisionModelParts(o, obstacle = False, group = None, bothSide = 0):
     if o.get('suture', False):
-      sutureTag = 'SuturingSurface' 
+      sutureTag = 'HapticSurface' 
     else:
       sutureTag = ''
     if obstacle:
@@ -511,7 +511,7 @@ def exportInstrument(o, opt):
 
             child.append(pm)
             child.append(ET.Element("RigidMapping", input="@../../instrumentState",output="@CM",index= 0))
-            child.append(ET.Element("HapticManager", toolModel = '@toolTip' , omniDriver = '@../../../RigidLayer/driver', graspStiffness = "1e3", attachStiffness="1e9", grasp_force_scale = "-1e-3"))
+            child.append(ET.Element("HapticManager", toolModel = '@toolTip' , omniDriver = '@../../../RigidLayer/driver', graspStiffness = "1e3", attachStiffness="1e12", grasp_force_scale = "-1e-3"))
             t.append(child)
             
             break
