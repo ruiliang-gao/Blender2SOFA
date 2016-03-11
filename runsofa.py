@@ -3,6 +3,7 @@ import os
 from .export import *
 from subprocess import Popen
 from tempfile import mktemp
+import sys
 
 def updateFileFormat(self, context):
   base, ext = os.path.splitext(self.filepath)
@@ -42,7 +43,10 @@ class RunSofaOperator(bpy.types.Operator):
             opt.file_format = self.file_format
             root = exportScene(opt)
             writeNodesToFile(root,self.filepath, opt)
-            Popen(self.filepath,shell=True)
+            if sys.platform == 'linux':
+              Popen(['xdg-open', self.filepath])
+            else: # if sys.platform == 'windows':
+              Popen(self.filepath,shell=True)
             return {'FINISHED'}
         except ExportException as et:
             self.report({'ERROR'}, "Export failed: %s" % et.message)
