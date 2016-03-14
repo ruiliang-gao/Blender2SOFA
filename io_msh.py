@@ -148,6 +148,7 @@ class VolumetricMeshPanel(bpy.types.Panel):
         row.label("Tetrahedron count: %d" % len(M.tetrahedra))
         row.label("Hexahedron count: %d" % len(M.hexahedra))
         layout.operator('mesh.recalculate_outer_surface', icon='RETOPO')
+        layout.operator('mesh.remove_degenerate_hexa')
 
 class ReCalculateOuterSurface(bpy.types.Operator):
   bl_idname = "mesh.recalculate_outer_surface"
@@ -156,10 +157,50 @@ class ReCalculateOuterSurface(bpy.types.Operator):
   @classmethod
   def poll(cls, context):
     o = context.object
-    return o is not None and o.type == 'MESH' and len(o.tetrahedra) + len(o.hexahedra) > 0
+    return o is not None and o.type == 'MESH' and len(o.data.tetrahedra) + len(o.data.hexahedra) > 0
 
   def execute(self, context):
     recalc_outer_surface(context.object.data)
+    return { 'FINISHED' }
+
+class RemoveDegenerateHexahedra(bpy.types.Operator):
+  bl_idname = "mesh.remove_degenerate_hexa" 
+  bl_label = "Remove degenerate hexahedra"
+  bl_options = { 'UNDO' }
+
+  @classmethod
+  def poll(cls, context):
+    o = context.object
+    return o is not None and o.type == 'MESH' and len(o.data.tetrahedra) + len(o.data.hexahedra) > 0
+
+  def execute(self, context):
+    M = context.object.data
+
+  def execute(self, context):
+    M = context.object.data
+
+    inverted_hexa = 0
+    degenerate_hexa = []
+    for i, h in enumerate(M.hexahedra):
+      v = []
+      for j in h.vertices:
+  	    v.append(M.vertices[j].co)
+      a = v[1] - v[0]
+      b = v[3] - v[0]
+      c = v[4] - v[0]
+      V = -a.cross(b).dot(c)
+      if (abs(V) < 0.01 * (a.length**3 + b.length**3 + c.length**3)):
+  	    degenerate_hexa.append(i)
+      elif V < 0.0:
+        w = h.vertices
+        h.vertices = [ w[4], w[5], w[6], w[7], w[0], w[1], w[2], w[3] ]
+        inverted_hexa = inverted_hexa + 1
+ 
+    degenerate_hexa.reverse()
+    for i in degenerate_hexa:
+        M.hexahedra.remove(i)
+    self.report({ 'INFO' }, "Removed %d degenerate hexahedra and inverted %d hexahedra" % (len(degenerate_hexa),inverted_hexa))
+    recalc_outer_surface(M)
     return { 'FINISHED' }
 
 class ExportMSHOperator(bpy.types.Operator):
@@ -262,6 +303,7 @@ def register():
     bpy.utils.register_class(MeshHexahedron)
     bpy.utils.register_class(VolumetricMeshPanel)
     bpy.utils.register_class(ReCalculateOuterSurface)
+    bpy.utils.register_class(RemoveDegenerateHexahedra)
     bpy.types.INFO_MT_file_import.append(menu_func_import)
     bpy.types.Mesh.tetrahedra = bpy.props.CollectionProperty(name="Tetrahedra", type=MeshTetrahedron)
     bpy.types.Mesh.hexahedra = bpy.props.CollectionProperty(name="Hexahedra", type=MeshHexahedron)
@@ -271,6 +313,7 @@ def unregister():
     del bpy.types.Mesh.hexahedra
     bpy.types.INFO_MT_file_import.remove(menu_func_import)
     bpy.utils.unregister_class(ImportMSH)
+    bpy.utils.unregister_class(RemoveDegenerateHexahedra)
     bpy.utils.unregister_class(ReCalculateOuterSurface)
     bpy.utils.unregister_class(VolumetricMeshPanel)
     bpy.utils.unregister_class(MeshTetrahedron)
