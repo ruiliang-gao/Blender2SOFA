@@ -1,4 +1,4 @@
-bl_info = { 
+bl_info = {
     'name': "GMSH Import/Export plugin",
     'author': "Saleh Dindar",
     'version': (0, 0, 0),
@@ -14,8 +14,9 @@ import bpy
 import bpy_extras
 import re
 import os
+import bmesh
 
-def encodeFacet(a, b, c):
+def encodeTriFacet(a, b, c):
   if a < b:
     if a < c:
       i,j,k = a,b,c
@@ -27,38 +28,100 @@ def encodeFacet(a, b, c):
     else:
       i,j,k = c,a,b
   return i << 40 | j << 20 | k
-def decodeFacet(f):
-  a = f >> 40 & ( (1 << 20) - 1 ) 
-  b = f >> 20 & ( (1 << 20) - 1 ) 
-  c = f       & ( (1 << 20) - 1 ) 
-  return a,b,c
+def decodeTriFacet(f):
+  a = f >> 40 & ( (1 << 20) - 1 )
+  b = f >> 20 & ( (1 << 20) - 1 )
+  c = f       & ( (1 << 20) - 1 )
+  return [int(a),int(b),int(c)]
 
-LU = [ [1,3,2], [0,2,3], [0,3,1], [0,1,2] ]
-def make_outer_surface(M):
-  faceSet = set()
+
+def encodeQuadFacet(a, b, c, d):
+  # rearrange the vertices so that: the first is the smallest, orientation is preserved
+  vt = [a,b,c,d]
+  vf = map(float,[a,b,c,d])
+  mv = min(vf)
+  minIdx = -1
+  for vi,v in enumerate(vt):
+    if abs(mv-v)<.1:
+        minIdx = vi; break
+  if minIdx == 0:
+    i,j,k,l = a,b,c,d
+  elif minIdx == 1:
+    i,j,k,l = b,c,d,a
+  elif minIdx == 2:
+    i,j,k,l = c,d,a,b
+  elif minIdx == 3:
+    i,j,k,l = d,a,b,c
+  # assert(max(vf) < 32768) # max index < 2^15
+  return i << 45 | j << 30 | k << 15 | l
+
+def decodeQuadFacet(f):
+  a = f >> 45 & ( (1 << 15) - 1 )
+  b = f >> 30 & ( (1 << 15) - 1 )
+  c = f >> 15 & ( (1 << 15) - 1 )
+  d = f       & ( (1 << 15) - 1 )
+  return [int(a),int(b),int(c),int(d)]
+
+hex_faces = [ [0,1,2,3],[4,7,6,5],[0,4,5,1],[1,5,6,2],[3,2,6,7],[0,3,7,4] ]
+tet_faces = [ [1,3,2], [0,2,3], [0,3,1], [0,1,2] ]
+def recalc_outer_surface(M):
+  triFaceSet = set()
   for t in M.tetrahedra:
-    for l in LU:
-      f = encodeFacet(t.vertices[l[0]],t.vertices[l[1]],t.vertices[l[2]])
-      rf = encodeFacet(t.vertices[l[0]],t.vertices[l[2]],t.vertices[l[1]])
-      if rf in faceSet:
-        faceSet.remove(rf)
+    for l in tet_faces:
+      f = encodeTriFacet(t.vertices[l[0]],t.vertices[l[1]],t.vertices[l[2]])
+      rf = encodeTriFacet(t.vertices[l[0]],t.vertices[l[2]],t.vertices[l[1]])
+      if rf in triFaceSet:
+        triFaceSet.remove(rf)
       else:
-        faceSet.add(f)
-  
-  M.tessfaces.add(len(faceSet))
-  for i,f in enumerate(faceSet):
-    a, b, c = decodeFacet(f)
-    M.tessfaces[i].vertices =  (int(a), int(c), int(b))
-    
-  M.update(calc_edges=True)           
-  M.calc_normals()          
-    
+        triFaceSet.add(f)
+
+  quadFaceSet = set()
+  for t in M.hexahedra:
+    for l in hex_faces:
+      f = encodeQuadFacet(t.vertices[l[0]],t.vertices[l[1]],t.vertices[l[2]],t.vertices[l[3]])
+      rf = encodeQuadFacet(t.vertices[l[0]],t.vertices[l[3]],t.vertices[l[2]],t.vertices[l[1]])
+      if rf in quadFaceSet:
+        quadFaceSet.remove(rf)
+      else:
+        quadFaceSet.add(f)
+
+  bm = bmesh.new()
+  bm.from_mesh(M)
+
+  # Remove all the faces created previously,
+  # since we are recalculating the outer surface
+  for f in bm.faces:
+    bm.faces.remove(f)
+  for e in bm.edges:
+    bm.edges.remove(e)
+
+  bm.faces.ensure_lookup_table()
+  bm.edges.ensure_lookup_table()
+  bm.verts.ensure_lookup_table()
+
+  # Add all the triangular faces
+  for f in triFaceSet:
+    a, b, c = decodeTriFacet(f)
+    bm.faces.new([bm.verts[a],bm.verts[b],bm.verts[c]])
+
+  # Add all the quad faces
+  for f in quadFaceSet:
+    a, b, c, d = decodeQuadFacet(f)
+    bm.faces.new([bm.verts[a],bm.verts[b],bm.verts[c],bm.verts[d]])
+
+  # Update the data structures
+  bm.faces.index_update()
+  bm.faces.ensure_lookup_table()
+  bm.to_mesh(M)
+  bm.free()
+  M.update(calc_edges=True)
+  M.calc_normals()
 
 
 class MeshTetrahedron(bpy.types.PropertyGroup):
     """Represent a tetrahedron in a mesh"""
     vertices = bpy.props.IntVectorProperty(size=4)
-    
+
 class MeshHexahedron(bpy.types.PropertyGroup):
     """Represent a hexahedron in a mesh"""
     vertices = bpy.props.IntVectorProperty(size=8)
@@ -71,7 +134,7 @@ class VolumetricMeshPanel(bpy.types.Panel):
     bl_space_type = 'PROPERTIES'
     bl_region_type = 'WINDOW'
     bl_context = "data"
-    
+
     @classmethod
     def poll(self, context):
         return (context.object is not None and context.object.type == 'MESH')
@@ -84,7 +147,61 @@ class VolumetricMeshPanel(bpy.types.Panel):
         row = layout.row()
         row.label("Tetrahedron count: %d" % len(M.tetrahedra))
         row.label("Hexahedron count: %d" % len(M.hexahedra))
+        layout.operator('mesh.recalculate_outer_surface', icon='RETOPO')
+        layout.operator('mesh.remove_degenerate_hexa')
 
+class ReCalculateOuterSurface(bpy.types.Operator):
+  bl_idname = "mesh.recalculate_outer_surface"
+  bl_label = "Recalculate outer surfaces of a volumetric mesh"
+
+  @classmethod
+  def poll(cls, context):
+    o = context.object
+    return o is not None and o.type == 'MESH' and len(o.data.tetrahedra) + len(o.data.hexahedra) > 0
+
+  def execute(self, context):
+    recalc_outer_surface(context.object.data)
+    return { 'FINISHED' }
+
+class RemoveDegenerateHexahedra(bpy.types.Operator):
+  bl_idname = "mesh.remove_degenerate_hexa" 
+  bl_label = "Remove degenerate hexahedra"
+  bl_options = { 'UNDO' }
+
+  @classmethod
+  def poll(cls, context):
+    o = context.object
+    return o is not None and o.type == 'MESH' and len(o.data.tetrahedra) + len(o.data.hexahedra) > 0
+
+  def execute(self, context):
+    M = context.object.data
+
+  def execute(self, context):
+    M = context.object.data
+
+    inverted_hexa = 0
+    degenerate_hexa = []
+    for i, h in enumerate(M.hexahedra):
+      v = []
+      for j in h.vertices:
+  	    v.append(M.vertices[j].co)
+      a = v[1] - v[0]
+      b = v[3] - v[0]
+      c = v[4] - v[0]
+      V = -a.cross(b).dot(c)
+      if (abs(V) < 0.01 * (a.length**3 + b.length**3 + c.length**3)):
+  	    degenerate_hexa.append(i)
+      elif V < 0.0:
+        w = h.vertices
+        h.vertices = [ w[4], w[5], w[6], w[7], w[0], w[1], w[2], w[3] ]
+        inverted_hexa = inverted_hexa + 1
+ 
+    degenerate_hexa.reverse()
+    for i in degenerate_hexa:
+        M.hexahedra.remove(i)
+    self.report({ 'INFO' }, "Removed %d degenerate hexahedra and inverted %d hexahedra" % (len(degenerate_hexa),inverted_hexa))
+    recalc_outer_surface(M)
+    return { 'FINISHED' }
 
 class ExportMSHOperator(bpy.types.Operator):
   @classmethod
@@ -93,17 +210,17 @@ class ExportMSHOperator(bpy.types.Operator):
       Enabled only for tetrahedral meshes
       """
       return context.object is not None and context.object.type == 'MESH' \
-        and len(context.object.tetrahedra) > 0       
+        and len(context.object.tetrahedra) > 0
 
 class ImportMSH(bpy.types.Operator, bpy_extras.io_utils.ImportHelper):
   """Load a tetrahedral mesh from GMSH file"""
   bl_idname = "import_mesh.msh"
   bl_label = "Import MSH"
   bl_options = {'UNDO'}
-  
+
   filename_ext = ".msh"
   filter_glob = bpy.props.StringProperty(default="*.msh", options={'HIDDEN'})
-  
+
   def execute(self, context):
     objName = bpy.path.display_name(os.path.basename(self.filepath))
     M = bpy.data.meshes.new(name = objName)
@@ -140,7 +257,7 @@ class ImportMSH(bpy.types.Operator, bpy_extras.io_utils.ImportHelper):
           return {'CANCELLED'}
       elif mode == 'ELM-first':
         if re.match('^\d+\s*$', line):
-          # Tthere is no way to resize the tetrahedra collection 
+          # Tthere is no way to resize the tetrahedra collection
           mode = 'ELM'
         else:
           self.report({'ERROR'}, "%s:%d: Expected number of elements here got '%s'" %(objName, lineno, line))
@@ -168,14 +285,14 @@ class ImportMSH(bpy.types.Operator, bpy_extras.io_utils.ImportHelper):
       else:
         assert("This line" == "Never reached")
     f.close()
-    make_outer_surface(M)
+    recalc_outer_surface(M)
     o = bpy.data.objects.new(objName, M)
     context.scene.objects.link(o)
     return { 'FINISHED' }
-    
-  
-      
-      
+
+
+
+
 
 def menu_func_import(self, context):
     self.layout.operator(ImportMSH.bl_idname, text="GMSH (.msh)")
@@ -184,7 +301,9 @@ def register():
     bpy.utils.register_class(ImportMSH)
     bpy.utils.register_class(MeshTetrahedron)
     bpy.utils.register_class(MeshHexahedron)
-    bpy.utils.register_class(VolumetricMeshPanel)    
+    bpy.utils.register_class(VolumetricMeshPanel)
+    bpy.utils.register_class(ReCalculateOuterSurface)
+    bpy.utils.register_class(RemoveDegenerateHexahedra)
     bpy.types.INFO_MT_file_import.append(menu_func_import)
     bpy.types.Mesh.tetrahedra = bpy.props.CollectionProperty(name="Tetrahedra", type=MeshTetrahedron)
     bpy.types.Mesh.hexahedra = bpy.props.CollectionProperty(name="Hexahedra", type=MeshHexahedron)
@@ -194,6 +313,8 @@ def unregister():
     del bpy.types.Mesh.hexahedra
     bpy.types.INFO_MT_file_import.remove(menu_func_import)
     bpy.utils.unregister_class(ImportMSH)
-    bpy.utils.unregister_class(VolumetricMeshPanel)    
+    bpy.utils.unregister_class(RemoveDegenerateHexahedra)
+    bpy.utils.unregister_class(ReCalculateOuterSurface)
+    bpy.utils.unregister_class(VolumetricMeshPanel)
     bpy.utils.unregister_class(MeshTetrahedron)
     bpy.utils.unregister_class(MeshHexahedron)

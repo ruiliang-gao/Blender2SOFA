@@ -17,6 +17,7 @@ from .io_msh import *
 from .ui import *
 from .conn_tiss import *
 from .hex_rod import *
+from .fatty_tissue import *
 from .export import *
 from .runsofa import *
 from .fatty_tissue import *
@@ -32,7 +33,7 @@ addon_keymaps = []
 def register():
     io_msh.register()
     ui.register()
-    conn_tiss.register()
+    conn_tiss.register()    
     hex_rod.register()
     fatty_tissue.register()
 
