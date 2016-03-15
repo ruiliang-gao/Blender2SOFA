@@ -378,7 +378,7 @@ def exportHexVolumetric(o, opt):
       nnn.append(ET.Element('Quad2TriangleTopologicalMapping', object1 = "@../quadSurf", object2 = "triSurf", flipNormals="1"))
       nnn.append(ET.Element('LineModel', bothSide="0", contactFriction="0", contactStiffness="500", group=collisionGroup, moving="1", selfCollision="0", simulated="1"))
       nnn.append(ET.Element('PointModel', bothSide="0", contactFriction="0", contactStiffness="500", group=collisionGroup, moving="1", selfCollision="0", simulated="1"))
-      nnn.append(ET.Element('TriangleModel', bothSide="0", contactFriction="0", contactStiffness="500", group=collisionGroup, moving="1", selfCollision="0", simulated="1")) 
+      nnn.append(ET.Element('TriangleModel', bothSide="0", contactFriction="0", contactStiffness="500", group=collisionGroup, moving="1", selfCollision="0", simulated="1", tags="SuturingSurface")) 
       
       input_color = o.get("color",-1)
       if input_color==-1: 
@@ -918,43 +918,64 @@ def exportConnectiveTissue(o, opt):
       t = exportHexVolumetric(o, opt)     
     else:
       raise ExportException("While processing %s: Tetrahedral or Hexahedral mesh expected!" % o.name)    
-             
+    
+    oMesh = o.to_mesh(opt.scene, True, 'PREVIEW')
+    
     oTop = scene.objects[o.get('topObject')]
-    oBot = scene.objects[o.get('botObject')]          
-    topVertices = o.get('topVertices')
-    botVertices = o.get('botVertices')
-    oMesh = o.to_mesh(opt.scene, True, 'PREVIEW')    
-    otopMesh = oTop.to_mesh(opt.scene, True, 'PREVIEW')    
+    oBot = scene.objects[o.get('botObject')]
+    hasTop = True
+    if oTop == oBot:
+      hasTop = False
+    
+    if hasTop:
+      topVertices = o.get('topVertices')
+      otopMesh = oTop.to_mesh(opt.scene, True, 'PREVIEW')
+      ntop = len(otopMesh.vertices)
+    
+    
+    
+    
+    botVertices = o.get('botVertices')       
     obotMesh = oBot.to_mesh(opt.scene, True, 'PREVIEW')    
-    ntop = len(otopMesh.vertices) 
+     
     
     bpy.ops.object.select_all(action='DESELECT')
     o.select = True 
-    oTop.select = True 
+    if hasTop:
+      oTop.select = True 
     oBot.select = True 
     bpy.ops.object.transform_apply(location=True, rotation=True, scale=True)
         
     maxDim = 1e+9 # todo: maxDim = max dimension of the whole scene
-    map2top = []
-    for i, v in enumerate(topVertices):
-        oVertex = oMesh.vertices[v].co        
-        footprint = oTop.closest_point_on_mesh(oVertex,maxDim)
-        if footprint[2]==-1:
-            print('Error: _init_.py: corresponding vertex not found')
-            return             
-        face = otopMesh.polygons[footprint[2]].vertices 
-        # in *face* find the closest vertex to *oVertex*
-        smallestDistance = maxDim   
-        optimalVert = -1        
-        for j,vj in enumerate(face):        
-            distance_vj = (otopMesh.vertices[vj].co-oVertex).length 
-            # map2top.append((v,vj,distance_vj))    
-            if distance_vj < smallestDistance:            
-                optimalVert = vj 
-                smallestDistance = distance_vj              
-        if optimalVert > 0:
-            map2top.append((v,optimalVert,smallestDistance))            
-                
+    stiffness = o.get('attach_stiffness', 500)
+    
+    if hasTop:
+      map2top = []
+      for i, v in enumerate(topVertices):
+          oVertex = oMesh.vertices[v].co        
+          footprint = oTop.closest_point_on_mesh(oVertex,maxDim)
+          if footprint[2]==-1:
+              print('Error: _init_.py: corresponding vertex not found')
+              return             
+          face = otopMesh.polygons[footprint[2]].vertices 
+          # in *face* find the closest vertex to *oVertex*
+          smallestDistance = maxDim   
+          optimalVert = -1        
+          for j,vj in enumerate(face):        
+              distance_vj = (otopMesh.vertices[vj].co-oVertex).length 
+              # map2top.append((v,vj,distance_vj))    
+              if distance_vj < smallestDistance:            
+                  optimalVert = vj 
+                  smallestDistance = distance_vj              
+          if optimalVert > 0:
+              map2top.append((v,optimalVert,smallestDistance))            
+      springsTop = [
+          vector_to_string([i, j, stiffness, .1, d]) for (i,j,d) in map2top
+          ]
+      ffTop = ET.Element("StiffSpringForceField", object1='@' + fixName(o.name), object2='@' + fixName(oTop.name), 
+                      spring = ' '.join(springsTop))
+      t.append(ffTop)
+        
     map2bot = []    
     for i, v in enumerate(botVertices):
         oVertex = oMesh.vertices[v].co
@@ -974,19 +995,11 @@ def exportConnectiveTissue(o, opt):
         if optimalVert > 0:
             map2bot.append((v,optimalVert,smallestDistance))     
     
-    stiffness = o.get('attach_stiffness', 500)
-    springsTop = [
-        vector_to_string([i, j, stiffness, .1, d]) for (i,j,d) in map2top
-        ]    
     springsBot = [
         vector_to_string([i, j, stiffness, .1, d]) for (i,j,d) in map2bot
-        ]        
-
-    ffTop = ET.Element("StiffSpringForceField", object1='@' + fixName(o.name), object2='@' + fixName(oTop.name), 
-                    spring = ' '.join(springsTop))           
+        ]                   
     ffBot = ET.Element("StiffSpringForceField", object1='@' + fixName(o.name), object2='@' + fixName(oBot.name), 
-                    spring = ' '.join(springsBot)) 
-    t.append(ffTop)
+                    spring = ' '.join(springsBot))    
     t.append(ffBot)
     return t 
     

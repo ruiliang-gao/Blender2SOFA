@@ -19,6 +19,7 @@ from .conn_tiss import *
 from .hex_rod import *
 from .export import *
 from .runsofa import *
+from .fatty_tissue import *
 
 ############## Register/Unregister add-on ###########################################
 
@@ -33,6 +34,7 @@ def register():
     ui.register()
     conn_tiss.register()
     hex_rod.register()
+    fatty_tissue.register()
 
     bpy.utils.register_class(ExportToSofa)
     bpy.types.INFO_MT_file_export.append(menu_func_export)
@@ -63,3 +65,4 @@ def unregister():
     ui.unregister() 
     conn_tiss.unregister()
     hex_rod.unregister()
+    fatty_tissue.unregister()
