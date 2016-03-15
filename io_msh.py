@@ -188,7 +188,7 @@ class RemoveDegenerateHexahedra(bpy.types.Operator):
       a = v[1] - v[0]
       b = v[3] - v[0]
       c = v[4] - v[0]
-      V = -a.cross(b).dot(c)
+      V = a.cross(b).dot(c)
       if (abs(V) < 0.01 * (a.length**3 + b.length**3 + c.length**3)):
   	    degenerate_hexa.append(i)
       elif V < 0.0:

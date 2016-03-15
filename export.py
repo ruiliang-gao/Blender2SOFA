@@ -1022,7 +1022,7 @@ def exportConnectiveTissue(o, opt):
     if hasTop:
       map2top = []
       for i, v in enumerate(topVertices):
-        oVertex = oMesh.vertices[v].co
+          oVertex = oMesh.vertices[v].co
           footprint = oTop.closest_point_on_mesh(oVertex,maxDim)
           if footprint[2]==-1:
               print('Error: _init_.py: corresponding vertex not found')
