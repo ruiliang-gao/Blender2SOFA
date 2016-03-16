@@ -452,8 +452,10 @@ def exportHexVolumetric(o, opt):
         input_color="white"
 
       nnnn = ET.Element('Node', name="Visu")
-      nnnn.append(ET.Element("OglModel", name="ctTriOgl", color = input_color))
-      nnnn.append(ET.Element('IdentityMapping', object1="@../../../MO", object2="ctTriOgl"))
+      ogl = ET.Element("OglModel", name= name + '-visual');
+      nnnn.append(ogl)
+      addMaterial(o, ogl);
+      nnnn.append(ET.Element('IdentityMapping', input="@../../../MO", output="@" + name + '-visual'))
 
       nnn.append(nnnn)
       nn.append(nnn)
