@@ -431,10 +431,11 @@ def exportHexVolumetric(o, opt):
       nn.append(ET.Element("QuadSetGeometryAlgorithms", template="Vec3d"))
       nn.append(ET.Element("QuadSetTopologyModifier", removeIsolated="false"))
       nn.append(ET.Element("QuadSetTopologyAlgorithms", template="Vec3d"))
-      # nn.append(ET.Element("MechanicalObject", template="Vec3d", name="ctQuadMO"))
       nn.append(ET.Element("Hexa2QuadTopologicalMapping", object1='@../' + topotetra, object2="quadSurf", flipNormals='1'))
-      # nn.append(ET.Element("OglModel", name="ctQuadOgl"))
-      # nn.append(ET.Element("IdentityMapping", object1='ctQuadMO', object2='ctQuadOgl'))
+      ogl = ET.Element("OglModel", name= name + '-visual');
+      nn.append(ogl)
+      addMaterial(o, ogl);
+      nn.append(ET.Element('IdentityMapping', input="@../MO", output="@" + name + '-visual'))
 
       nnn = ET.Element('Node', name="triangle-surface")
       nnn.append(ET.Element('TriangleSetTopologyContainer',name='triSurf'))
@@ -447,17 +448,7 @@ def exportHexVolumetric(o, opt):
       nnn.append(ET.Element('PointModel', bothSide="0", contactFriction="0", contactStiffness="500", group=collisionGroup, moving="1", selfCollision="0", simulated="1"))
       nnn.append(ET.Element('TriangleModel', bothSide="0", contactFriction="0", contactStiffness="500", group=collisionGroup, moving="1", selfCollision="0", simulated="1", tags="SuturingSurface")) 
 
-      input_color = o.get("color",-1)
-      if input_color==-1:
-        input_color="white"
 
-      nnnn = ET.Element('Node', name="Visu")
-      ogl = ET.Element("OglModel", name= name + '-visual');
-      nnnn.append(ogl)
-      addMaterial(o, ogl);
-      nnnn.append(ET.Element('IdentityMapping', input="@../../../MO", output="@" + name + '-visual'))
-
-      nnn.append(nnnn)
       nn.append(nnn)
       t.append(nn)
     else:
