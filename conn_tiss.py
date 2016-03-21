@@ -189,6 +189,8 @@ def construct(context,options):
     ct['topVertices'] = topVertices
     ct['botVertices'] = botVertices
 
+    ct['3dtexture'] = ''
+    ct['attach_stiffness'] = 1000
     ct['carvable'] = 1
     ct['collisionGroup'] = 1
     ct['contactFriction'] = 0.010
@@ -197,9 +199,8 @@ def construct(context,options):
     ct['poissonRatio'] = 0.450
     ct['precomputeConstraints'] = 0
     ct['selfCollision'] = 0
-    ct['suture'] = 0
+    ct['suture'] = 1
     ct['youngModulus'] = 300
-    ct['color'] = "white"
 
     bpy.ops.object.select_all(action='DESELECT')
     plane_top.select = True; bpy.ops.object.delete()

@@ -27,6 +27,7 @@ def encodeTriFacet(a, b, c):
       i,j,k = b,c,a
     else:
       i,j,k = c,a,b
+  
   return i << 40 | j << 20 | k
 def decodeTriFacet(f):
   a = f >> 40 & ( (1 << 20) - 1 )
@@ -106,7 +107,10 @@ def recalc_outer_surface(M):
 
   # Add all the quad faces
   for f in quadFaceSet:
-    a, b, c, d = decodeQuadFacet(f)
+    # for some reason we have to reverse the faces 
+    # All the logic here is sound but without inverting
+    # the order the surfaces look inside out
+    c, b, a, d = decodeQuadFacet(f)
     bm.faces.new([bm.verts[a],bm.verts[b],bm.verts[c],bm.verts[d]])
 
   # Update the data structures

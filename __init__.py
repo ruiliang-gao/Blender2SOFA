@@ -8,7 +8,7 @@ bl_info = {
     'description': "Export Blender scenes into SOFA scene files",
     'wiki_url': "https://bitbucket.org/surflab/blender2sofa/wiki/",
     'tracker_url': "https://bitbucket.org/surflab/blender2sofa/",
-    'category': 'Mesh'
+    'category': 'Import-Export'
 }
 
 import bpy
