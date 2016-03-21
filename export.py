@@ -450,7 +450,7 @@ def exportHexVolumetric(o, opt):
       nnn.append(ET.Element('Quad2TriangleTopologicalMapping', input = "@../quadSurf", output = "@triSurf"))
       nnn.append(ET.Element('LineModel', bothSide="0", contactFriction="0", contactStiffness="500", group=collisionGroup, moving="1", selfCollision="0", simulated="1"))
       nnn.append(ET.Element('PointModel', bothSide="0", contactFriction="0", contactStiffness="500", group=collisionGroup, moving="1", selfCollision="0", simulated="1"))
-      nnn.append(ET.Element('TriangleModel', bothSide="0", contactFriction="0", contactStiffness="500", group=collisionGroup, moving="1", selfCollision="0", simulated="1", tags="SuturingSurface")) 
+      nnn.append(ET.Element('TriangleModel', bothSide="0", contactFriction="0", contactStiffness="500", group=collisionGroup, moving="1", selfCollision="0", simulated="1", tags="HapticSurface")) 
 
 
       nn.append(nnn)
