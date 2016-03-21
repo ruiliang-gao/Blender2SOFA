@@ -227,7 +227,7 @@ def exportThickQuadShell(o, opt):
     if o.get('precomputeConstraints') == True:
         t.append(ET.Element('PrecomputedConstraintCorrection', rotations="true", recompute="0"))
     else:
-        t.append(ET.Element('UncoupledConstraintCorrection',compliance="0.001   0.00003 0 0   0.00003 0   0.00003"))
+        t.append(ET.Element('UncoupledConstraintCorrection'))
 
 
     addConstraints(o, t)
@@ -314,7 +314,7 @@ def export3BThickQuadShell(o, opt):
     #if o.get('precomputeConstraints') == True:
     #    t.append(ET.Element('PrecomputedConstraintCorrection', rotations="true", recompute="0"))
     #else:
-    #    t.append(ET.Element('UncoupledConstraintCorrection',compliance="0.001   0.00003 0 0   0.00003 0   0.00003"))
+    #    t.append(ET.Element('UncoupledConstraintCorrection'))
 
     addConstraints(o, t)
 
@@ -355,7 +355,7 @@ def exportVolumetric(o, opt):
     if o.get('precomputeConstraints') == True:
         t.append(ET.Element('PrecomputedConstraintCorrection', rotations="true", recompute="0"))
     else:
-        t.append(ET.Element('UncoupledConstraintCorrection',compliance="0.001   0.00003 0 0   0.00003 0   0.00003"))
+        t.append(ET.Element('UncoupledConstraintCorrection'))
 
 
     addConstraints(o, t)
@@ -423,7 +423,7 @@ def exportHexVolumetric(o, opt):
     if o.get('precomputeConstraints') == True:
         t.append(ET.Element('PrecomputedConstraintCorrection', rotations="true", recompute="0"))
     else:
-        t.append(ET.Element('UncoupledConstraintCorrection',compliance="0.001   0.00003 0 0   0.00003 0   0.00003"))
+        t.append(ET.Element('UncoupledConstraintCorrection'))
 
     addConstraints(o, t)
 
@@ -433,9 +433,9 @@ def exportHexVolumetric(o, opt):
       nn = ET.Element('Node', name="quad-surface")
       nn.append(ET.Element("QuadSetTopologyContainer", name="quadSurf"))
       nn.append(ET.Element("QuadSetGeometryAlgorithms", template="Vec3d"))
-      nn.append(ET.Element("QuadSetTopologyModifier", removeIsolated="false"))
+      nn.append(ET.Element("QuadSetTopologyModifier"))
       nn.append(ET.Element("QuadSetTopologyAlgorithms", template="Vec3d"))
-      nn.append(ET.Element("Hexa2QuadTopologicalMapping", object1='@../' + topotetra, object2="quadSurf", flipNormals='1'))
+      nn.append(ET.Element("Hexa2QuadTopologicalMapping", input='@../' + topotetra, output="@quadSurf"))
       ogl = ET.Element("OglModel", name= name + '-visual');
       nn.append(ogl)
       addMaterial(o, ogl);
@@ -443,11 +443,11 @@ def exportHexVolumetric(o, opt):
 
       nnn = ET.Element('Node', name="triangle-surface")
       nnn.append(ET.Element('TriangleSetTopologyContainer',name='triSurf'))
-      nnn.append(ET.Element('TriangleSetTopologyModifier', removeIsolated="false"))
+      nnn.append(ET.Element('TriangleSetTopologyModifier'))
       nnn.append(ET.Element('TriangleSetTopologyAlgorithms', template="Vec3d"))
       nnn.append(ET.Element('TriangleSetGeometryAlgorithms', template="Vec3d"))
       # nnn.append(ET.Element('MechanicalObject', template="Vec3d", name="ctTriMO"))
-      nnn.append(ET.Element('Quad2TriangleTopologicalMapping', object1 = "@../quadSurf", object2 = "triSurf", flipNormals="1"))
+      nnn.append(ET.Element('Quad2TriangleTopologicalMapping', input = "@../quadSurf", output = "@triSurf"))
       nnn.append(ET.Element('LineModel', bothSide="0", contactFriction="0", contactStiffness="500", group=collisionGroup, moving="1", selfCollision="0", simulated="1"))
       nnn.append(ET.Element('PointModel', bothSide="0", contactFriction="0", contactStiffness="500", group=collisionGroup, moving="1", selfCollision="0", simulated="1"))
       nnn.append(ET.Element('TriangleModel', bothSide="0", contactFriction="0", contactStiffness="500", group=collisionGroup, moving="1", selfCollision="0", simulated="1", tags="SuturingSurface")) 
@@ -666,7 +666,7 @@ def exportCloth(o, opt):
     addConstraints(o,t)
     t.extend(collisionModelParts(o))
 
-    t.append(ET.fromstring('<UncoupledConstraintCorrection compliance="0.001   0.00003 0 0   0.00003 0   0.00003" />'))
+    t.append(ET.Element('UncoupledConstraintCorrection'))
 
     ogl = ET.Element("OglModel", name= name + '-visual');
     addMaterial(o, ogl);
@@ -1142,7 +1142,7 @@ def exportHaptic(l, scene, opt):
             isn.append(ET.Element("LCPForceFeedback", activate=(o.get('forceFeedback',"true")), tags=omniTag, forceCoef="1.0"))
             isn.extend(instruments)
             isn.append(ET.Element("RestShapeSpringsForceField", template="Rigid",stiffness="10000000",angularStiffness="2000000", external_rest_shape="../RigidLayer/ToolRealPosition", points = "0"))
-            isn.append(ET.Element("UncoupledConstraintCorrection", compliance = "0.001   0.00003 0 0   0.00003 0   0.00003"))
+            isn.append(ET.Element("UncoupledConstraintCorrection"))
             t.append(isn)
 
             hapticExists = True
