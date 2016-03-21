@@ -27,6 +27,7 @@ def encodeTriFacet(a, b, c):
       i,j,k = b,c,a
     else:
       i,j,k = c,a,b
+  
   return i << 40 | j << 20 | k
 def decodeTriFacet(f):
   a = f >> 40 & ( (1 << 20) - 1 )

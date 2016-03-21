@@ -93,7 +93,7 @@ def createMechanicalObject(o):
 
 def addSolvers(t):
     t.append(ET.Element("EulerImplicitSolver", rayleighMass="0.1", rayleighStiffness="0.1"))
-    t.append(ET.Element("CGLinearSolver",iterations="20", tolerance="1.0e-10", threshold="1.0e-6"))
+    t.append(ET.Element("CGLinearSolver",iterations="40", tolerance="1.0e-10", threshold="1.0e-6"))
 
 def exportTetrahedralTopology(o, opt, name):
     if o.type == 'MESH' and hasattr(o.data,'tetrahedra') and len(o.data.tetrahedra) > 0:
@@ -199,6 +199,8 @@ def exportThickShellTopologies(o, opt, name):
 def exportThickQuadShell(o, opt):
     name = fixName(o.name)
     t = ET.Element("Node", name = name)
+    t.set('author-parent' , 'SolverNode')
+    t.set('author-order', 1)
 
     topo = name + '-hexahedral-topology'
     c, oshell, ishell = exportThickShellTopologies(o, opt, topo)
@@ -327,6 +329,8 @@ def export3BThickQuadShell(o, opt):
 def exportVolumetric(o, opt):
     name = fixName(o.name)
     t = ET.Element("Node", name = name)
+    t.set('author-parent' , 'SolverNode')
+    t.set('author-order', 1)
 
     topotetra = name + '-topology'
     c = exportTetrahedralTopology(o, opt, topotetra)
@@ -363,12 +367,12 @@ def exportVolumetric(o, opt):
         n.append(ET.Element("TriangleSetTopologyAlgorithms", template="Vec3d" ))
         n.append(ET.Element("TriangleSetGeometryAlgorithms", template="Vec3d"))
 
-        n.append(ET.Element('Tetra2TriangleTopologicalMapping', object1="../../"+topotetra, object2="topotri", flipNormals='1'))
+        n.append(ET.Element('Tetra2TriangleTopologicalMapping', input="@../"+topotetra, output="@topotri", flipNormals='1'))
 
         ogl = ET.Element("OglModel", name="Visual");
         addMaterial(o, ogl);
         n.append(ogl)
-        n.append(ET.Element("IdentityMapping",object1="../MO",object2="Visual"))
+        n.append(ET.Element("IdentityMapping",input="@../MO",output="@Visual"))
         n.extend(collisionModelParts(o))
         t.append(n)
 
@@ -508,6 +512,9 @@ def collisionModelParts(o, obstacle = False, group = None, bothSide = 0):
 def exportSoftBody(o, opt):
     name=fixName(o.name)
     t = ET.Element("Node",name = name)
+    t.set('author-parent' , 'SolverNode')
+    t.set('author-order', 1)
+
     t.append(createMechanicalObject(o))
     t.append(ET.Element("UniformMass",template="Vec3d", mass=(o.get('mass') or 1)))
     v = ET.Element("Node",name="Visual")
@@ -546,6 +553,9 @@ def exportSoftBody(o, opt):
 def exportInstrument(o, opt):
     n = fixName(o.name)
     t = ET.Element("Node", name = n, tags='instrument')
+    t.set('author-parent' , 'Haptic-Instrument')
+    t.set('author-order', 1)
+
     for i in o.children:
         if i.get('annotated_type') == 'INSTRUMENTTIP':
             child = ET.Element("Node", name= fixName(i.name) + "__CM")
@@ -594,6 +604,8 @@ def exportCM(o,opt):
     collision model.
     """
     t = ET.Element("Node",name= fixName(o.name))
+    t.set('author-parent', 'SolverNode')
+    t.set('author-order', 1)
     momain = createMechanicalObject(o)
     t.append(momain)
     for i in o.children:
@@ -628,6 +640,8 @@ def exportCM(o,opt):
 def exportCloth(o, opt):
     name=fixName(o.name)
     t = ET.Element("Node",name=name)
+    t.set('author-parent', 'SolverNode')
+    t.set('author-order', 1)
 
     t.append(exportTopologyContainer(o,opt))
 
@@ -713,6 +727,10 @@ def exportAttachConstraint(o, o1, o2, opt):
         ]
     ff = ET.Element("StiffSpringForceField", object1='@' + fixName(o1.name), object2='@' + fixName(o2.name),
                     spring = ' '.join(springs))
+                        
+    ff.set('author-parent', 'SolverNode')
+    ff.set('author-order', 100)
+    
 
     return ff
 
@@ -772,6 +790,8 @@ def addElasticityParameters(o, t):
 def exportObstacle(o, opt):
     name=fixName(o.name)
     t = ET.Element("Node",name=name)
+    t.set('author-parent', 'root')
+    t.set('author-order', 1)
     t.append(exportVisual(o, opt, name = name+'-visual', with_transform = True))
     if True or len(o.data.vertices) < 200:
         t.append(exportTopology(o,opt))
@@ -787,6 +807,9 @@ def exportObstacle(o, opt):
 def exportRigid(o, opt):
     name=fixName(o.name)
     t = ET.Element("Node",name=name)
+    t.set('author-parent', 'SolverNode')
+    t.set('author-order', 1)
+    
     t.append(exportVisual(o, opt, name = name + '-visual', with_transform = False))
     t.append(exportTopology(o,opt))
 
@@ -887,6 +910,9 @@ def exportThickCurve(o, opt):
 
     thickness = o.get('thickness', 0.3)
     t = ET.Element("Node", name = fixName(o.name))
+    t.set('author-parent', 'root')
+    t.set('author-order', 1)
+    
     t.append(exportCurveTopology(o, opt))
     t.append(createMechanicalObject(o))
     t.append(ET.Element("Line", proximity = thickness, moving="0", simulated="0"))
@@ -972,7 +998,6 @@ def exportConstraints(opt, o):
     return result
 
 def exportConnectiveTissue(o, opt):
-    print('... exporting a connective tissue ...')
     scene = opt.scene
 
     if o.type == 'MESH' and hasattr(o.data,'tetrahedra') and len(o.data.tetrahedra) > 0:
@@ -1064,6 +1089,7 @@ def exportConnectiveTissue(o, opt):
     ffBot = ET.Element("StiffSpringForceField", object1='@' + fixName(o.name), object2='@' + fixName(oBot.name),
                     spring = ' '.join(springsBot))
     t.append(ffBot)
+    t.set('author-order', 50)
     return t
 
 def exportHaptic(l, scene, opt):
@@ -1093,7 +1119,7 @@ def exportHaptic(l, scene, opt):
 
             ## Omni driver wrapper
             rl = ET.Element("Node", name="RigidLayer")
-
+            
             rl.append(ET.Element("NewOmniDriver",
                                  name = 'driver',
                                  deviceName = (o.get('deviceName',o.name)),
@@ -1109,7 +1135,8 @@ def exportHaptic(l, scene, opt):
 
             # State of the tool
             isn = ET.Element("Node",name = "Instrument__"+n);
-            addSolvers(isn)
+            isn.append(ET.Element("EulerImplicitSolver", rayleighMass="0.1", rayleighStiffness="0.1"))
+            isn.append(ET.Element("CGLinearSolver",iterations="100", tolerance="1.0e-20", threshold="1.0e-20"))
             isn.append(ET.Element("MechanicalObject", name = "instrumentState", template="Rigid3d", position="0 0 0 0 0 0 1 0 0 0 0 0 0 1 0 0 0 0 0 0 1 0 0 0 0 0 0 1", free_position="0 0 0 0 0 0 1 0 0 0 0 0 0 1 0 0 0 0 0 0 1 0 0 0 0 0 0 1" ))
             isn.append(ET.Element("UniformMass", template = "Rigid3d", name="mass", totalmass="0.1"))
             isn.append(ET.Element("LCPForceFeedback", activate=(o.get('forceFeedback',"true")), tags=omniTag, forceCoef="1.0"))
@@ -1169,9 +1196,6 @@ def exportScene(opt):
     #root.append(ET.Element("DefaultContactManager"))
     root.append(ET.fromstring('<CollisionResponse name="Response" response="FrictionContact"/>'))
 
-    hasHaptic = False;
-
-    #root.append(ET.Element("RequiredPlugin", pluginName="SofaCarving"))
     # TODO: put all the objects that need a solver e.g. soft bodies, volumetric and attach constraints
     #  into a separate node call it "solverNode"
     # and keep the obstacles in the root.
