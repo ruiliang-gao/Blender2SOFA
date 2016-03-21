@@ -292,7 +292,7 @@ def export3BThickShellTopology(o, opt, name):
                 f.vertices[0]+(l+1)*V,f.vertices[1]+(l+1)*V,f.vertices[3]+(l+1)*V,f.vertices[2]+(l+1)*V]
 
 
-    c =  ET.Element('TriCubicBezierMeshTopology', name= name)
+    c =  ET.Element('TricubicBezierSetTopologyContainer', name= name)
     c.set('points', points)
     c.set('hexahedra', hexahedra)
     return geometryNode(opt,c)
