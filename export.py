@@ -558,30 +558,65 @@ def exportInstrument(o, opt):
 
     for i in o.children:
         if i.get('annotated_type') == 'INSTRUMENTTIP':
-            child = ET.Element("Node", name= fixName(i.name) + "__CM")
-            if i.type == 'MESH':
-                child.append(exportTopology(i, opt))
-            mo = createMechanicalObject(i)
-            mo.set('name', 'CM');
-            child.append(mo)
-            pm = ET.Element("TPointModel", name = 'toolTip',
+            toolFunction = o.get('function', 'grasp')
+            if toolFunction == 'clamp':
+                child1 = ET.Element("Node", name= fixName(i.name) + "__UpperJaw")
+                if i.type == 'MESH':
+                    child1.append(exportTopology(i, opt))
+                mo1 = createMechanicalObject(i)
+                mo1.set('name', 'CM1')
+                mo1.set('position','1 -1 0')
+                child1.append(mo1)
+                pm1 = ET.Element("TPointModel", name = 'toolTip1',
                                  template="Vec3d",
                                  contactStiffness="0.01", bothSide="true", proximity = o.get('proximity', 0.02),
                                  group= o.get('collisionGroup')
                                  )
+                child1.append(pm1)
+                child1.append(ET.Element("RigidMapping", input="@../../instrumentState",output="@CM1",index= 0))
+                t.append(child1)
+                
+                child2 = ET.Element("Node", name= fixName(i.name) + "__LowerJaw")
+                if i.type == 'MESH':
+                    child2.append(exportTopology(i, opt))
+                mo2 = createMechanicalObject(i)
+                mo2.set('name', 'CM2')
+                mo2.set('position','-1 -1 0')
+                child2.append(mo2)
+                pm2 = ET.Element("TPointModel", name = 'toolTip2',
+                                 template="Vec3d",
+                                 contactStiffness="0.01", bothSide="true", proximity = o.get('proximity', 0.02),
+                                 group= o.get('collisionGroup')
+                                 )
+                child2.append(pm)
+                child2.append(ET.Element("RigidMapping", input="@../../instrumentState",output="@CM2",index= 0))
+                t.append(child2)
 
-            toolFunction = o.get('function', 'suture')
-            if toolFunction == 'carve':
-              pm.set('tags', 'CarvingTool')
-            elif toolFunction == 'suture':
-              pm.set('tags', 'SuturingTool')
+                t.append(ET.Element("HapticManager", toolModel = '' , omniDriver = '@../../RigidLayer/driver', graspStiffness = "1e3", attachStiffness="1e12", grasp_force_scale = "-1e-3",
+                                    upperJaw = '@'+fixName(i.name) + "__UpperJaw/toolTip1", lowerJaw = '@'+fixName(i.name) + "__LowerJaw/toolTip2" ))
             else:
-              pm.set('tags', 'GraspingTool')
+                child = ET.Element("Node", name= fixName(i.name) + "__CM")
+                if i.type == 'MESH':
+                    child.append(exportTopology(i, opt))
+                mo = createMechanicalObject(i)
+                mo.set('name', 'CM');
+                child.append(mo)
+                pm = ET.Element("TPointModel", name = 'toolTip',
+                                 template="Vec3d",
+                                 contactStiffness="0.01", bothSide="true", proximity = o.get('proximity', 0.02),
+                                 group= o.get('collisionGroup')
+                                 )
+                if toolFunction == 'carve':
+                  pm.set('tags', 'CarvingTool')
+                elif toolFunction == 'suture':
+                  pm.set('tags', 'SuturingTool')
+                else:
+                  pm.set('tags', 'GraspingTool')
 
-            child.append(pm)
-            child.append(ET.Element("RigidMapping", input="@../../instrumentState",output="@CM",index= 0))
-            child.append(ET.Element("HapticManager", toolModel = '@toolTip' , omniDriver = '@../../../RigidLayer/driver', graspStiffness = "1e3", attachStiffness="1e12", grasp_force_scale = "-1e-3"))
-            t.append(child)
+                child.append(pm)
+                child.append(ET.Element("RigidMapping", input="@../../instrumentState",output="@CM",index= 0))
+                child.append(ET.Element("HapticManager", toolModel = '@toolTip' , omniDriver = '@../../../RigidLayer/driver', graspStiffness = "1e3", attachStiffness="1e12", grasp_force_scale = "-1e-3"))
+                t.append(child)
 
             break
 
