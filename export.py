@@ -232,6 +232,7 @@ def exportThickQuadShell(o, opt):
 
     addConstraints(o, t)
 
+
     collisionGroup = int(o.get('collisionGroup', 1))
 
     for i, tp in enumerate([ oshell, ishell ]):
@@ -251,8 +252,17 @@ def exportThickQuadShell(o, opt):
       t.append(n)
 
     v = ET.Element('Node', name="Visual")
-    v.append(exportVisual(o, opt, name = name + "-visual"))
-    v.append(ET.Element("BarycentricMapping",template="Vec3d,ExtVec3f",input="@../MO",output='@' + name + "-visual"))
+    v.append(ET.Element("QuadSetTopologyContainer", name="quadSurf"))
+    v.append(ET.Element("QuadSetGeometryAlgorithms", template="Vec3d"))
+    v.append(ET.Element("QuadSetTopologyModifier"))
+    v.append(ET.Element("QuadSetTopologyAlgorithms", template="Vec3d"))
+    v.append(ET.Element("Hexa2QuadTopologicalMapping", input='@../' + topo, output="@quadSurf"))
+    v.append(ET.Element('RequiredPlugin', name='SurfLabSplineSurface'));
+    b3 = ET.Element('BiCubicSplineSurface');
+    addMaterialToBicubic(o, b3);
+    v.append(b3);
+    #v.append(exportVisual(o, opt, name = name + "-visual"))
+    #v.append(ET.Element("BarycentricMapping",template="Vec3d,ExtVec3f",input="@../MO",output='@' + name + "-visual"))
     t.append(v)
 
 
@@ -863,6 +873,24 @@ def exportTopology(o,opt):
 def fixName(name):
     return name.replace(".","_")
 
+def addMaterialToBicubic(o, t):
+    m = o.data
+    if len(m.materials) >= 1 :
+        mat = m.materials[0]
+
+        a = mat.alpha # alpha should go at the end of each color
+        t.set('diffuseColor', mat.diffuse_color*mat.diffuse_intensity)
+        t.set('ambientIntensity', mat.ambient)
+        t.set('specularColor', mat.specular_color*mat.specular_intensity)
+        t.set('shininess', mat.specular_hardness)
+        #t.set('emit', mat.diffuse_color*mat.emit)
+
+        #if len(mat.texture_slots) >= 1 and mat.texture_slots[0] != None :
+        #    tex = mat.texture_slots[0].texture
+        #    if tex.type == 'IMAGE' :
+        #        t.set("texturename", bpy.path.abspath(tex.image.filepath))
+
+
 def addMaterial(o, t):
     m = o.data
     if len(m.materials) >= 1 :
@@ -1176,7 +1204,7 @@ def exportHaptic(l, scene, opt):
             isn.append(ET.Element("UniformMass", template = "Rigid3d", name="mass", totalmass="0.1"))
             isn.append(ET.Element("LCPForceFeedback", activate=(o.get('forceFeedback',"true")), tags=omniTag, forceCoef="1.0"))
             isn.extend(instruments)
-            isn.append(ET.Element("RestShapeSpringsForceField", template="Rigid",stiffness="10000000",angularStiffness="2000000", external_rest_shape="../RigidLayer/ToolRealPosition", points = "0"))
+            isn.append(ET.Element("RestShapeSpringsForceField", template="Rigid",stiffness="1000000000",angularStiffness="2000000", external_rest_shape="../RigidLayer/ToolRealPosition", points = "0"))
             isn.append(ET.Element("UncoupledConstraintCorrection"))
             t.append(isn)
 
