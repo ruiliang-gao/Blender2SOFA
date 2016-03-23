@@ -6,6 +6,7 @@ SOFA_SCENE_PROPERTIES = {
     'contactDistance': { 'default': 0.01, 'min': 0.0001, 'max' : 1.0, 'step': 0.001, 'precision': 3},
     'includes': { 'default': '' },
     'displayFlags': { 'default': 'showVisualModels'},
+    'showXYZFrame' : { 'default' : 0 }
 }
 
 OBJECT_MAP = {

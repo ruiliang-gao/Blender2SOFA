@@ -235,9 +235,9 @@ def exportThickQuadShell(o, opt):
 
     collisionGroup = int(o.get('collisionGroup', 1))
 
-    for i, tp in enumerate([ oshell, ishell ]):
+    for i, tp in enumerate([ ishell, oshell ]):
       n = ET.Element('Node')
-      if i == 0:
+      if i == 1:
         n.set('name', 'Collision Outer')
       else:
         n.set('name', 'Collision Inner')
@@ -247,7 +247,7 @@ def exportThickQuadShell(o, opt):
       moc = createMechanicalObject(o)
       moc.set('name', 'MOC')
       n.append(moc)
-      n.extend(collisionModelParts(o, group = collisionGroup + i, bothSide = 1))
+      n.extend(collisionModelParts(o, group = collisionGroup + i, bothSide = 0))
       n.append(ET.Element("BarycentricMapping",input="@../MO",output="@MOC"))
       t.append(n)
 
@@ -1267,7 +1267,8 @@ def exportScene(opt):
     addSolvers(solverNode)
 
     root.append(ET.Element("LightManager"))
-    root.append(ET.Element("OglSceneFrame"))
+    if scene.get('showXYZFrame', 0) != 0:
+      root.append(ET.Element("OglSceneFrame"))
     if (selection == True):
         l = list(bpy.context.selected_objects)
     else:
