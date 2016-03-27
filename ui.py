@@ -1,7 +1,7 @@
 import bpy
 
 SOFA_SCENE_PROPERTIES = {
-    'mu': { 'default' : 0.001, 'min' : 0.001, 'max' : 0.1, 'step' : 0.001, 'precision': 3 },
+    'mu': { 'default' : 0.000001, 'min' : 0.0000001, 'max' : 0.1, 'step' : 0.001, 'precision': 3 },
     'alarmDistance': { 'default': 0.1, 'min' : 0.0001, 'max' : 1.0, 'step' : 0.001, 'precision': 3},
     'contactDistance': { 'default': 0.01, 'min': 0.0001, 'max' : 1.0, 'step': 0.001, 'precision': 3},
     'includes': { 'default': '' },
@@ -18,8 +18,8 @@ OBJECT_MAP = {
     'SPHERECONSTRAINT': ("Sphere Constraint",'SURFACE_NSPHERE', {}),
     'VOLUMETRIC': ("Volumetic",'SNAP_VOLUME', { '3dtexture': '', 'selfCollision': False, 'precomputeConstraints' : False, 'carvable': False, 'youngModulus': 300 , 'poissonRatio':0.45, 'damping': 0.1, 'contactFriction': 0.01, 'contactStiffness':500, 'collisionGroup':1, 'suture': False} ),
     'THICKSHELL': ("Thick Shell",'MOD_CLOTH', { 'degree': { 'default': 1, 'min': 1, 'max': 3, 'step': 1 }, 'selfCollision': False, 'precomputeConstraints' : False, 'youngModulus': 300 , 'poissonRatio':0.45, 'damping': 0.1, 'contactFriction': 0.01, 'contactStiffness':500, 'collisionGroup':1, 'thickness': 0.1 , 'suture': False, 'layerCount': 1 } ),
-    'HAPTIC':("Haptic",'SCULPTMODE_HLT', {'scale':300, 'forceScale': 0.1, 'forceFeedback' : False, 'toolFunction': 'Grasp', 'deviceName': '', 'collisionGroup':1}),
-    'INSTRUMENT':("Instrument", 'SCULPTMODE_HLT', { 'collisionGroup':1, 'function': 'suture' }),
+    'HAPTIC':("Haptic",'SCULPTMODE_HLT', {'scale':300, 'forceScale': 0.001, 'forceFeedback' : False, 'deviceName': ''}),
+    'INSTRUMENT':("Instrument", 'SCULPTMODE_HLT', { 'collisionGroup':1, 'function': 'grasp' }),
     'INSTRUMENTPART': ("Instrument Part",'OOPS',{'index':{'default':3,'min':1,'max':3,'step':1}}),
     'INSTRUMENTTIP': ("Instrument Tip",'OOPS',{}),
     'THICKCURVE': ("Thick Curve", 'ROOTCURVE', { 'thickness': 0.1 }),
@@ -133,50 +133,32 @@ class SetAnnotatedTypeButton(bpy.types.Operator):
         o = context.object
         type = o.get("annotated_type")
         #if the object type is already this kind of type
-        if( type==self.kind):
+        if type==self.kind:
             #delete the type and related properties
             del o["annotated_type"]
             (t,i,p) = OBJECT_MAP[self.kind]
             for e in p:
-                if o.get(e):
+                if o.get(e) != None:
                         del o[e]
-                elif o.get(e) == 0 :
-                    del o[e]
-                elif o.get(e) == "" :
-                    del o[e]
         #if the object type is other types
-        elif (type != None):
+        else:
+          if type != None:
             #delete previous properties
             (text,icon,properties) = OBJECT_MAP[type]
             for prop in properties:
-                if o.get(prop):
+                if o.get(prop) != None:
                         del o[prop]
-                elif o.get(prop) == 0 :
-                    del o[prop]
-                elif o.get(prop) == "" :
-                    del o[prop]
-            #set the current type and related properties
-            o['annotated_type'] = self.kind
-            (t,i,p) = OBJECT_MAP[self.kind]
-            o["_RNA_UI"] = o.get("_RNA_UI", {})
-            for e in p:
-                if isinstance(p[e], dict):
-                    o["_RNA_UI"][e] = p[e]
-                    o[e] = p[e]['default']
-                else:
-                    o[e] = p[e]
-        #if the object doesn't have any type
-        else :
-            #assign the type and related properties for it
-            o['annotated_type'] = self.kind
-            (t,i,p) = OBJECT_MAP[self.kind]
-            o["_RNA_UI"] = o.get("_RNA_UI", {})
-            for e in p:
-                if isinstance(p[e], dict):
-                    o["_RNA_UI"][e] = p[e]
-                    o[e] = p[e]['default']
-                else:
-                    o[e] = p[e]
+            
+          #set the current type and related properties
+          o['annotated_type'] = self.kind
+          (t,i,p) = OBJECT_MAP[self.kind]
+          o["_RNA_UI"] = o.get("_RNA_UI", {})
+          for e in p:
+              if isinstance(p[e], dict):
+                  o["_RNA_UI"][e] = p[e]
+                  o[e] = p[e]['default']
+              else:
+                  o[e] = p[e]
 
         return{'FINISHED'}
 

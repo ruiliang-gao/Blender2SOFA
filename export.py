@@ -489,7 +489,7 @@ def addConstraints(o, t):
     for q in o.children:
       if not q.hide_render:
         n = fixName(q.name)
-        if q.name.startswith('BoxConstraint'):
+        if q.name.startswith('BoxConstraint') or q.get('annotated_type') == 'BOXCONSTRAINT':
             tl = q.matrix_world * Vector(q.bound_box[0])
             br = q.matrix_world * Vector(q.bound_box[6])
             b = array('d')
@@ -497,7 +497,7 @@ def addConstraints(o, t):
             b.extend(br)
             t.append(ET.Element("BoxROI",name=n,box=b))
             t.append(ET.Element("FixedConstraint", indices="@%s.indices" % n))
-        elif q.name.startswith('SphereConstraint'):
+        elif q.name.startswith('SphereConstraint') or q.get('annotated_type') == 'SPHERECONSTRAINT':
             t.append(ET.Element("SphereROI",name=n,centers=(q.matrix_world.translation),radii=(max(cwisemul(q.parent.scale, q.scale)))))
             t.append(ET.Element("FixedConstraint", indices="@%s.indices" % n))
 
@@ -1204,7 +1204,7 @@ def exportHaptic(l, scene, opt):
             isn.append(ET.Element("UniformMass", template = "Rigid3d", name="mass", totalmass="0.1"))
             isn.append(ET.Element("LCPForceFeedback", activate=(o.get('forceFeedback',"true")), tags=omniTag, forceCoef="1.0"))
             isn.extend(instruments)
-            isn.append(ET.Element("RestShapeSpringsForceField", template="Rigid",stiffness="1000000000",angularStiffness="2000000", external_rest_shape="../RigidLayer/ToolRealPosition", points = "0"))
+            isn.append(ET.Element("RestShapeSpringsForceField", template="Rigid",stiffness="10000000",angularStiffness="20000", external_rest_shape="../RigidLayer/ToolRealPosition", points = "0"))
             isn.append(ET.Element("UncoupledConstraintCorrection"))
             t.append(isn)
 
