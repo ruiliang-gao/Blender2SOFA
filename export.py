@@ -232,11 +232,12 @@ def exportThickQuadShell(o, opt):
 
     addConstraints(o, t)
 
+
     collisionGroup = int(o.get('collisionGroup', 1))
 
-    for i, tp in enumerate([ oshell, ishell ]):
+    for i, tp in enumerate([ ishell, oshell ]):
       n = ET.Element('Node')
-      if i == 0:
+      if i == 1:
         n.set('name', 'Collision Outer')
       else:
         n.set('name', 'Collision Inner')
@@ -246,13 +247,22 @@ def exportThickQuadShell(o, opt):
       moc = createMechanicalObject(o)
       moc.set('name', 'MOC')
       n.append(moc)
-      n.extend(collisionModelParts(o, group = collisionGroup + i, bothSide = 1))
+      n.extend(collisionModelParts(o, group = collisionGroup + i, bothSide = 0))
       n.append(ET.Element("BarycentricMapping",input="@../MO",output="@MOC"))
       t.append(n)
 
     v = ET.Element('Node', name="Visual")
-    v.append(exportVisual(o, opt, name = name + "-visual"))
-    v.append(ET.Element("BarycentricMapping",template="Vec3d,ExtVec3f",input="@../MO",output='@' + name + "-visual"))
+    v.append(ET.Element("QuadSetTopologyContainer", name="quadSurf"))
+    v.append(ET.Element("QuadSetGeometryAlgorithms", template="Vec3d"))
+    v.append(ET.Element("QuadSetTopologyModifier"))
+    v.append(ET.Element("QuadSetTopologyAlgorithms", template="Vec3d"))
+    v.append(ET.Element("Hexa2QuadTopologicalMapping", input='@../' + topo, output="@quadSurf"))
+    v.append(ET.Element('RequiredPlugin', name='SurfLabSplineSurface'));
+    b3 = ET.Element('BiCubicSplineSurface');
+    addMaterialToBicubic(o, b3);
+    v.append(b3);
+    #v.append(exportVisual(o, opt, name = name + "-visual"))
+    #v.append(ET.Element("BarycentricMapping",template="Vec3d,ExtVec3f",input="@../MO",output='@' + name + "-visual"))
     t.append(v)
 
 
@@ -450,7 +460,7 @@ def exportHexVolumetric(o, opt):
       nnn.append(ET.Element('Quad2TriangleTopologicalMapping', input = "@../quadSurf", output = "@triSurf"))
       nnn.append(ET.Element('LineModel', bothSide="0", contactFriction="0", contactStiffness="500", group=collisionGroup, moving="1", selfCollision="0", simulated="1"))
       nnn.append(ET.Element('PointModel', bothSide="0", contactFriction="0", contactStiffness="500", group=collisionGroup, moving="1", selfCollision="0", simulated="1"))
-      nnn.append(ET.Element('TriangleModel', bothSide="0", contactFriction="0", contactStiffness="500", group=collisionGroup, moving="1", selfCollision="0", simulated="1", tags="SuturingSurface")) 
+      nnn.append(ET.Element('TriangleModel', bothSide="0", contactFriction="0", contactStiffness="500", group=collisionGroup, moving="1", selfCollision="0", simulated="1", tags="HapticSurface")) 
 
 
       nn.append(nnn)
@@ -479,7 +489,7 @@ def addConstraints(o, t):
     for q in o.children:
       if not q.hide_render:
         n = fixName(q.name)
-        if q.name.startswith('BoxConstraint'):
+        if q.name.startswith('BoxConstraint') or q.get('annotated_type') == 'BOXCONSTRAINT':
             tl = q.matrix_world * Vector(q.bound_box[0])
             br = q.matrix_world * Vector(q.bound_box[6])
             b = array('d')
@@ -487,7 +497,7 @@ def addConstraints(o, t):
             b.extend(br)
             t.append(ET.Element("BoxROI",name=n,box=b))
             t.append(ET.Element("FixedConstraint", indices="@%s.indices" % n))
-        elif q.name.startswith('SphereConstraint'):
+        elif q.name.startswith('SphereConstraint') or q.get('annotated_type') == 'SPHERECONSTRAINT':
             t.append(ET.Element("SphereROI",name=n,centers=(q.matrix_world.translation),radii=(max(cwisemul(q.parent.scale, q.scale)))))
             t.append(ET.Element("FixedConstraint", indices="@%s.indices" % n))
 
@@ -863,6 +873,24 @@ def exportTopology(o,opt):
 def fixName(name):
     return name.replace(".","_")
 
+def addMaterialToBicubic(o, t):
+    m = o.data
+    if len(m.materials) >= 1 :
+        mat = m.materials[0]
+
+        a = mat.alpha # alpha should go at the end of each color
+        t.set('diffuseColor', mat.diffuse_color*mat.diffuse_intensity)
+        t.set('ambientIntensity', mat.ambient)
+        t.set('specularColor', mat.specular_color*mat.specular_intensity)
+        t.set('shininess', mat.specular_hardness)
+        #t.set('emit', mat.diffuse_color*mat.emit)
+
+        #if len(mat.texture_slots) >= 1 and mat.texture_slots[0] != None :
+        #    tex = mat.texture_slots[0].texture
+        #    if tex.type == 'IMAGE' :
+        #        t.set("texturename", bpy.path.abspath(tex.image.filepath))
+
+
 def addMaterial(o, t):
     m = o.data
     if len(m.materials) >= 1 :
@@ -1176,7 +1204,7 @@ def exportHaptic(l, scene, opt):
             isn.append(ET.Element("UniformMass", template = "Rigid3d", name="mass", totalmass="0.1"))
             isn.append(ET.Element("LCPForceFeedback", activate=(o.get('forceFeedback',"true")), tags=omniTag, forceCoef="1.0"))
             isn.extend(instruments)
-            isn.append(ET.Element("RestShapeSpringsForceField", template="Rigid",stiffness="10000000",angularStiffness="2000000", external_rest_shape="../RigidLayer/ToolRealPosition", points = "0"))
+            isn.append(ET.Element("RestShapeSpringsForceField", template="Rigid",stiffness="10000000",angularStiffness="20000", external_rest_shape="../RigidLayer/ToolRealPosition", points = "0"))
             isn.append(ET.Element("UncoupledConstraintCorrection"))
             t.append(isn)
 
@@ -1239,7 +1267,8 @@ def exportScene(opt):
     addSolvers(solverNode)
 
     root.append(ET.Element("LightManager"))
-    root.append(ET.Element("OglSceneFrame"))
+    if scene.get('showXYZFrame', 0) != 0:
+      root.append(ET.Element("OglSceneFrame"))
     if (selection == True):
         l = list(bpy.context.selected_objects)
     else:
