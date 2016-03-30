@@ -593,7 +593,7 @@ def exportInstrument(o, opt):
                 t.append(child2)
 
                 t.append(ET.Element("HapticManager", toolModel = '' , omniDriver = '@../../RigidLayer/driver', graspStiffness = "1e3", attachStiffness="1e12", grasp_force_scale = "-1e-3",
-                                    upperJaw = '@'+fixName(i.name) + "__UpperJaw/toolTip1", lowerJaw = '@'+fixName(i.name) + "__LowerJaw/toolTip2" ))
+                                    upperJaw = '@'+fixName(i.name) + "__UpperJaw/toolTip1", lowerJaw = '@'+fixName(i.name) + "__LowerJaw/toolTip2", clampScale = "0.1 1 0.1" ))
             else:
                 child = ET.Element("Node", name= fixName(i.name) + "__CM")
                 if i.type == 'MESH':
@@ -615,7 +615,7 @@ def exportInstrument(o, opt):
 
                 child.append(pm)
                 child.append(ET.Element("RigidMapping", input="@../../instrumentState",output="@CM",index= 0))
-                child.append(ET.Element("HapticManager", toolModel = '@toolTip' , omniDriver = '@../../../RigidLayer/driver', graspStiffness = "1e3", attachStiffness="1e12", grasp_force_scale = "-1e-3"))
+                child.append(ET.Element("HapticManager", toolModel = '@toolTip' , omniDriver = '@../../../RigidLayer/driver', graspStiffness = "1e3", attachStiffness="1e12", grasp_force_scale = "-1e-3", duration = "50"))
                 t.append(child)
 
             break
