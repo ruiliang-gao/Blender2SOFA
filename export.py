@@ -575,11 +575,11 @@ def exportInstrument(o, opt):
                     child1.append(exportTopology(i, opt))
                 mo1 = createMechanicalObject(i)
                 mo1.set('name', 'CM1')
-                mo1.set('position','1 -1 0')
+                mo1.set('position','1 0 -1')
                 child1.append(mo1)
                 pm1 = ET.Element("TPointModel", name = 'toolTip1',
                                  template="Vec3d",
-                                 contactStiffness="0.01", bothSide="true", proximity = o.get('proximity', 0.02),
+                                 contactStiffness="0.01", bothSide="0", proximity = o.get('proximity', 0.02),
                                  group= o.get('collisionGroup')
                                  )
                 child1.append(pm1)
@@ -591,19 +591,19 @@ def exportInstrument(o, opt):
                     child2.append(exportTopology(i, opt))
                 mo2 = createMechanicalObject(i)
                 mo2.set('name', 'CM2')
-                mo2.set('position','-1 -1 0')
+                mo2.set('position','-1 0 -1')
                 child2.append(mo2)
                 pm2 = ET.Element("TPointModel", name = 'toolTip2',
                                  template="Vec3d",
-                                 contactStiffness="0.01", bothSide="true", proximity = o.get('proximity', 0.02),
+                                 contactStiffness="0.01", bothSide="0", proximity = o.get('proximity', 0.02),
                                  group= o.get('collisionGroup')
                                  )
-                child2.append(pm)
+                child2.append(pm2)
                 child2.append(ET.Element("RigidMapping", input="@../../instrumentState",output="@CM2",index= 0))
                 t.append(child2)
 
                 t.append(ET.Element("HapticManager", toolModel = '' , omniDriver = '@../../RigidLayer/driver', graspStiffness = "1e3", attachStiffness="1e12", grasp_force_scale = "-1e-3",
-                                    upperJaw = '@'+fixName(i.name) + "__UpperJaw/toolTip1", lowerJaw = '@'+fixName(i.name) + "__LowerJaw/toolTip2", clampScale = "0.1 1 0.1" ))
+                                    upperJaw = '@'+fixName(i.name) + "__UpperJaw/toolTip1", lowerJaw = '@'+fixName(i.name) + "__LowerJaw/toolTip2", clampScale = "1 0.1 0.1" ))
             else:
                 child = ET.Element("Node", name= fixName(i.name) + "__CM")
                 if i.type == 'MESH':
@@ -613,7 +613,7 @@ def exportInstrument(o, opt):
                 child.append(mo)
                 pm = ET.Element("TPointModel", name = 'toolTip',
                                  template="Vec3d",
-                                 contactStiffness="0.01", bothSide="true", proximity = o.get('proximity', 0.02),
+                                 contactStiffness="0.01", bothSide="0", proximity = o.get('proximity', 0.02),
                                  group= o.get('collisionGroup')
                                  )
                 if toolFunction == 'carve':
@@ -625,7 +625,7 @@ def exportInstrument(o, opt):
 
                 child.append(pm)
                 child.append(ET.Element("RigidMapping", input="@../../instrumentState",output="@CM",index= 0))
-                child.append(ET.Element("HapticManager", toolModel = '@toolTip' , omniDriver = '@../../../RigidLayer/driver', graspStiffness = "1e3", attachStiffness="1e12", grasp_force_scale = "-1e-3", duration = "50"))
+                t.append(ET.Element("HapticManager", toolModel = '@'+ fixName(i.name) + '__CM/toolTip' , omniDriver = '@../../RigidLayer/driver', graspStiffness = "1e3", attachStiffness="1e12", grasp_force_scale = "-1e-3", duration = "50"))
                 t.append(child)
 
             break
@@ -1198,13 +1198,13 @@ def exportHaptic(l, scene, opt):
 
             # State of the tool
             isn = ET.Element("Node",name = "Instrument__"+n);
-            isn.append(ET.Element("EulerImplicitSolver", rayleighMass="0.1", rayleighStiffness="0.1"))
+            isn.append(ET.Element("EulerImplicitSolver", rayleighMass="0.0", rayleighStiffness="0.0"))
             isn.append(ET.Element("CGLinearSolver",iterations="100", tolerance="1.0e-20", threshold="1.0e-20"))
             isn.append(ET.Element("MechanicalObject", name = "instrumentState", template="Rigid3d", position="0 0 0 0 0 0 1 0 0 0 0 0 0 1 0 0 0 0 0 0 1 0 0 0 0 0 0 1", free_position="0 0 0 0 0 0 1 0 0 0 0 0 0 1 0 0 0 0 0 0 1 0 0 0 0 0 0 1" ))
             isn.append(ET.Element("UniformMass", template = "Rigid3d", name="mass", totalmass="0.1"))
             isn.append(ET.Element("LCPForceFeedback", activate=(o.get('forceFeedback',"true")), tags=omniTag, forceCoef="1.0"))
             isn.extend(instruments)
-            isn.append(ET.Element("RestShapeSpringsForceField", template="Rigid",stiffness="10000000",angularStiffness="20000", external_rest_shape="../RigidLayer/ToolRealPosition", points = "0"))
+            isn.append(ET.Element("RestShapeSpringsForceField", template="Rigid",stiffness="1e12",angularStiffness="1e12", external_rest_shape="../RigidLayer/ToolRealPosition", points = "0"))
             isn.append(ET.Element("UncoupledConstraintCorrection"))
             t.append(isn)
 
@@ -1230,6 +1230,7 @@ def exportScene(opt):
         root.set("gravity",(scene.gravity))
     else:
         root.set("gravity","0 0 0")
+    root.set("dt",0.01)
 
     if scene.get('displayFlags') != None and scene.get('displayFlags') != "" :
         root.append(ET.Element("VisualStyle",displayFlags=scene['displayFlags']))
