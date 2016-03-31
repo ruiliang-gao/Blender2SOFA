@@ -1179,10 +1179,8 @@ def exportHaptic(l, scene, opt):
             n = fixName(o.name)
             t = ET.Element("Node", name = n, tags='haptic')
             omniTag = n + "__omni"
-
             ## Omni driver wrapper
             rl = ET.Element("Node", name="RigidLayer")
-            
             rl.append(ET.Element("NewOmniDriver",
                                  name = 'driver',
                                  deviceName = (o.get('deviceName',o.name)),
@@ -1198,14 +1196,14 @@ def exportHaptic(l, scene, opt):
 
             # State of the tool
             isn = ET.Element("Node",name = "Instrument__"+n);
-            isn.append(ET.Element("EulerImplicitSolver", rayleighMass="0.1", rayleighStiffness="0.1"))
+            isn.append(ET.Element("EulerImplicitSolver", rayleighMass="0.0", rayleighStiffness="0.0"))
             isn.append(ET.Element("CGLinearSolver",iterations="100", tolerance="1.0e-20", threshold="1.0e-20"))
             isn.append(ET.Element("MechanicalObject", name = "instrumentState", template="Rigid3d", position="0 0 0 0 0 0 1 0 0 0 0 0 0 1 0 0 0 0 0 0 1 0 0 0 0 0 0 1", free_position="0 0 0 0 0 0 1 0 0 0 0 0 0 1 0 0 0 0 0 0 1 0 0 0 0 0 0 1" ))
             isn.append(ET.Element("UniformMass", template = "Rigid3d", name="mass", totalmass="0.1"))
             isn.append(ET.Element("LCPForceFeedback", activate=(o.get('forceFeedback',"true")), tags=omniTag, forceCoef="1.0"))
             isn.extend(instruments)
-            isn.append(ET.Element("RestShapeSpringsForceField", template="Rigid",stiffness="10000000",angularStiffness="20000", external_rest_shape="../RigidLayer/ToolRealPosition", points = "0"))
-            isn.append(ET.Element("UncoupledConstraintCorrection"))
+            isn.append(ET.Element("RestShapeSpringsForceField", template="Rigid",stiffness="1e10",angularStiffness="2e10", external_rest_shape="../RigidLayer/ToolRealPosition", points = "0"))
+            isn.append(ET.Element("UncoupledConstraintCorrection",compliance="0.1 0.1 0.1"))
             t.append(isn)
 
             hapticExists = True
