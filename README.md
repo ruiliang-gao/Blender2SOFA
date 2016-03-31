@@ -1,5 +1,7 @@
 # Blender to SOFA export plugin
 
+![blender2sofa-logo.png](https://bitbucket.org/repo/Ayy6LE/images/4037932839-blender2sofa-logo.png)
+
 Utilize Blender for modeling organs, tools. Set-up the lighting. Create 
 SOFA scenes from a Blender scene easily. UI is provided for specifying
 parameters that are needed in a SOFA simulation.
