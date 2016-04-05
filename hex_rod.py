@@ -9,7 +9,8 @@ class HexRod(bpy.types.Operator):
     bl_options = { 'UNDO' }
     bl_description = "Create a rod made of hexahedra (one per unit length) along the input curve"    
     hex_number = bpy.props.IntProperty(name="Number of hexahedra (default = 20)", description = "Number of hexahedra to construct")    
-    rod_radius = bpy.props.FloatProperty(name="Radius of the rod (default = curve length/30)", description = "Radius of the rod")    
+    rod_radius = bpy.props.FloatProperty(name="Radius of the rod (default = curve length/30)", description = "Radius of the rod")
+    rod_bevel_factor = bpy.props.FloatProperty(name="Bevel Factor(default = 0)", description = "For taper only, enter -1 if no taper needed")     
     
     def invoke(self, context, event):
         return context.window_manager.invoke_props_dialog(self)
@@ -19,7 +20,10 @@ class HexRod(bpy.types.Operator):
         col = layout.column_flow(align=True, columns=1)        
         col.prop(self,"hex_number")
         rad = layout.column_flow(align=True, columns=1)        
-        rad.prop(self,"rod_radius")        
+        rad.prop(self,"rod_radius")
+        bev = layout.column_flow(align=True, columns=1)
+        bev.prop(self,"rod_bevel_factor")
+        
     
     @classmethod
     def poll(self, context):
@@ -56,6 +60,7 @@ def construct(context, options):
     options.rod_radius = curveLen/30
   if options.hex_number==0:
     options.hex_number = 20
+  
     
   curve.data.splines[0].resolution_u = options.hex_number
   
@@ -65,6 +70,10 @@ def construct(context, options):
   square.data.splines[0].resolution_u = 1
   
   curve.data.bevel_object = bpy.data.objects[square.name]
+  if options.rod_bevel_factor != -1:
+    curve.data.taper_object = bpy.data.objects[square.name]
+    curve.data.bevel_factor_start = options.rod_bevel_factor
+  #curve.data.use_fill_caps = True
   # m.data.bevel_object = bpy.data.objects[square.name]
   
   # outcome mesh from the bevel object 
