@@ -980,6 +980,7 @@ def exportThickCurve(o, opt):
     t.append(createMechanicalObject(o))
     t.append(ET.Element("Line", proximity = thickness, moving="0", simulated="0"))
     t.append(ET.Element("Point", proximity = thickness, moving="0", simulated="0"))
+    addConstraints(o, t)
     return t;
 
 def has_modifier(o,name_of_modifier):

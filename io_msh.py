@@ -96,9 +96,6 @@ def recalc_outer_surface(M):
   for e in bm.edges:
     bm.edges.remove(e)
 
-  bm.faces.ensure_lookup_table()
-  bm.edges.ensure_lookup_table()
-  bm.verts.ensure_lookup_table()
 
   # Add all the triangular faces
   for f in triFaceSet:
@@ -115,7 +112,6 @@ def recalc_outer_surface(M):
 
   # Update the data structures
   bm.faces.index_update()
-  bm.faces.ensure_lookup_table()
   bm.to_mesh(M)
   bm.free()
   M.update(calc_edges=True)
