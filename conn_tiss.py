@@ -259,9 +259,3 @@ def crossProd(v1,v2):
 
 def dotProd(v1,v2):
     return v1[0]*v2[0]+v1[1]*v2[1]+v1[2]*v2[2]
-
-def register():
-    bpy.utils.register_class(ConnectiveTissue)
-
-def unregister():
-    bpy.utils.unregister_class(ConnectiveTissue)

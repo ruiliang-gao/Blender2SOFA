@@ -21,7 +21,7 @@ class Fatty_Tissue(bpy.types.Operator):
         col = layout.column_flow(align=True, columns=1)        
         col.prop(self,"subd_num")
         rad = layout.column_flow(align=True, columns=1)        
-        rad.prop(self,"out_radius")       
+        rhad.prop(self,"out_radius")
         sch = layout.column_flow(align=True, columns=1)        
         sch.prop_search(self, "object", context.scene, "objects")
         
@@ -242,9 +242,3 @@ def computeCenter(ahex, M):
     v0 = M.vertices[ahex[0]].co
     v7 = M.vertices[ahex[6]].co
     return (v0+v7)/2
- 
-def register():
-    bpy.utils.register_class(Fatty_Tissue)
-    
-def unregister():
-    bpy.utils.unregister_class(Fatty_Tissue)

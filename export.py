@@ -7,6 +7,10 @@ from array import array
 from io import StringIO
 from .lua_format import *
 import numpy as np
+from bpy_extras.io_utils import ExportHelper
+from bpy.props import StringProperty, BoolProperty, EnumProperty
+from bpy.types import Operator
+FILEFORMATS = [ ('.salua', 'SaLua', 'Lua based scene file'), ('.scn', 'XML', 'XML scene file') ]
 
 class ExportException(Exception):
   def __init__(self, message):
@@ -1233,43 +1237,23 @@ def exportScene(opt):
         root.set("gravity","0 0 0")
     root.set("dt",0.01)
 
-    if scene.get('displayFlags') != None and scene.get('displayFlags') != "" :
-        root.append(ET.Element("VisualStyle",displayFlags=scene['displayFlags']))
-    if scene.get('includes') != None :
-        for i in scene['includes'].split(';') :
-            if i.strip() != "":
-                root.append(ET.Element("include", href=i))
 
     #lcp = ET.Element("LCPConstraintSolver", tolerance="1e-6", maxIt = "1000", mu = scene.get('mu', '1e-6'))
     lcp = ET.Element("GenericConstraintSolver", tolerance="1e-3", maxIterations = "1000")
     root.append(lcp)
 
     root.append(ET.Element('FreeMotionAnimationLoop'))
-
     root.append(ET.Element("CollisionPipeline", depth="6"))
     root.append(ET.Element("BruteForceDetection"))
-
-    mpi = ET.Element("LocalMinDistance", angleCone = "0.0")
-    if scene.get('alarmDistance'):
-        mpi.set("alarmDistance",(scene.get('alarmDistance')))
-    if scene.get('contactDistance'):
-        mpi.set("contactDistance", (scene.get('contactDistance')))
-    root.append(mpi)
-
+    root.append(ET.Element("LocalMinDistance", angleCone = "0.0", alarmDistance=scene.sofa.alarmDistance,contactDistance=scene.sofa.contactDistance))
     root.append(ET.Element("CollisionGroup"))
+    root.append(ET.Element('CollisionResponse', response="FrictionContact"))
 
-    #root.append(ET.Element("DefaultContactManager"))
-    root.append(ET.fromstring('<CollisionResponse name="Response" response="FrictionContact"/>'))
-
-    # TODO: put all the objects that need a solver e.g. soft bodies, volumetric and attach constraints
-    #  into a separate node call it "solverNode"
-    # and keep the obstacles in the root.
-    # and delete all indiviual solvers in separate objects.
     solverNode = ET.Element("Node", name="SolverNode")
     addSolvers(solverNode)
 
     root.append(ET.Element("LightManager"))
-    if scene.get('showXYZFrame', 0) != 0:
+    if scene.sofa.showXYZFrame:
       root.append(ET.Element("OglSceneFrame"))
     if (selection == True):
         l = list(bpy.context.selected_objects)
@@ -1278,7 +1262,6 @@ def exportScene(opt):
     l.reverse()
 
     root.extend(exportHaptic(l, scene, opt))
-
 
     for o in l:
         t = exportObject(opt, o)
@@ -1313,14 +1296,6 @@ def writeNodesToFile(root, filepath, opt):
         stringify_etree(root)
         ET.ElementTree(root).write(filepath)
 
-# ExportHelper is a helper class, defines filename and
-# invoke() function which calls the file selector.
-from bpy_extras.io_utils import ExportHelper
-from bpy.props import StringProperty, BoolProperty, EnumProperty
-from bpy.types import Operator
-
-
-FILEFORMATS = [ ('.salua', 'SaLua', 'Lua based scene file'), ('.scn', 'XML', 'XML scene file') ]
 
 class ExportToSofa(Operator, ExportHelper):
     """Export to SOFA scene"""

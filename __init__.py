@@ -2,7 +2,7 @@ bl_info = {
     'name': "SOFA Export plugin",
     'author': "Saleh Dindar, Di Xie",
     'version': (0, 1,  2),
-    'blender': (2, 74, 0),
+    'blender': (2, 69, 0),
     'location': "",
     'warning': "",
     'description': "Export Blender scenes into SOFA scene files",
@@ -13,57 +13,34 @@ bl_info = {
 
 import bpy
 
-from .io_msh import *
-from .ui import *
-from .conn_tiss import *
-from .hex_rod import *
-from .fatty_tissue import *
-from .export import *
-from .runsofa import *
-from .fatty_tissue import *
+from . import io_msh, ui, conn_tiss, hex_rod, fatty_tissue, export, runsofa
 
-############## Register/Unregister add-on ###########################################
 
-# Only needed if you want to add into a dynamic menu
 def menu_func_export(self, context):
-    self.layout.operator(ExportToSofa.bl_idname, text="SOFA Scene (.scn;.salua)")
+    self.layout.operator(runsofa.ExportToSofa.bl_idname, text="SOFA Scene (.scn;.salua)")
 
 addon_keymaps = []
 
 def register():
+    bpy.utils.register_module(__name__)
     io_msh.register()
-    ui.register()
-    conn_tiss.register()    
-    hex_rod.register()
-    fatty_tissue.register()
-
-    bpy.utils.register_class(ExportToSofa)
     bpy.types.INFO_MT_file_export.append(menu_func_export)
+    bpy.types.Scene.sofa = bpy.props.PointerProperty(type=ui.SOFASceneProperties)
 
-    bpy.utils.register_class(RunSofaOperator)
-
-    # handle the keymap
+    # Add keyboard shortcut F5 for invoking RunSofa
     wm = bpy.context.window_manager
     km = wm.keyconfigs.addon.keymaps.new(name='Object Mode', space_type='EMPTY')
-
-    kmi = km.keymap_items.new(RunSofaOperator.bl_idname, 'F5', 'PRESS')
+    kmi = km.keymap_items.new(runsofa.RunSofaOperator.bl_idname, 'F5', 'PRESS')
     addon_keymaps.append((km, kmi))
 
-
-
 def unregister():
-    bpy.utils.unregister_class(ExportToSofa)
-    bpy.types.INFO_MT_file_export.remove(menu_func_export)
-
-    # handle the keymap
+    # Remove keyboard shortcuts
     for km, kmi in addon_keymaps:
         km.keymap_items.remove(kmi)
     addon_keymaps.clear()
-        
-    bpy.utils.unregister_class(RunSofaOperator)
 
+    del bpy.types.Scene.sofa
     io_msh.unregister()
-    ui.unregister() 
-    conn_tiss.unregister()
-    hex_rod.unregister()
-    fatty_tissue.unregister()
+    bpy.types.INFO_MT_file_export.remove(menu_func_export)
+    bpy.utils.unregister_module(__name__)
+

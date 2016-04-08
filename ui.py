@@ -34,25 +34,6 @@ OBJECT_LIST = [
   ]
 
 
-class MakeSofaSceneOperator(bpy.types.Operator):
-    bl_label = "Make SOFA scene"
-    bl_idname = "sofa.makescene"
-
-    @classmethod
-    def poll(cls,context):
-        return context.scene != None
-
-    def execute(self,context):
-        s = context.scene
-        s['sofa']=True
-        s["_RNA_UI"] = s.get("_RNA_UI", {})
-        for prop in SOFA_SCENE_PROPERTIES:
-            val = SOFA_SCENE_PROPERTIES[prop]
-            s["_RNA_UI"][prop]= val
-            s[prop] = val['default']
-        return { 'FINISHED' }
-
-
 class SofaPropertyPanel(bpy.types.Panel):
     """Creates a Panel in the Object properties window"""
     bl_label = "SOFA Properties"
@@ -104,22 +85,12 @@ class SofaPropertyPanel(bpy.types.Panel):
         s = context.scene
         if s != None:
             layout.separator()
-            if s.get('sofa') != None:
-                c = layout.column_flow(align=True, columns=1)
-                c.label(text="Scene Properties", icon='SCENE_DATA')
-                p = SOFA_SCENE_PROPERTIES
-                l = list(p.keys()); l.sort()
-                for e in l:
-                  if type(p[e]['default']) != str:
-                    c.prop(s, '["'+ e + '"]')
-                for e in l:
-                  if type(p[e]['default']) == str:
-                    c.label(text=e + ':')
-                    c.prop(s, '["'+ e +'"]', '')
-
-            else:
-                layout.operator("sofa.makescene")
-
+            c = layout.column_flow(align=True, columns=1)
+            c.label(text="Scene Properties", icon='SCENE_DATA')
+            c.prop(s.sofa, "mu")
+            c.prop(s.sofa, "alarmDistance")
+            c.prop(s.sofa, "contactDistance")
+            c.prop(s.sofa, "showXYZFrame")
 
 #   Button
 class SetAnnotatedTypeButton(bpy.types.Operator):
@@ -140,7 +111,7 @@ class SetAnnotatedTypeButton(bpy.types.Operator):
             for e in p:
                 if o.get(e) != None:
                         del o[e]
-        #if the object type is other types
+        #if the object type is utilsother types
         else:
           if type != None:
             #delete previous properties
@@ -162,12 +133,11 @@ class SetAnnotatedTypeButton(bpy.types.Operator):
 
         return{'FINISHED'}
 
-def register():
-    bpy.utils.register_class(SetAnnotatedTypeButton)
-    bpy.utils.register_class(SofaPropertyPanel)
-    bpy.utils.register_class(MakeSofaSceneOperator)
 
-def unregister():
-    bpy.utils.unregister_class(SetAnnotatedTypeButton)
-    bpy.utils.unregister_class(SofaPropertyPanel)
-    bpy.utils.unregister_class(MakeSofaSceneOperator)
+class SOFASceneProperties(bpy.types.PropertyGroup):
+    """SOFA properties associated with a scene"""
+    mu = bpy.props.FloatProperty(name=u"\u03bc",description="LCP parameter mu",soft_min=1e-9,soft_max=0.1,step=1e-6,default=1e-6,precision=6)
+    alarmDistance = bpy.props.FloatProperty(name="Alarm Distance",description="Collision detection check distance",default=0.1,soft_min=1e-4,soft_max=0.1,step=1e-5,precision=3)
+    contactDistance = bpy.props.FloatProperty(name="Contact Distance",default=0.01,soft_min=1e-5,soft_max=0.1,step=1e-5,precision=6)
+    showXYZFrame = bpy.props.BoolProperty(name="Show XYZ frame",description="Show a small XYZ frame in the lower right corner in SOFA simulation",default=False)
+

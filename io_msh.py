@@ -2,7 +2,7 @@ bl_info = {
     'name': "GMSH Import/Export plugin",
     'author': "Saleh Dindar",
     'version': (0, 0, 0),
-    'blender': (2, 75, 0),
+    'blender': (2, 69, 0),
     'location': "",
     'warning': "",
     'description': "Import/export tetrahedral meshes from/to GMSH files",
@@ -203,14 +203,25 @@ class RemoveDegenerateHexahedra(bpy.types.Operator):
     recalc_outer_surface(M)
     return { 'FINISHED' }
 
-class ExportMSHOperator(bpy.types.Operator):
+class ExportMSHOperator(bpy.types.Operator, bpy_extras.io_utils.ExportHelper):
+  bl_idname = "export_mesh.msh"
+  bl_label = "Export MSH"
+  bl_options = {'UNDO'}
+
+  filename_ext = ".msh"
+  filter_glob = bpy.props.StringProperty(default="*.msh", options={'HIDDEN'})
   @classmethod
   def poll(cls, context):
       """
-      Enabled only for tetrahedral meshes
+      Enabled only for tetrahedral and hexahedral meshes
       """
-      return context.object is not None and context.object.type == 'MESH' \
-        and len(context.object.tetrahedra) > 0
+      o = context.object
+      return o is not None and o.type == 'MESH' \
+        and len(o.data.hexahedra) + len(o.data.tetrahedra) > 0
+
+  def execute(self, context):
+      self.report({'ERROR'}, "Not implemented yet")
+      return { 'ERROR' }
 
 class ImportMSH(bpy.types.Operator, bpy_extras.io_utils.ImportHelper):
   """Load a tetrahedral mesh from GMSH file"""
@@ -298,12 +309,6 @@ def menu_func_import(self, context):
     self.layout.operator(ImportMSH.bl_idname, text="GMSH (.msh)")
 
 def register():
-    bpy.utils.register_class(ImportMSH)
-    bpy.utils.register_class(MeshTetrahedron)
-    bpy.utils.register_class(MeshHexahedron)
-    bpy.utils.register_class(VolumetricMeshPanel)
-    bpy.utils.register_class(ReCalculateOuterSurface)
-    bpy.utils.register_class(RemoveDegenerateHexahedra)
     bpy.types.INFO_MT_file_import.append(menu_func_import)
     bpy.types.Mesh.tetrahedra = bpy.props.CollectionProperty(name="Tetrahedra", type=MeshTetrahedron)
     bpy.types.Mesh.hexahedra = bpy.props.CollectionProperty(name="Hexahedra", type=MeshHexahedron)
@@ -312,9 +317,3 @@ def unregister():
     del bpy.types.Mesh.tetrahedra
     del bpy.types.Mesh.hexahedra
     bpy.types.INFO_MT_file_import.remove(menu_func_import)
-    bpy.utils.unregister_class(ImportMSH)
-    bpy.utils.unregister_class(RemoveDegenerateHexahedra)
-    bpy.utils.unregister_class(ReCalculateOuterSurface)
-    bpy.utils.unregister_class(VolumetricMeshPanel)
-    bpy.utils.unregister_class(MeshTetrahedron)
-    bpy.utils.unregister_class(MeshHexahedron)

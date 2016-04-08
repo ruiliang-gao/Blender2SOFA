@@ -1,9 +1,10 @@
 import bpy
 import os
-from .export import *
+from .export import exportScene,writeNodesToFile,FILEFORMATS, ExportOptions, ExportException
 from subprocess import Popen
 from tempfile import mktemp
 import sys
+from bpy.props import StringProperty, BoolProperty, EnumProperty
 
 def updateFileFormat(self, context):
   base, ext = os.path.splitext(self.filepath)
@@ -13,7 +14,6 @@ class RunSofaOperator(bpy.types.Operator):
     bl_idname = "scene.runsofa"
     bl_label = "Run Simulation in Sofa"
     bl_options = { 'REGISTER', 'UNDO' }
-
     file_format = EnumProperty(name = "File format",
       items = FILEFORMATS, update = updateFileFormat, default='.scn')
 
