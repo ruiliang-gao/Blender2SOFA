@@ -1,13 +1,5 @@
 import bpy
 
-SOFA_SCENE_PROPERTIES = {
-    'mu': { 'default' : 0.000001, 'min' : 0.0000001, 'max' : 0.1, 'step' : 0.001, 'precision': 3 },
-    'alarmDistance': { 'default': 0.1, 'min' : 0.0001, 'max' : 1.0, 'step' : 0.001, 'precision': 3},
-    'contactDistance': { 'default': 0.01, 'min': 0.0001, 'max' : 1.0, 'step': 0.001, 'precision': 3},
-    'includes': { 'default': '' },
-    'displayFlags': { 'default': 'showVisualModels'},
-    'showXYZFrame' : { 'default' : 0 }
-}
 
 OBJECT_MAP = {
     'SOFT_BODY': ( "Soft Body", 'MOD_SOFT', {'resX':10, 'resY':10, 'resZ':10, 'youngModulus':300, 'poissonRatio':0.45, 'rayleighStiffness':0, 'contactFriction':0.01, 'contactStiffness':500, 'collisionGroup':1}),
@@ -19,9 +11,6 @@ OBJECT_MAP = {
     'VOLUMETRIC': ("Volumetic",'SNAP_VOLUME', { '3dtexture': '', 'selfCollision': False, 'precomputeConstraints' : False, 'carvable': False, 'youngModulus': 300 , 'poissonRatio':0.45, 'damping': 0.1, 'contactFriction': 0.01, 'contactStiffness':500, 'collisionGroup':1, 'suture': False} ),
     'THICKSHELL': ("Thick Shell",'MOD_CLOTH', { 'degree': { 'default': 1, 'min': 1, 'max': 3, 'step': 1 }, 'selfCollision': False, 'precomputeConstraints' : False, 'youngModulus': 300 , 'poissonRatio':0.45, 'damping': 0.1, 'contactFriction': 0.01, 'contactStiffness':500, 'collisionGroup':1, 'thickness': 0.1 , 'suture': False, 'layerCount': 1 } ),
     'HAPTIC':("Haptic",'SCULPTMODE_HLT', {'scale':300, 'forceScale': 0.001, 'forceFeedback' : False, 'deviceName': ''}),
-    'INSTRUMENT':("Instrument", 'SCULPTMODE_HLT', { 'collisionGroup':1, 'function': 'grasp' }),
-    'INSTRUMENTPART': ("Instrument Part",'OOPS',{'index':{'default':3,'min':1,'max':3,'step':1}}),
-    'INSTRUMENTTIP': ("Instrument Tip",'OOPS',{}),
     'THICKCURVE': ("Thick Curve", 'ROOTCURVE', { 'thickness': 0.1 }),
     'RIGID':("Rigid",'MESH_ICOSPHERE', {'collisionGroup':1})
 }
@@ -29,36 +18,83 @@ OBJECT_MAP = {
 OBJECT_LIST = [
   'SOFT_BODY', 'VOLUMETRIC', 'THICKSHELL', 'THICKCURVE', 'CONNECTIVETISSUE',
   'CLOTH', 'COLLISION', 'RIGID',
-  'HAPTIC',  'INSTRUMENT', 'INSTRUMENTPART', 'INSTRUMENTTIP',
+  'HAPTIC',
   'SPHERECONSTRAINT', 'ATTACHCONSTRAINT'
   ]
 
 
-class SofaPropertyPanel(bpy.types.Panel):
+class SofaObjectAnnotationPanel(bpy.types.Panel):
+    """A panel to adjust objeRESTRICT_RENDER_OFFct properties"""
+    bl_label = "SOFA annotations"
+    bl_space_type = 'VIEW_3D'
+    bl_region_type = 'TOOLS'
+    #bl_context = 'sofa'
+
+    @classmethod
+    def poll(self, context):
+        return context.object is not None
+
+    def draw(self, context):
+        p = context.object.sofaprops
+        layout = self.layout
+        layout.prop(p, 'template', text='')
+
+        t = p.template
+        c = layout.column_flow(align=True,columns=1)
+        if t == 'INSTRUMENT':
+            c.prop(p, 'toolfunction')
+        elif t == 'INSTRUMENTPART':
+            c.prop(p, 'instrument_part_type')
+
+
+
+
+
+class SofaScenePropertyPanel(bpy.types.Panel):
     """Creates a Panel in the Object properties window"""
-    bl_label = "SOFA Properties"
+    bl_label = "SOFA Scene Properties"
     bl_space_type = 'VIEW_3D'
     bl_region_type = 'TOOLS'
 
+    @classmethod
+    def poll(self, context):
+        return context.scene is not None
 
+    def draw(self, context):
+        layout = self.layout
+        s = context.scene
+        c = layout.column_flow(align=True, columns=1)
+        c.prop(s.sofa, "mu")
+        c.prop(s.sofa, "alarmDistance")
+        c.prop(s.sofa, "contactDistance")
+        c.prop(s.sofa, "showXYZFrame")
+
+class SofaActionsPanel(bpy.types.Panel):
+    bl_label = "SOFA Actions"
+    bl_space_type = 'VIEW_3D'
+    bl_region_type = 'TOOLS'
+
+    @classmethod
+    def poll(self, context):
+        return context.scene is not None
 
     def draw(self, context):
         layout = self.layout
 
+        c = layout.column()
+        c.operator("scene.runsofa", icon='PLAY')
+        c.operator("mesh.construct_con_tissue", icon='OUTLINER_OB_META')
+        c.operator("mesh.construct_hex_rod", icon='MOD_MESHDEFORM')
+        c.operator("mesh.construct_fatty_tissue", icon='MOD_MESHDEFORM')
+
+
         obj = context.object
-
-        row = layout.row()
-        row.operator("scene.runsofa", icon='PLAY')
-        layout.operator("mesh.construct_con_tissue", icon='OUTLINER_OB_META')
-        layout.operator("mesh.construct_hex_rod", icon='MOD_MESHDEFORM')
-        layout.operator("mesh.construct_fatty_tissue", icon='MOD_MESHDEFORM')
-
         if obj != None:
             layout.separator()
             antype = obj.get("annotated_type")
 
             c = layout.column_flow(align=True, columns=1)
-            c.label(text="Object Kind", icon='OBJECT_DATAMODE')
+            c.label(text="SOFA annotation:", icon='OBJECT_DATAMODE')
             for n in OBJECT_LIST:
                 (t,i,p) = OBJECT_MAP[n]
                 if(antype == n):
@@ -82,15 +118,6 @@ class SofaPropertyPanel(bpy.types.Panel):
 
         layout.separator()
 
-        s = context.scene
-        if s != None:
-            layout.separator()
-            c = layout.column_flow(align=True, columns=1)
-            c.label(text="Scene Properties", icon='SCENE_DATA')
-            c.prop(s.sofa, "mu")
-            c.prop(s.sofa, "alarmDistance")
-            c.prop(s.sofa, "contactDistance")
-            c.prop(s.sofa, "showXYZFrame")
 
 #   Button
 class SetAnnotatedTypeButton(bpy.types.Operator):
@@ -141,3 +168,24 @@ class SOFASceneProperties(bpy.types.PropertyGroup):
     contactDistance = bpy.props.FloatProperty(name="Contact Distance",default=0.01,soft_min=1e-5,soft_max=0.1,step=1e-5,precision=6)
     showXYZFrame = bpy.props.BoolProperty(name="Show XYZ frame",description="Show a small XYZ frame in the lower right corner in SOFA simulation",default=False)
 
+
+class SOFAObjectProperties(bpy.types.PropertyGroup):
+    """SOFA properties and annotations for objects"""
+    template = bpy.props.EnumProperty(name="Template",default='VISUAL', items=[
+        ('VISUAL', 'Visual', 'A decorative visual object that does not participate in simulation', 'SCENE', 1),
+        ('INSTRUMENT','Haptic Instrument','A haptically enabled surgical instrument', 'SCULPTMODE_HLT', 2),
+        ('INSTRUMENTPART', 'Intrument part', 'An animated part of the instrument', 'OOPS', 3),
+        ('INSTRUMENTTIP','Tip of Instrument','Active part of the instrument that performs actions', 'OOPS', 4)
+        ])
+
+    toolfunction = bpy.props.EnumProperty(name="Function",description="Interactive function of an instrument", default='GRASP',items=[
+        ('GRASP', 'Grasp', 'A grasper instrument'),
+        ('SUTURE','Suture', 'A grasper that can be used for suturing'),
+        ('CARVE', 'Carve', 'An instrument that destroys tissue at contact')
+        ])
+
+    instrument_part_type = bpy.props.EnumProperty(name="Animated Part type",default='FIXED',items=[
+        ('LEFTJAW', 'Left Jaw', ''),
+        ('RIGHTJAW', 'Right Jaw', ''),
+        ('FIXED', 'Fixed', 'Fixed part of the tool that moves with the handle')
+        ])

@@ -26,6 +26,7 @@ def register():
     io_msh.register()
     bpy.types.INFO_MT_file_export.append(menu_func_export)
     bpy.types.Scene.sofa = bpy.props.PointerProperty(type=ui.SOFASceneProperties)
+    bpy.types.Object.sofaprops = bpy.props.PointerProperty(type=ui.SOFAObjectProperties)
 
     # Add keyboard shortcut F5 for invoking RunSofa
     wm = bpy.context.window_manager
@@ -40,6 +41,7 @@ def unregister():
     addon_keymaps.clear()
 
     del bpy.types.Scene.sofa
+    del bpy.types.Object.sofaprops
     io_msh.unregister()
     bpy.types.INFO_MT_file_export.remove(menu_func_export)
     bpy.utils.unregister_module(__name__)
