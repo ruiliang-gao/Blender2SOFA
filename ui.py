@@ -1,27 +1,6 @@
 import bpy
 
 
-OBJECT_MAP = {
-    'SOFT_BODY': ( "Soft Body", 'MOD_SOFT', {'resX':10, 'resY':10, 'resZ':10, 'youngModulus':300, 'poissonRatio':0.45, 'rayleighStiffness':0, 'contactFriction':0.01, 'contactStiffness':500, 'collisionGroup':1}),
-    'CLOTH' : ("Cloth",'OUTLINER_OB_SURFACE', {'youngModulus':300, 'poissonRatio': { 'default': 0.45, 'min': 0.0, 'max' : 0.5, 'step': 0.001 }, 'bendingStiffness':300, 'stretchDamping':0.1, 'bendingDamping':0.1, 'collisionGroup':1}),
-    'COLLISION': ("Obstacle",'SOLID', {'collisionGroup':1}),
-    'CONNECTIVETISSUE': ("Connective Tissue",'LINKED', {'attach_stiffness': 10000, 'topObject':'', 'botObject':'', 'alwaysMatchFor': { 'default': 0, 'min': 0, 'max' : 2, 'step': 1, 'description': 'Always find springs for object x where (0 = None, 1 = Obj1, 2 = Obj2)' }, '3dtexture': '', 'selfCollision': False, 'precomputeConstraints' : False, 'carvable': False, 'youngModulus': 300 , 'poissonRatio':0.45, 'damping': 0.1, 'contactFriction': 0.01, 'contactStiffness':500, 'collisionGroup':1, 'suture': False}),
-    'ATTACHCONSTRAINT': ("Spring Attachment",'LINKED', {'stiffness':1000, 'object1':'', 'object2':'', 'alwaysMatchFor': { 'default': 0, 'min': 0, 'max' : 2, 'step': 1, 'description': 'Always find springs for object x where (0 = None, 1 = Obj1, 2 = Obj2)' }}),
-    'SPHERECONSTRAINT': ("Sphere Constraint",'SURFACE_NSPHERE', {}),
-    'VOLUMETRIC': ("Volumetic",'SNAP_VOLUME', { '3dtexture': '', 'selfCollision': False, 'precomputeConstraints' : False, 'carvable': False, 'youngModulus': 300 , 'poissonRatio':0.45, 'damping': 0.1, 'contactFriction': 0.01, 'contactStiffness':500, 'collisionGroup':1, 'suture': False} ),
-    'THICKSHELL': ("Thick Shell",'MOD_CLOTH', { 'degree': { 'default': 1, 'min': 1, 'max': 3, 'step': 1 }, 'selfCollision': False, 'precomputeConstraints' : False, 'youngModulus': 300 , 'poissonRatio':0.45, 'damping': 0.1, 'contactFriction': 0.01, 'contactStiffness':500, 'collisionGroup':1, 'thickness': 0.1 , 'suture': False, 'layerCount': 1 } ),
-    'HAPTIC':("Haptic",'SCULPTMODE_HLT', {'scale':300, 'forceScale': 0.001, 'forceFeedback' : False, 'deviceName': ''}),
-    'THICKCURVE': ("Thick Curve", 'ROOTCURVE', { 'thickness': 0.1 }),
-    'RIGID':("Rigid",'MESH_ICOSPHERE', {'collisionGroup':1})
-}
-
-OBJECT_LIST = [
-  'SOFT_BODY', 'VOLUMETRIC', 'THICKSHELL', 'THICKCURVE', 'CONNECTIVETISSUE',
-  'CLOTH', 'COLLISION', 'RIGID',
-  'HAPTIC',
-  'SPHERECONSTRAINT', 'ATTACHCONSTRAINT'
-  ]
-
 
 class SofaObjectAnnotationPanel(bpy.types.Panel):
     """A panel to adjust objeRESTRICT_RENDER_OFFct properties"""
@@ -42,10 +21,48 @@ class SofaObjectAnnotationPanel(bpy.types.Panel):
         t = p.template
         c = layout.column_flow(align=True,columns=1)
         if t == 'INSTRUMENT':
-            c.prop(p, 'toolfunction')
+            c.prop(p, 'toolFunction')
         elif t == 'INSTRUMENTPART':
-            c.prop(p, 'instrument_part_type')
+            c.prop(p, 'instrumentPart')
+        elif t in [ 'VOLUMETRIC', 'THICKSHELL' ]:
+            c.prop(p, 'youngModulus')
+            c.prop(p, 'poissonRatio')
+            c.prop(p, 'damping')
+            c.prop(p, 'rayleighStiffness')
+            if t == 'THICKSHELL':
+                c.prop(p, 'thickness')
+                c.prop(p, 'layerCount')
+            c.prop(p, 'texture3d')
+            c.prop(p, 'precomputeConstraints')
 
+            if p.object1 != '' or p.object2 != '':
+                c = layout.column_flow(column=1)
+                c.prop(p, 'attachStiffness')
+                #c.prop(p, 'object1')
+                c.prop(p, 'alwaysMatchForObject1')
+                #c.prop(p, 'object2')
+                c.prop(p, 'alwaysMatchForObject2')
+        elif t == 'CLOTH':
+            c.prop(p, 'youngModulus')
+            c.prop(p, 'bendingStiffness')
+            c.prop(p, 'damping')
+            c.prop(p, 'precomputeConstraints')
+        elif t == 'ATTACHCONSTRAINT'  :
+            c.prop(p, 'attachStiffness')
+            c.prop_search(p, 'object1', context.scene, "objects")
+            c.prop(p, 'alwaysMatchForObject1')
+            c.prop_search(p, 'object2', context.scene, "objects")
+            c.prop(p, 'alwaysMatchForObject2')
+
+        if t in [ 'VOLUMETRIC', 'CLOTH', 'THICKSHELL' ]:
+            c = layout.column_flow(align=True,columns=1)
+            c.prop(p, 'collisionGroup')
+            c.prop(p, 'contactFriction')
+            c.prop(p, 'contactStiffness')
+            c.prop(p, 'selfCollision')
+            c.prop(p, 'carvable')
+            c.prop(p, 'suture')
+          
 
 
 
@@ -81,84 +98,15 @@ class SofaActionsPanel(bpy.types.Panel):
     def draw(self, context):
         layout = self.layout
 
-        c = layout.column()
-        c.operator("scene.runsofa", icon='PLAY')
-        c.operator("mesh.construct_con_tissue", icon='OUTLINER_OB_META')
-        c.operator("mesh.construct_hex_rod", icon='MOD_MESHDEFORM')
-        c.operator("mesh.construct_fatty_tissue", icon='MOD_MESHDEFORM')
-
-
-        obj = context.object
-        if obj != None:
-            layout.separator()
-            antype = obj.get("annotated_type")
-
-            c = layout.column_flow(align=True, columns=1)
-            c.label(text="SOFA annotation:", icon='OBJECT_DATAMODE')
-            for n in OBJECT_LIST:
-                (t,i,p) = OBJECT_MAP[n]
-                if(antype == n):
-                    c.operator("tips.setannotatedtype", text=t, icon='X').kind = n
-                else:
-                    c.operator("tips.setannotatedtype", text=t, icon=i).kind = n
-
-            if antype != None:
-                layout.separator()
-                c = layout.column_flow(align=True, columns = 1)
-                c.label(text="Object Properties", icon='OBJECT_DATAMODE')
-                (t,i,p) = OBJECT_MAP[antype]
-                l = list(p.keys()); l.sort()
-                for e in l:
-                  if type(p[e]) != str:
-                    c.prop(obj, '["'+ e + '"]')
-                for e in l:
-                  if type(p[e]) == str:
-                    c.label(text=e + ':')
-                    c.prop(obj, '["'+ e +'"]', '')
-
+        layout.operator("scene.runsofa", icon='PLAY')
         layout.separator()
+        layout.label('Create')
+        c = layout.column_flow(align=True,columns=1)
+        c.operator("mesh.construct_con_tissue", icon='OUTLINER_OB_META', text='Connective Tissue')
+        c.operator("mesh.construct_hex_rod", icon='MOD_MESHDEFORM', text = 'Hex Rod')
+        c.operator("mesh.construct_fatty_tissue", icon='MOD_MESHDEFORM', text = 'Fatty Tissue')
 
 
-#   Button
-class SetAnnotatedTypeButton(bpy.types.Operator):
-    bl_idname = "tips.setannotatedtype"
-    bl_label = "Set Annotated Type"
-    number = bpy.props.IntProperty()
-    kind = bpy.props.StringProperty()
-
-    def execute(self, context):
-
-        o = context.object
-        type = o.get("annotated_type")
-        #if the object type is already this kind of type
-        if type==self.kind:
-            #delete the type and related properties
-            del o["annotated_type"]
-            (t,i,p) = OBJECT_MAP[self.kind]
-            for e in p:
-                if o.get(e) != None:
-                        del o[e]
-        #if the object type is utilsother types
-        else:
-          if type != None:
-            #delete previous properties
-            (text,icon,properties) = OBJECT_MAP[type]
-            for prop in properties:
-                if o.get(prop) != None:
-                        del o[prop]
-            
-          #set the current type and related properties
-          o['annotated_type'] = self.kind
-          (t,i,p) = OBJECT_MAP[self.kind]
-          o["_RNA_UI"] = o.get("_RNA_UI", {})
-          for e in p:
-              if isinstance(p[e], dict):
-                  o["_RNA_UI"][e] = p[e]
-                  o[e] = p[e]['default']
-              else:
-                  o[e] = p[e]
-
-        return{'FINISHED'}
 
 
 class SOFASceneProperties(bpy.types.PropertyGroup):
@@ -173,19 +121,64 @@ class SOFAObjectProperties(bpy.types.PropertyGroup):
     """SOFA properties and annotations for objects"""
     template = bpy.props.EnumProperty(name="Template",default='VISUAL', items=[
         ('VISUAL', 'Visual', 'A decorative visual object that does not participate in simulation', 'SCENE', 1),
-        ('INSTRUMENT','Haptic Instrument','A haptically enabled surgical instrument', 'SCULPTMODE_HLT', 2),
-        ('INSTRUMENTPART', 'Intrument part', 'An animated part of the instrument', 'OOPS', 3),
-        ('INSTRUMENTTIP','Tip of Instrument','Active part of the instrument that performs actions', 'OOPS', 4)
+        ('VOLUMETRIC', 'Volumetric', 'A hexahedral or tetrahedral volumetric mesh', 'SNAP_VOLUME', 2),
+        ('THICKSHELL', 'Thick Shell', 'An offset object as a thick shell', 'MOD_CLOTH', 3),
+        ('CLOTH', 'Cloth', 'A surface cloth', 'OUTLINER_OB_SURFACE', 4),
+        ('COLLISION', 'Obstacle', '', 'SOLID', 5),
+        ('SPHERECONSTRAINT','Sphere Constraint','', 'SURFACE_NSPHERE', 6),
+        ('BOXCONSTRAINT', 'Box Constraint', '','OBJECT_DATA', 7),
+        ('ATTACHCONSTRAINT', 'Spring Attachment', '', 'LINKED', 8),
+        ('INSTRUMENT','Haptic Instrument','A haptically enabled surgical instrument', 'SCULPTMODE_HLT', 9),
+        ('INSTRUMENTPART', 'Intrument part', 'An animated part of the instrument', 'OOPS', 10),
+        ('INSTRUMENTTIP','Tip of Instrument','Active part of the instrument that performs actions', 'OOPS', 11)
         ])
 
-    toolfunction = bpy.props.EnumProperty(name="Function",description="Interactive function of an instrument", default='GRASP',items=[
+    # Instrument properties
+    toolFunction = bpy.props.EnumProperty(name="Function",description="Interactive function of an instrument", default='GRASP',items=[
         ('GRASP', 'Grasp', 'A grasper instrument'),
         ('SUTURE','Suture', 'A grasper that can be used for suturing'),
         ('CARVE', 'Carve', 'An instrument that destroys tissue at contact')
         ])
-
-    instrument_part_type = bpy.props.EnumProperty(name="Animated Part type",default='FIXED',items=[
+    instrumentPart = bpy.props.EnumProperty(name="Animated Part type",default='FIXED',items=[
         ('LEFTJAW', 'Left Jaw', ''),
         ('RIGHTJAW', 'Right Jaw', ''),
         ('FIXED', 'Fixed', 'Fixed part of the tool that moves with the handle')
         ])
+    proximity = bpy.props.FloatProperty(name="Proximity",description="Proximity for collision detection",min=0,default=0,max=10,step=0.01)
+
+    # Collision detection and response
+    collisionGroup = bpy.props.IntProperty(name="Collision Group",default=1,min=1,max=100,soft_max=10)
+    selfCollision = bpy.props.BoolProperty(name="Self Collision",description="Object cannot go through itself when enabled",default=False)
+    contactFriction = bpy.props.FloatProperty(name="Contact Friction",default=500,min=0,max=1e+5,step=100)
+    contactStiffness = bpy.props.FloatProperty(name="Contact Stiffness",default=500,min=0,max=1e+5,step=100)
+    
+    # Elasticity
+    youngModulus = bpy.props.FloatProperty(name="Stiffness (Young Modulus)",default=3000,min=1,max=1e+6,soft_min=10,step=100)
+    poissonRatio = bpy.props.FloatProperty(name="Compressibility",default=0.45,min=0.0,max=0.49,step=0.01)
+    rayleighStiffness = bpy.props.FloatProperty(name="Rayleigh Stiffness",default=0.0,min=0.0,max=0.49,step=0.01)
+    bendingStiffness = bpy.props.FloatProperty(name="Bending Stiffness",default=3000,min=1,max=1e+6,step=100)
+    damping = bpy.props.FloatProperty(name="Damping",default=0.1,min=0,max=1000,step=0.1)
+    precomputeConstraints = bpy.props.BoolProperty(name='Accurate Constraints',description='Better and more accurate constraints but requires lengthy precomputation',default=False)
+    
+    # Attachments 
+    attachStiffness = bpy.props.FloatProperty(name="Attach Stiffness",default=10000,min=1,max=1e+6,soft_min=10,step=100)
+    alwaysMatchForObject1 = bpy.props.BoolProperty(name='Always Match for First Object',default=False)
+    alwaysMatchForObject2 = bpy.props.BoolProperty(name='Always Match for Second Object',default=False)
+    object1 = bpy.props.StringProperty(name='First Object', description='Name of the first object in the attachment')
+    object2 = bpy.props.StringProperty(name='Second Object', description='Name of the second object in the attachment')
+
+    # Interactive features    
+    carvable = bpy.props.BoolProperty(name='Carvable',description='Allow the object be interactively carved by mouse or a carving tool',default=False)
+    suture = bpy.props.BoolProperty(name='Interactive',description='Allow the object to be interactively manipulated by the haptic tools',default=True)
+    
+    # 
+    texture3d = bpy.props.StringProperty(name='3D Texture',description='Filename of the 3D texture')
+    thickness = bpy.props.FloatProperty(name='Thickness',description='Thickness of the shell', default=0.1,min=0.001,max=1,step=0.01)
+    layerCount = bpy.props.IntProperty(name='Layer Count', description='Number of layers in the thick shell',default=1,min=1,max=10)
+        
+class HapicProperties(bpy.types.PropertyGroup):
+    scale = bpy.props.FloatProperty(name='Workspace Scale',description='Scaling applied to the workspace box of the haptic',default=300,min=1,max=10000,step=10)
+    forceScale = bpy.props.FloatProperty(name='Force-feedback Scale',description='Scaling applied to force feedback',default=0.03,min=0,max=10000,soft_max=1)
+    forceFeedback = bpy.props.BoolProperty(name='Force-feedback enabled',description='Enable force-feedback for this haptic device',default=False)
+    deviceName = bpy.props.StringProperty(name='Device Name',description='Name of the haptic device name as registered in the Geomagic Touch Setup application')
+    
