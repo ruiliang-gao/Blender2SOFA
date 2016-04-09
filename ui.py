@@ -36,12 +36,10 @@ class SofaObjectAnnotationPanel(bpy.types.Panel):
             c.prop(p, 'precomputeConstraints')
 
             if p.object1 != '' or p.object2 != '':
-                c = layout.column_flow(column=1)
+                c = layout.column_flow(columns=1)
                 c.prop(p, 'attachStiffness')
-                #c.prop(p, 'object1')
-                c.prop(p, 'alwaysMatchForObject1')
-                #c.prop(p, 'object2')
-                c.prop(p, 'alwaysMatchForObject2')
+                c.prop_search(p, "object1", context.scene, "objects")
+                c.prop_search(p, "object2", context.scene, "objects")
         elif t == 'CLOTH':
             c.prop(p, 'youngModulus')
             c.prop(p, 'bendingStiffness')

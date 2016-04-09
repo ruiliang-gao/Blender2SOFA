@@ -2,7 +2,7 @@ import bpy
 import os
 import xml.etree.ElementTree as ET
 from mathutils import Vector, Euler, Quaternion
-from math import degrees
+from math import degrees, sqrt
 from array import array
 from io import StringIO
 from .lua_format import *
@@ -162,9 +162,6 @@ def exportThickShellTopologies(o, opt, name):
     layerCount    = o.sofaprops.layerCount
     if layerCount < 1: raise ExportException("Object '%s': Number of layers has to be a positive number" % o.name)
     V = len(m.vertices)
-    #r = (layerCount+1)//2
-    #rj = list(range(-r,r+1))
-    #if (layerCount%2==1) : del rj[r]
     rj = list(range(-layerCount,1))
     points =  np.empty([V * (layerCount+1),3])
     for i, v in enumerate(m.vertices):
@@ -617,8 +614,6 @@ def matchVertices(o1, o2, s, opt):
         mindist = 1E+38
         minindex = -1
         for j in v[1]:
-            #print(i)
-            #print(j)
             dist = (o1.matrix_world*m[0].vertices[i].co - o2.matrix_world*m[1].vertices[j].co).length
             if dist < mindist :
                 minindex = j
@@ -697,17 +692,13 @@ def exportObstacle(o, opt):
     t.set('author-parent', 'root')
     t.set('author-order', 1)
     t.append(exportVisual(o, opt, name = name+'-visual', with_transform = True))
-    if True or len(o.data.vertices) < 200:
-        t.append(exportTopology(o,opt))
-        t.append(createMechanicalObject(o))
-        t.extend(collisionModelParts(o,obstacle = True))
-    else:
-        t.append(ET.Element("SparseGridTopology",position="@Visual.position",quads="@Visual.quads",triangles="@Visual.triangles",n="10 10 10"))
-        t.append(createMechanicalObject(o))
-        t.append(ET.Element('TSphereModel'))
-    t.append(ET.fromstring('<UncoupledConstraintCorrection />'))
+    t.append(exportTopology(o,opt))
+    t.append(createMechanicalObject(o))
+    t.extend(collisionModelParts(o,obstacle = True))
+    t.append(ET.Element('UncoupledConstraintCorrection'))
     return t
 
+# TODO: test that exported rigid object actually works
 def exportRigid(o, opt):
     name=fixName(o.name)
     t = ET.Element("Node",name=name)
@@ -829,17 +820,18 @@ def exportObject(opt, o):
                 t = exportObstacle(o, opt)
             elif annotated_type == 'CLOTH':
                 t = exportCloth(o, opt)
-            # elif annotated_type == 'VOLUMETRIC':
-                # t = exportVolumetric(o, opt)
-            elif annotated_type == 'VOLUMETRIC' and o.type == 'MESH' and hasattr(o.data,'tetrahedra') and len(o.data.tetrahedra) > 0:
-                t = exportVolumetric(o, opt)
-            elif annotated_type == 'VOLUMETRIC' and o.type == 'MESH' and hasattr(o.data,'hexahedra') and len(o.data.hexahedra) > 0:
-                t = exportHexVolumetric(o, opt)
+            elif annotated_type == 'VOLUMETRIC':
+                if o.type == 'MESH' and hasattr(o.data,'tetrahedra') and len(o.data.tetrahedra) > 0:
+                    t = exportVolumetric(o, opt)
+                elif o.type == 'MESH' and hasattr(o.data,'hexahedra') and len(o.data.hexahedra) > 0:
+                    t = exportHexVolumetric(o, opt)
+                else:
+                    raise ExportException("Volumetric mesh expected: '%s'" % o.name)
             elif annotated_type == 'THICKSHELL':
                 t = exportThickQuadShell(o, opt)
             elif annotated_type == 'THICKCURVE':
                 t = exportThickCurve(o, opt)
-            elif annotated_type == None or annotated_type == 'VISUAL':
+            elif annotated_type == 'VISUAL':
                 t = exportVisual(o, opt)
 
         elif o.type == "LAMP":
@@ -854,9 +846,6 @@ def exportObject(opt, o):
                 t = ET.Element("PositionalLight", name=fixName(o.name))
                 t.set("position", (o.location))
                 t.set("color", (o.data.color))
-        elif o.type == "EMPTY":
-            if has_modifier(o,'CM') or annotated_type == 'CM':
-                t = exportCM(o,opt)
     return t
 
 
@@ -876,93 +865,54 @@ def exportConstraints(opt, o):
 
     return result
 
-# TODO: This functions needs a complete re-write
-def addConnectionsToTissue(t, o, opt):
-    if o.sofaprops.object1 == '' or o.sofaprops.object2 == '':
-        return
-    scene = opt.scene
-    oMesh = o.to_mesh(opt.scene, True, 'PREVIEW')
-    
-    oTop = scene.objects[o.sofaprops.object1]
-    oBot = scene.objects[o.sofaprops.object2]
-    hasTop = True
-    if oTop == oBot:
-      hasTop = False
-    
-    if hasTop:
-      topVertices = o.sofaprops.object1Vertices
-      otopMesh = oTop.to_mesh(opt.scene, True, 'PREVIEW')
-      ntop = len(otopMesh.vertices)
+# Return true of vector x is inside the bounding box b
+#  b is a 2-tuple of vectors
+def insideBox(b, x):
+    m, M = b
+    return x > m and x < M
 
-    
-    
-    
-    botVertices = o.sofaprops.object2Vertices
-    obotMesh = oBot.to_mesh(opt.scene, True, 'PREVIEW')    
-     
-    
-    bpy.ops.object.select_all(action='DESELECT')
-    o.select = True
-    if hasTop:
-      oTop.select = True 
-    oBot.select = True
-    bpy.ops.object.transform_apply(location=True, rotation=True, scale=True)
 
-    maxDim = 1e+9 # todo: maxDim = max dimension of the whole scene
-    stiffness = o.sofaprops.attachStiffness
-    
-    if hasTop:
-      map2top = []
-      for i, v in enumerate(topVertices):
-          oVertex = oMesh.vertices[v].co
-          footprint = oTop.closest_point_on_mesh(oVertex,maxDim)
-          if footprint[2]==-1:
-              continue
-          face = otopMesh.polygons[footprint[2]].vertices 
-          # in *face* find the closest vertex to *oVertex*
-          smallestDistance = maxDim   
-          optimalVert = -1        
-          for j,vj in enumerate(face):        
-              distance_vj = (otopMesh.vertices[vj].co-oVertex).length 
-              if distance_vj < smallestDistance:            
-                  optimalVert = vj 
-                  smallestDistance = distance_vj              
-          if optimalVert > 0:
-              map2top.append((v,optimalVert,smallestDistance))            
-      springsTop = [
-          vector_to_string([i, j, stiffness, .1, d]) for (i,j,d) in map2top
-          ]
-      ffTop = ET.Element("StiffSpringForceField", object1='@' + fixName(o.name), object2='@' + fixName(oTop.name), 
-                      spring = ' '.join(springsTop))
-      t.append(ffTop)
+def onenorm(v):
+    return sum(map(abs,v))
 
-    map2bot = []
-    for i, v in enumerate(botVertices):
-        oVertex = oMesh.vertices[v].co
-        footprint = oBot.closest_point_on_mesh(oVertex,maxDim)
-        if footprint[2]==-1:
-            print('Error: _init_.py: corresponding vertex not found')
-            return
-        face = obotMesh.polygons[footprint[2]].vertices
-        smallestDistance = maxDim
+def addSpringsBetween(t, o, q, opt):
+    qm = q.to_mesh(opt.scene, True, 'PREVIEW')
+    om = o.to_mesh(opt.scene, True, 'PREVIEW')
+
+    # bounding box of o extended by 10%
+    oBB = Vector(o.bound_box[0]) * 1.1, Vector(o.bound_box[6]) * 1.1
+    # we require that the distances be closer than 2 percent of
+    # the size of the bounding box
+    distanceThreshold = onenorm(oBB[1] - oBB[0]) * 0.02
+
+    # gather all the vertices in q that fall in the extended bounding box
+    oinv = o.matrix_world.inverted()
+    qv = []
+    for i, v in enumerate(qm.vertices):
+        if insideBox(oBB, oinv*q.matrix_world*v.co):
+            qv.append(i)
+
+    # for each vertex in om, find a match
+    vertexPairs = []
+    for i, v in enumerate(om.vertices):
+        smallestDistanceSq = float('inf')
         optimalVert = -1
-        for j,vj in enumerate(face):
-            distance_vj = (obotMesh.vertices[vj].co-oVertex).length
-            # map2bot.append((v,vj,distance_vj))
-            if distance_vj < smallestDistance:
-                optimalVert = vj
-                smallestDistance = distance_vj
-        if optimalVert > 0:
-            map2bot.append((v,optimalVert,smallestDistance))
+        for j in qv:
+            d = (q.matrix_world*qm.vertices[j].co - o.matrix_world*v.co).length_squared
+            if d < smallestDistanceSq:
+                optimalVert = j
+                smallestDistanceSq = d
+        if optimalVert >= 0:
+            vertexPairs.append((i, optimalVert, sqrt(smallestDistanceSq)))
 
-    springsBot = [
-        vector_to_string([i, j, stiffness, .1, d]) for (i,j,d) in map2bot
-        ]
-    ffBot = ET.Element("StiffSpringForceField", object1='@' + fixName(o.name), object2='@' + fixName(oBot.name),
-                    spring = ' '.join(springsBot))
-    t.append(ffBot)
-    t.set('author-order', 50)
-    return t
+    springsTop = [ vector_to_string([i, j, stiffness, .1, d]) for (i,j,d) in vertexPairs ]
+    t.append(ET.Element("StiffSpringForceField", object1='@' + fixName(o.name), object2='@' + fixName(q.name), spring = ' '.join(springsTop)))
+
+def addConnectionsToTissue(t, o, opt):
+    if o.sofaprops.object1 in opt.scene.objects:
+        addSpringsBetween(t, o, opt.scene.objects[o.sofaprops.object1], opt)
+    if o.sofaprops.object2 in opt.scene.objects:
+        addSpringsBetween(t, o, opt.scene.objects[o.sofaprops.object2], opt)
 
 def exportHaptic(l, scene, opt):
     hapticExists = False
@@ -1059,7 +1009,7 @@ def exportScene(opt):
     root.append(ET.Element("LightManager"))
     if scene.sofa.showXYZFrame:
       root.append(ET.Element("OglSceneFrame"))
-    if (selection == True):
+    if selection:
         l = list(bpy.context.selected_objects)
     else:
         l = list(scene.objects)
