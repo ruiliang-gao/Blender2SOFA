@@ -14,7 +14,8 @@ class SofaObjectAnnotationPanel(bpy.types.Panel):
         return context.object is not None
 
     def draw(self, context):
-        p = context.object.sofaprops
+        o = context.object
+        p = o.sofaprops
         layout = self.layout
         layout.prop(p, 'template', text='')
 
@@ -24,7 +25,7 @@ class SofaObjectAnnotationPanel(bpy.types.Panel):
             c.prop(p, 'toolFunction')
         elif t == 'INSTRUMENTPART':
             c.prop(p, 'instrumentPart')
-        elif t in [ 'VOLUMETRIC', 'THICKSHELL' ]:
+        elif t in [ 'VOLUMETRIC', 'THICKSHELL', 'THICKCURVE' ]:
             c.prop(p, 'youngModulus')
             c.prop(p, 'poissonRatio')
             c.prop(p, 'damping')
@@ -32,6 +33,8 @@ class SofaObjectAnnotationPanel(bpy.types.Panel):
             if t == 'THICKSHELL':
                 c.prop(p, 'thickness')
                 c.prop(p, 'layerCount')
+            if t == 'THICKCURVE':
+                c.prop(o.data, 'bevel_depth', text = 'Thickness')
             c.prop(p, 'texture3d')
             c.prop(p, 'precomputeConstraints')
 
@@ -52,7 +55,7 @@ class SofaObjectAnnotationPanel(bpy.types.Panel):
             c.prop_search(p, 'object2', context.scene, "objects")
             c.prop(p, 'alwaysMatchForObject2')
 
-        if t in [ 'VOLUMETRIC', 'CLOTH', 'THICKSHELL' ]:
+        if t in [ 'VOLUMETRIC', 'CLOTH', 'THICKSHELL', 'THICKCURVE' ]:
             c = layout.column_flow(align=True,columns=1)
             c.prop(p, 'collisionGroup')
             c.prop(p, 'contactFriction')
@@ -62,7 +65,13 @@ class SofaObjectAnnotationPanel(bpy.types.Panel):
             c.prop(p, 'suture')
           
 
+        if t == 'VOLUMETRIC':
+            if o.type != 'MESH' or len(o.data.hexahedra) + len(o.data.tetrahedra) == 0:
+                layout.label('This object does not contain a volumetric mesh', icon='ERROR')
 
+        if t == 'THICKCURVE':
+            if o.type != 'CURVE':
+                layout.label('This object is not a curve', icon='ERROR')
 
 
 class SofaScenePropertyPanel(bpy.types.Panel):
@@ -100,9 +109,10 @@ class SofaActionsPanel(bpy.types.Panel):
         layout.separator()
         layout.label('Create')
         c = layout.column_flow(align=True,columns=1)
-        c.operator("mesh.construct_con_tissue", icon='OUTLINER_OB_META', text='Connective Tissue')
-        c.operator("mesh.construct_hex_rod", icon='MOD_MESHDEFORM', text = 'Hex Rod')
+        c.operator("mesh.construct_con_tissue", icon='OUTLINER_OB_META', text='Connecting Tissue')
         c.operator("mesh.construct_fatty_tissue", icon='MOD_MESHDEFORM', text = 'Fatty Tissue')
+        layout.separator()
+        layout.operator("mesh.add_thick_curve", icon= 'ROOTCURVE')
 
 
 
@@ -121,14 +131,15 @@ class SOFAObjectProperties(bpy.types.PropertyGroup):
         ('VISUAL', 'Visual', 'A decorative visual object that does not participate in simulation', 'SCENE', 1),
         ('VOLUMETRIC', 'Volumetric', 'A hexahedral or tetrahedral volumetric mesh', 'SNAP_VOLUME', 2),
         ('THICKSHELL', 'Thick Shell', 'An offset object as a thick shell', 'MOD_CLOTH', 3),
-        ('CLOTH', 'Cloth', 'A surface cloth', 'OUTLINER_OB_SURFACE', 4),
-        ('COLLISION', 'Obstacle', '', 'SOLID', 5),
-        ('SPHERECONSTRAINT','Sphere Constraint','', 'SURFACE_NSPHERE', 6),
-        ('BOXCONSTRAINT', 'Box Constraint', '','OBJECT_DATA', 7),
-        ('ATTACHCONSTRAINT', 'Spring Attachment', '', 'LINKED', 8),
-        ('INSTRUMENT','Haptic Instrument','A haptically enabled surgical instrument', 'SCULPTMODE_HLT', 9),
-        ('INSTRUMENTPART', 'Intrument part', 'An animated part of the instrument', 'OOPS', 10),
-        ('INSTRUMENTTIP','Tip of Instrument','Active part of the instrument that performs actions', 'OOPS', 11)
+        ('THICKCURVE', 'Thick Curve', 'A thick curve made from a Bezier object', 'ROOTCURVE', 4),
+        ('CLOTH', 'Cloth', 'A surface cloth', 'OUTLINER_OB_SURFACE', 5),
+        ('COLLISION', 'Obstacle', '', 'SOLID', 6),
+        ('SPHERECONSTRAINT','Sphere Constraint','', 'SURFACE_NSPHERE', 7),
+        ('BOXCONSTRAINT', 'Box Constraint', '','OBJECT_DATA', 8),
+        ('ATTACHCONSTRAINT', 'Spring Attachment', '', 'LINKED', 9),
+        ('INSTRUMENT','Haptic Instrument','A haptically enabled surgical instrument', 'SCULPTMODE_HLT',10),
+        ('INSTRUMENTPART', 'Intrument part', 'An animated part of the instrument', 'OOPS', 11),
+        ('INSTRUMENTTIP','Tip of Instrument','Active part of the instrument that performs actions', 'OOPS', 12)
         ])
 
     # Instrument properties

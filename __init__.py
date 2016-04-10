@@ -13,7 +13,7 @@ bl_info = {
 
 import bpy
 
-from . import io_msh, ui, conn_tiss, hex_rod, fatty_tissue, export, runsofa
+from . import io_msh, ui, conn_tiss, fatty_tissue, export, runsofa, thick_curve
 
 
 def menu_func_export(self, context):

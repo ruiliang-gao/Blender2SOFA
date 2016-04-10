@@ -204,6 +204,85 @@ def addConstraintCorrection(o, t):
     else:
         t.append(ET.Element('UncoupledConstraintCorrection'))
 
+def exportThickCurveTopology(o, opt, name):
+    m = o.to_mesh(opt.scene, True, 'PREVIEW')
+
+    points =  np.empty([len(m.vertices),3], dtype=float)
+    for i, v in enumerate(m.vertices):
+      for j in range(3):
+        points[i][j] = v.co[j]
+
+    H = int(len(m.vertices)/4-1)
+    hexahedra = np.empty([H, 8], dtype=int)
+    for i in range(H):
+      for j in range(4):
+        hexahedra[i][0+j] = (i+0) * 4 + j
+        hexahedra[i][4+j] = (i+1) * 4 + j
+
+    return geometryNode(opt, ET.Element('HexahedronSetTopologyContainer',name = name, points = points, hexahedra = hexahedra))
+
+def exportThickCurve(o, opt):
+    name = fixName(o.name)
+    t = ET.Element('Node', name = name)
+    t.set('author-parent', 'SolverNode')
+    t.set('author-order', 1)
+
+    topo = name + '-topology'
+    t.append(exportThickCurveTopology(o, opt, topo))
+
+    t.append(createMechanicalObject(o))
+    t.append(ET.Element('HexahedronSetTopologyModifier'))
+    t.append(ET.Element('HexahedronSetTopologyAlgorithms'))
+    t.append(ET.Element('HexahedronSetGeometryAlgorithms'))
+
+    # set massDensity later
+    t.append(ET.Element("DiagonalMass"))
+
+    h = ET.Element("HexahedronFEMForceField",template="Vec3d", method="large")
+    addElasticityParameters(o,h)
+    t.append(h)
+    addConstraintCorrection(o, t)
+    addConstraints(o, t)
+
+
+    if o.sofaprops.carvable:
+      qs = ET.Element('Node', name="quad-surface")
+      qs.append(ET.Element("QuadSetTopologyContainer", name="quadSurf"))
+      qs.append(ET.Element("QuadSetGeometryAlgorithms", template="Vec3d"))
+      qs.append(ET.Element("QuadSetTopologyModifier"))
+      qs.append(ET.Element("QuadSetTopologyAlgorithms", template="Vec3d"))
+      qs.append(ET.Element("Hexa2QuadTopologicalMapping", input='@../' + topo, output="@quadSurf"))
+      ogl = ET.Element("OglModel", name= name + '-visual');
+      qs.append(ogl)
+      addMaterial(o, ogl);
+      qs.append(ET.Element('IdentityMapping', input="@../MO", output="@" + name + '-visual'))
+
+      ts = ET.Element('Node', name="triangle-surface")
+      ts.append(ET.Element('TriangleSetTopologyContainer',name='triSurf'))
+      ts.append(ET.Element('TriangleSetTopologyModifier'))
+      ts.append(ET.Element('TriangleSetTopologyAlgorithms', template="Vec3d"))
+      ts.append(ET.Element('TriangleSetGeometryAlgorithms', template="Vec3d"))
+      ts.append(ET.Element('Quad2TriangleTopologicalMapping', input = "@../quadSurf", output = "@triSurf"))
+      ts.extend(collisionModelParts(o))
+
+      qs.append(ts)
+      t.append(qs)
+    else:
+        n = ET.Element('Node', name="Collision")
+        n.append(exportTopology(o,opt))
+        moc = createMechanicalObject(o)
+        moc.set('name', 'MOC')
+        n.append(moc)
+        n.extend(collisionModelParts(o))
+        n.append(ET.Element("BarycentricMapping",input="@../MO",output="@MOC"))
+        t.append(n)
+
+        v = ET.Element('Node', name="Visual")
+        v.append(exportVisual(o, opt, name = name + "-visual"))
+        v.append(ET.Element("BarycentricMapping",template="Vec3d,ExtVec3f",input="@../MO",output= '@' + name + "-visual"))
+        t.append(v)
+
+    return t
 
 def exportThickQuadShell(o, opt):
     name = fixName(o.name)
@@ -362,7 +441,6 @@ def exportHexVolumetric(o, opt):
     # set massDensity later
     t.append(ET.Element("DiagonalMass"))
 
-    # set youngModulus and poissonRatio later, and method=large
     h = ET.Element("HexahedronFEMForceField",template="Vec3d", method="large")
     addElasticityParameters(o,h)
     t.append(h)
@@ -913,6 +991,7 @@ def addConnectionsToTissue(t, o, opt):
         addSpringsBetween(t, o, opt.scene.objects[o.sofaprops.object1], opt)
     if o.sofaprops.object2 in opt.scene.objects:
         addSpringsBetween(t, o, opt.scene.objects[o.sofaprops.object2], opt)
+
 
 def exportHaptic(l, scene, opt):
     hapticExists = False
