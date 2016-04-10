@@ -994,7 +994,8 @@ def addConnectionsToTissue(t, o, opt):
 
 
 def exportHaptic(l, scene, opt):
-    hapticExists = False
+    hapticDevices = opt.pref.hapticDevices
+    hapticExists = len(hapticDevices) > 0
     nodes = []
     instruments = []
 
@@ -1012,44 +1013,43 @@ def exportHaptic(l, scene, opt):
               t = exportSeparateFile(opt, t, o.name)
             instruments.append(t)
 
-    for o in l:
-        if not o.hide_render and o.sofaprops.template == 'HAPTIC':
-            n = fixName(o.name)
-            t = ET.Element("Node", name = n, tags='haptic')
-            omniTag = n + "__omni"
+    for hp in hapticDevices:
+        n = hp.deviceName
+        t = ET.Element("Node", name = hp.deviceName, tags='haptic')
+        omniTag = n + "__omni"
 
-            ## Omni driver wrapper
-            rl = ET.Element("Node", name="RigidLayer")
-            
-            rl.append(ET.Element("NewOmniDriver",
-                                 name = 'driver',
-                                 deviceName = hp.deviceName,
-                                 tags= omniTag, scale = hp.scale,
-                                 permanent="true", listening="true", alignOmniWithCamera="true",
-                                 forceScale = hp.forceScale));
-            rl.append(ET.Element("MechanicalObject", name="ToolRealPosition", tags=omniTag, template="Rigid", position="0 0 0 0 0 0 1",free_position="0 0 0 0 0 0 1"))
-            nt = ET.Element("Node",name = "Tool");
-            nt.append(ET.Element("MechanicalObject", template="Rigid", name="RealPosition"))
-            nt.append(ET.Element("SubsetMapping", indices="0"));
-            rl.append(nt);
-            t.append(rl)
+        ## Omni driver wrapper
+        rl = ET.Element("Node", name="RigidLayer")
 
-            # State of the tool
-            isn = ET.Element("Node",name = "Instrument__"+n);
-            isn.append(ET.Element("EulerImplicitSolver", rayleighMass="0.0", rayleighStiffness="0.0"))
-            isn.append(ET.Element("CGLinearSolver",iterations="100", tolerance="1.0e-20", threshold="1.0e-20"))
-            isn.append(ET.Element("MechanicalObject", name = "instrumentState", template="Rigid3d", position="0 0 0 0 0 0 1 0 0 0 0 0 0 1 0 0 0 0 0 0 1 0 0 0 0 0 0 1", free_position="0 0 0 0 0 0 1 0 0 0 0 0 0 1 0 0 0 0 0 0 1 0 0 0 0 0 0 1" ))
-            isn.append(ET.Element("UniformMass", template = "Rigid3d", name="mass", totalmass="0.1"))
-            isn.append(ET.Element("LCPForceFeedback", activate=hp.forceFeedback, tags=omniTag, forceCoef="1.0"))
-            isn.extend(instruments)
-            isn.append(ET.Element("RestShapeSpringsForceField", template="Rigid",stiffness="1e12",angularStiffness="1e12", external_rest_shape="../RigidLayer/ToolRealPosition", points = "0"))
-            isn.append(ET.Element("UncoupledConstraintCorrection"))
-            t.append(isn)
+        rl.append(ET.Element("NewOmniDriver",
+                             name = 'driver',
+                             deviceName = hp.deviceName,
+                             tags= omniTag, scale = hp.scale,
+                             permanent="true", listening="true", alignOmniWithCamera="true",
+                             forceScale = hp.forceScale));
+        rl.append(ET.Element("MechanicalObject", name="ToolRealPosition", tags=omniTag, template="Rigid", position="0 0 0 0 0 0 1",free_position="0 0 0 0 0 0 1"))
+        nt = ET.Element("Node",name = "Tool");
+        nt.append(ET.Element("MechanicalObject", template="Rigid", name="RealPosition"))
+        nt.append(ET.Element("SubsetMapping", indices="0"));
+        rl.append(nt);
+        t.append(rl)
 
-            hapticExists = True
-            if opt.separate:
-              t = exportSeparateFile(opt, t, o.name)
-            nodes.append(t)
+        # State of the tool
+        isn = ET.Element("Node",name = "Instrument__"+n);
+        isn.append(ET.Element("EulerImplicitSolver", rayleighMass="0.0", rayleighStiffness="0.0"))
+        isn.append(ET.Element("CGLinearSolver",iterations="100", tolerance="1.0e-20", threshold="1.0e-20"))
+        isn.append(ET.Element("MechanicalObject", name = "instrumentState", template="Rigid3d", position="0 0 0 0 0 0 1 0 0 0 0 0 0 1 0 0 0 0 0 0 1 0 0 0 0 0 0 1", free_position="0 0 0 0 0 0 1 0 0 0 0 0 0 1 0 0 0 0 0 0 1 0 0 0 0 0 0 1" ))
+        isn.append(ET.Element("UniformMass", template = "Rigid3d", name="mass", totalmass="0.1"))
+        isn.append(ET.Element("LCPForceFeedback", activate=hp.forceFeedback, tags=omniTag, forceCoef="1.0"))
+        isn.extend(instruments)
+        isn.append(ET.Element("RestShapeSpringsForceField", template="Rigid",stiffness="1e12",angularStiffness="1e12", external_rest_shape="../RigidLayer/ToolRealPosition", points = "0"))
+        isn.append(ET.Element("UncoupledConstraintCorrection"))
+        t.append(isn)
+
+        hapticExists = True
+        if opt.separate:
+          t = exportSeparateFile(opt, t, o.name)
+        nodes.append(t)
 
     if hapticExists:
         return nodes
@@ -1177,6 +1177,7 @@ class ExportToSofa(Operator, ExportHelper):
             opt.selection_only = self.use_selection
             opt.directory = os.path.dirname(self.filepath)
             opt.file_format = self.filename_ext
+            opt.pref = context.user_preferences.addons[__package__].preferences
             root = exportScene(opt)
             writeNodesToFile(root, self.filepath, opt)
 
