@@ -233,22 +233,22 @@ def exportThickCurve(o, opt):
 
     if o.sofaprops.carvable:
       qs = ET.Element('Node', name="quad-surface")
-      qs.append(ET.Element("QuadSetTopologyContainer", name="quadSurf"))
+      qs.append(ET.Element("QuadSetTopologyContainer", name=name + "-quadSurf"))
       qs.append(ET.Element("QuadSetGeometryAlgorithms", template="Vec3d"))
       qs.append(ET.Element("QuadSetTopologyModifier"))
       qs.append(ET.Element("QuadSetTopologyAlgorithms", template="Vec3d"))
-      qs.append(ET.Element("Hexa2QuadTopologicalMapping", input='@../' + topo, output="@quadSurf"))
+      qs.append(ET.Element("Hexa2QuadTopologicalMapping", input='@../' + topo, output="@" + name + "-quadSurf"))
       ogl = ET.Element("OglModel", name= name + '-visual');
       qs.append(ogl)
       addMaterial(o, ogl);
       qs.append(ET.Element('IdentityMapping', input="@../MO", output="@" + name + '-visual'))
 
       ts = ET.Element('Node', name="triangle-surface")
-      ts.append(ET.Element('TriangleSetTopologyContainer',name='triSurf'))
+      ts.append(ET.Element('TriangleSetTopologyContainer',name=name + '-triSurf'))
       ts.append(ET.Element('TriangleSetTopologyModifier'))
       ts.append(ET.Element('TriangleSetTopologyAlgorithms', template="Vec3d"))
       ts.append(ET.Element('TriangleSetGeometryAlgorithms', template="Vec3d"))
-      ts.append(ET.Element('Quad2TriangleTopologicalMapping', input = "@../quadSurf", output = "@triSurf"))
+      ts.append(ET.Element('Quad2TriangleTopologicalMapping', input = "@../" + name + "-quadSurf", output = "@" + name + "-triSurf"))
       ts.extend(collisionModelParts(o))
 
       qs.append(ts)
@@ -312,12 +312,12 @@ def exportThickQuadShell(o, opt):
       t.append(n)
 
     v = ET.Element('Node', name="Visual")
-    v.append(ET.Element("QuadSetTopologyContainer", name="quadSurf"))
+    v.append(ET.Element("QuadSetTopologyContainer", name= name + "-quadSurf"))
     v.append(ET.Element("QuadSetGeometryAlgorithms", template="Vec3d"))
     v.append(ET.Element("QuadSetTopologyModifier"))
     v.append(ET.Element("QuadSetTopologyAlgorithms", template="Vec3d"))
-    v.append(ET.Element("Hexa2QuadTopologicalMapping", input='@../' + topo, output="@quadSurf"))
-    smoothSurface = True
+    v.append(ET.Element("Hexa2QuadTopologicalMapping", input='@../' + topo, output="@" + name + "-quadSurf"))
+    smoothSurface = False
     if smoothSurface:
         v.append(ET.Element('RequiredPlugin', name='SurfLabSplineSurface'));
         b3 = ET.Element('BiCubicSplineSurface');
@@ -411,22 +411,22 @@ def exportHexVolumetric(o, opt):
 
     if o.sofaprops.carvable:
       qs = ET.Element('Node', name="quad-surface")
-      qs.append(ET.Element("QuadSetTopologyContainer", name="quadSurf"))
+      qs.append(ET.Element("QuadSetTopologyContainer", name=name + "-quadSurf"))
       qs.append(ET.Element("QuadSetGeometryAlgorithms", template="Vec3d"))
       qs.append(ET.Element("QuadSetTopologyModifier"))
       qs.append(ET.Element("QuadSetTopologyAlgorithms", template="Vec3d"))
-      qs.append(ET.Element("Hexa2QuadTopologicalMapping", input='@../' + topotetra, output="@quadSurf"))
+      qs.append(ET.Element("Hexa2QuadTopologicalMapping", input='@../' + topotetra, output="@" + name + "-quadSurf"))
       ogl = ET.Element("OglModel", name= name + '-visual');
       qs.append(ogl)
       addMaterial(o, ogl);
       qs.append(ET.Element('IdentityMapping', input="@../MO", output="@" + name + '-visual'))
 
       ts = ET.Element('Node', name="triangle-surface")
-      ts.append(ET.Element('TriangleSetTopologyContainer',name='triSurf'))
+      ts.append(ET.Element('TriangleSetTopologyContainer',name=name + '-triSurf'))
       ts.append(ET.Element('TriangleSetTopologyModifier'))
       ts.append(ET.Element('TriangleSetTopologyAlgorithms', template="Vec3d"))
       ts.append(ET.Element('TriangleSetGeometryAlgorithms', template="Vec3d"))
-      ts.append(ET.Element('Quad2TriangleTopologicalMapping', input = "@../quadSurf", output = "@triSurf"))
+      ts.append(ET.Element('Quad2TriangleTopologicalMapping', input = "@../" + name + "-quadSurf", output = "@" + name + "-triSurf"))
       ts.extend(collisionModelParts(o))
 
       qs.append(ts)
@@ -964,7 +964,7 @@ def exportScene(opt):
 
 
     #lcp = ET.Element("LCPConstraintSolver", tolerance="1e-6", maxIt = "1000", mu = scene.sofa.mu, '1e-6'))
-    lcp = ET.Element("GenericConstraintSolver", tolerance="1e-3", maxIterations = "1000")
+    lcp = ET.Element("GenericConstraintSolver", tolerance="1e-6", maxIterations = "1000")
     root.append(lcp)
 
     root.append(ET.Element('FreeMotionAnimationLoop'))
