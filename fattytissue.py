@@ -3,6 +3,9 @@ import numpy as np
 from .io_msh import recalc_outer_surface
 from mathutils import Vector
 
+# Relative vertex indices of a hexahedron
+HEX_VERTICES = [ (0,0,0), (1,0,0), (1,1,0), (0,1,0), (0,0,1), (1,0,1), (0,1,1) ]
+
 class FattyTissue(bpy.types.Operator):
     bl_idname = "mesh.construct_fatty_tissue"
     bl_label = "Construt Fatty Tissue"
@@ -86,16 +89,20 @@ class FattyTissue(bpy.types.Operator):
         for x in range(L):
          for y in range(L):
           for z in range(L):
-            verticesAvailable = isVertexOutside[x,y  ,z  ] and isVertexOutside[x+1,y  ,z  ] and isVertexOutside[x,y+1,z  ] and isVertexOutside[x+1,y+1,z  ] and isVertexOutside[x,y  ,z+1] and isVertexOutside[x+1,y  ,z+1] and  isVertexOutside[x,y+1,z+1] and isVertexOutside[x+1,y+1,z+1]
+            # Check that all the vertices required for this hexa are available and outside
+            # the surface
+            verticesAvailable = all([ isVertexOutside(x+i,y+j,z+k) for i,j,k in HEX_VERTICES ])
+            # Build the hexa if all the vertices are available
             if verticesAvailable:
                 h = M.hexahedra.add()
-                h.vertices = [
-                  int(vertexIndex[x,y,z]), int(vertexIndex[x+1,y,z]), int(vertexIndex[x+1,y+1,z]), int(vertexIndex[x,y+1,z]),
-                  int(vertexIndex[x,y,z+1]), int(vertexIndex[x+1,y,z+1]), int(vertexIndex[x+1,y+1,z+1]), int(vertexIndex[x,y+1,z+1])
-                ]
-        # Add the mesh to the cube
+                h.vertices = [ int(vertexIndex[x+i,y+j,z+k]) for i,j,k in HEX_VERTICES ]
+
+        # Finish up the mesh and calculate the outer surface
         M.update()
         recalc_outer_surface(M)
+        M.update()
+
+        # Create the fatty tissue object that will contain the mesh
         O = bpy.data.objects.new(name = 'Fatty tissue around %s' % o.name, object_data = M)
         O.location = c.location
         O.rotation_mode = c.rotation_mode
@@ -104,8 +111,17 @@ class FattyTissue(bpy.types.Operator):
         O.rotation_axis_angle = c.rotation_axis_angle
         O.scale = c.scale
 
+        # Remove the cube
         if not self.keep_the_cube:
             context.scene.objects.unlink(c)
             bpy.data.objects.remove(c)
+
+        # Add the object to the scene
         context.scene.objects.link(O)
+
+        # Select the new object
+        c.select = False
+        o.select = False
+        O.select = True
+
         return { 'FINISHED' }

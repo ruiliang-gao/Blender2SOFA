@@ -1,15 +1,18 @@
+# This file can be used as a stand-alone plugin
+# but here it is used in the Blened2SOFA package
 bl_info = {
     'name': "GMSH Import/Export plugin",
     'author': "Saleh Dindar",
-    'version': (0, 0, 0),
+    'version': (0, 1, 0),
     'blender': (2, 69, 0),
-    'location': "",
+    'location': "https://bitbucket.org/surflab/blender2sofa/src/default/io_msh.py",
     'warning': "",
     'description': "Import/export tetrahedral meshes from/to GMSH files",
-    'wiki_url': "",
-    'tracker_url': "",
+    'wiki_url': "https://bitbucket.org/surflab/blender2sofa/wiki/IO_MSH",
+    'tracker_url': "https://bitbucket.org/surflab/blender2sofa/issues",
     'category': "Import-Export",
 }
+
 import bpy
 import bpy_extras
 import re
@@ -148,15 +151,15 @@ class VolumetricMeshPanel(bpy.types.Panel):
     def draw(self, context):
         layout = self.layout
         M = context.object.data
-        row = layout.row()
-        row.label("Tetrahedron count: %d" % len(M.tetrahedra))
-        row.label("Hexahedron count: %d" % len(M.hexahedra))
+        layout.label("Tetrahedron count: %d" % len(M.tetrahedra))
+        layout.label("Hexahedron count: %d" % len(M.hexahedra))
         layout.operator('mesh.recalculate_outer_surface', icon='RETOPO')
         layout.operator('mesh.remove_degenerate_hexa')
 
 class ReCalculateOuterSurface(bpy.types.Operator):
   bl_idname = "mesh.recalculate_outer_surface"
   bl_label = "Recalculate outer surfaces of a volumetric mesh"
+  bl_description = "Remove all the polygons of the mesh and re-calcualte the outer surface by going through all tetrahedra and hexahedra"
 
   @classmethod
   def poll(cls, context):
@@ -170,6 +173,7 @@ class ReCalculateOuterSurface(bpy.types.Operator):
 class RemoveDegenerateHexahedra(bpy.types.Operator):
   bl_idname = "mesh.remove_degenerate_hexa"
   bl_label = "Remove degenerate hexahedra"
+  bl_description = "Find all the hexahedra with very small volume and remove them, also find inverted hexahehdra and fix them"
   bl_options = { 'UNDO' }
 
   @classmethod
@@ -210,7 +214,6 @@ class RemoveDegenerateHexahedra(bpy.types.Operator):
 class ExportMSHOperator(bpy.types.Operator, bpy_extras.io_utils.ExportHelper):
   bl_idname = "export_mesh.msh"
   bl_label = "Export MSH"
-  bl_options = {'UNDO'}
 
   filename_ext = ".msh"
   filter_glob = bpy.props.StringProperty(default="*.msh", options={'HIDDEN'})
@@ -303,6 +306,7 @@ class ImportMSH(bpy.types.Operator, bpy_extras.io_utils.ImportHelper):
     recalc_outer_surface(M)
     o = bpy.data.objects.new(objName, M)
     context.scene.objects.link(o)
+    o.select = True
     return { 'FINISHED' }
 
 
@@ -312,12 +316,21 @@ class ImportMSH(bpy.types.Operator, bpy_extras.io_utils.ImportHelper):
 def menu_func_import(self, context):
     self.layout.operator(ImportMSH.bl_idname, text="GMSH (.msh)")
 
-def register():
+def register_other():
     bpy.types.INFO_MT_file_import.append(menu_func_import)
     bpy.types.Mesh.tetrahedra = bpy.props.CollectionProperty(name="Tetrahedra", type=MeshTetrahedron)
     bpy.types.Mesh.hexahedra = bpy.props.CollectionProperty(name="Hexahedra", type=MeshHexahedron)
 
-def unregister():
+def unregister_other():
     del bpy.types.Mesh.tetrahedra
     del bpy.types.Mesh.hexahedra
     bpy.types.INFO_MT_file_import.remove(menu_func_import)
+
+
+def register():
+    register_other()
+    bpy.utils.register_module(__name__)
+
+def unregister():
+    unregister_other()
+    bpy.utils.unregister_module(__name__)
