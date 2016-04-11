@@ -27,7 +27,7 @@ def encodeTriFacet(a, b, c):
       i,j,k = b,c,a
     else:
       i,j,k = c,a,b
-  
+
   return i << 40 | j << 20 | k
 def decodeTriFacet(f):
   a = f >> 40 & ( (1 << 20) - 1 )
@@ -96,6 +96,10 @@ def recalc_outer_surface(M):
   for e in bm.edges:
     bm.edges.remove(e)
 
+  if hasattr(bm.verts, 'ensure_lookup_table'):
+    bm.verts.ensure_lookup_table()
+    bm.edges.ensure_lookup_table()
+    bm.faces.ensure_lookup_table()
 
   # Add all the triangular faces
   for f in triFaceSet:
@@ -104,7 +108,7 @@ def recalc_outer_surface(M):
 
   # Add all the quad faces
   for f in quadFaceSet:
-    # for some reason we have to reverse the faces 
+    # for some reason we have to reverse the faces
     # All the logic here is sound but without inverting
     # the order the surfaces look inside out
     c, b, a, d = decodeQuadFacet(f)
@@ -164,7 +168,7 @@ class ReCalculateOuterSurface(bpy.types.Operator):
     return { 'FINISHED' }
 
 class RemoveDegenerateHexahedra(bpy.types.Operator):
-  bl_idname = "mesh.remove_degenerate_hexa" 
+  bl_idname = "mesh.remove_degenerate_hexa"
   bl_label = "Remove degenerate hexahedra"
   bl_options = { 'UNDO' }
 
@@ -195,7 +199,7 @@ class RemoveDegenerateHexahedra(bpy.types.Operator):
         w = h.vertices
         h.vertices = [ w[4], w[5], w[6], w[7], w[0], w[1], w[2], w[3] ]
         inverted_hexa = inverted_hexa + 1
- 
+
     degenerate_hexa.reverse()
     for i in degenerate_hexa:
         M.hexahedra.remove(i)

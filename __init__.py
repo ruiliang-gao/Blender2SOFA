@@ -1,4 +1,4 @@
-bl_info = { 
+bl_info = {
     'name': "SOFA Export plugin",
     'author': "Saleh Dindar, Di Xie",
     'version': (0, 2,  0),
@@ -13,7 +13,7 @@ bl_info = {
 
 import bpy
 
-from . import io_msh, ui, conn_tiss, fatty_tissue, export, runsofa, thick_curve
+from . import io_msh, ui, conn_tiss, fattytissue, export, runsofa, thick_curve
 
 class HapticDeviceList(bpy.types.UIList):
     def draw_item(self, context, layout, data, item, icon, active_data, active_propname, index):
