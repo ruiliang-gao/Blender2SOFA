@@ -1,16 +1,13 @@
 import bpy
-import math
-import numpy as np
-from mathutils import Vector
 from .io_msh import recalc_outer_surface
 
-class ConnectiveTissue(bpy.types.Operator):
-    bl_idname = "mesh.construct_con_tissue"
-    bl_label = "Construct Connective Tissue"
+class ConnectingTissue(bpy.types.Operator):
+    bl_idname = "mesh.construct_connecting_tissue"
+    bl_label = "Construct Connecting Tissue"
     bl_options = { 'UNDO' }
-    bl_description = "Works with SQUARE Grid meshes, appropriately placed between 2 objects as to avoid shrinkwrap wraparounds (overlapping vertices/degenerate tetra/hexahedra)"
+    bl_description = "Convert the active selected grid object into a volumetric hexahedral connecting tissue by shrink-wrapping it to the other two selected objects. Requires 3 objects to be selected, the grid has to be the active one"
 
-    plane   = bpy.props.StringProperty(name = "Dividing Plane", description= "The plane that defines the connection")
+    plane   = bpy.props.StringProperty(name = "Dividing Grid", description= "The grid object that defines the area of connection")
     object1 = bpy.props.StringProperty(name = "Object 1", description = "Choose Object 1 here")
     object2 = bpy.props.StringProperty(name = "Object 2", description = "Choose Object 2 here")
     layerCount = bpy.props.IntProperty(name = "Layer Count", description = "Number of planar layers between the two objects",default=2,min=1,max=100)
@@ -32,17 +29,7 @@ class ConnectiveTissue(bpy.types.Operator):
 
     @classmethod
     def poll(self, context):
-        return context.object is not None and context.object.type == 'MESH'
-
-    def shrinkwrapTo(self,context,plane, o):
-        sh = plane.modifiers.new('Shrinkwrap-' + o.name,'SHRINKWRAP')
-        sh.use_keep_above_surface = True
-        sh.wrap_method = 'NEAREST_VERTEX'
-        sh.target = o
-        M = plane.to_mesh(context.scene, True, 'PREVIEW')
-        plane.modifiers.remove(sh)
-        return M
-
+        return context.object is not None and context.object.type == 'MESH' and len(context.selected_objects) <= 3
 
 
     def execute(self, context):
@@ -54,8 +41,17 @@ class ConnectiveTissue(bpy.types.Operator):
         o2 = bpy.data.objects[self.object2]
 
         # Shrinkwrap the plane to the respective objects and get the mesh
-        shm1 = self.shrinkwrapTo(context, plane, o1)
-        shm2 = self.shrinkwrapTo(context, plane, o2)
+        def shrinkwrapTo(o):
+            sh = plane.modifiers.new('Shrinkwrap-' + o.name,'SHRINKWRAP')
+            sh.use_keep_above_surface = True
+            sh.wrap_method = 'NEAREST_VERTEX'
+            sh.target = o
+            M = plane.to_mesh(context.scene, True, 'PREVIEW')
+            plane.modifiers.remove(sh)
+            return M
+
+        shm1 = shrinkwrapTo(o1)
+        shm2 = shrinkwrapTo(o2)
 
         # construct a new mesh
         # interpolate the shrink wrapped planes to create layers of the new mesh object
@@ -79,17 +75,19 @@ class ConnectiveTissue(bpy.types.Operator):
         recalc_outer_surface(M)
 
         # Convert the plane into our connective tissue and annotate it as volumetric
+        m = plane.data
         ct = plane
         ct.data = M
         ct.name = 'Tissue Connecting %s and %s' % (o1.name,o2.name)
         ct.sofaprops.template = 'VOLUMETRIC'
-        ct.sofaprops.object1 = o1.name
+        ct.sofaprops.object1 = o1.nameutils
         ct.sofaprops.object2 = o2.name
         ct.sofaprops.carvable = True
         ct.sofaprops.suture = True
+        bpy.data.meshes.remove(m)
+
+        # Select the newly created object
+        o1.select = False
+        o2.select = False
+        ct.select = True
         return {'FINISHED'}
-
-    def cancel(self,context):
-        return {'CANCELLED'}
-
-
