@@ -31,7 +31,8 @@ class SOFAObjectProperties(bpy.types.PropertyGroup):
     toolFunction = bpy.props.EnumProperty(name="Function",description="Interactive function of an instrument", default='GRASP',items=[
         ('GRASP', 'Grasp', 'A grasper instrument'),
         ('SUTURE','Suture', 'A grasper that can be used for suturing'),
-        ('CARVE', 'Carve', 'An instrument that destroys tissue at contact')
+        ('CARVE', 'Carve', 'An instrument that destroys tissue at contact'),
+        ('CLAMP', 'Clamp', 'Apply clips to vessels to close them')
         ])
     instrumentPart = bpy.props.EnumProperty(name="Animated Part type",default='FIXED',items=[
         ('LEFTJAW', 'Left Jaw', ''),

@@ -1,4 +1,6 @@
-## Structure of the code 
+=====================
+Structure of the code
+==================== 
 
 * \_\_init\_\_.py: registration of all the submodules, plugin meta-data information
 * export.py: routines for exporting the scene into XML or Lua
