@@ -965,14 +965,14 @@ def exportScene(opt):
     root.set("dt",0.01)
 
 
-    #lcp = ET.Element("LCPConstraintSolver", tolerance="1e-6", maxIt = "1000", mu = scene.sofa.mu, '1e-6'))
+    #lcp = ET.Element("LCPConstraintSolver", tolerance="1e-6", maxIt = "1000", mu = scene.sofaprops.mu, '1e-6'))
     lcp = ET.Element("GenericConstraintSolver", tolerance="1e-6", maxIterations = "1000")
     root.append(lcp)
 
     root.append(ET.Element('FreeMotionAnimationLoop'))
     root.append(ET.Element("CollisionPipeline", depth="6"))
     root.append(ET.Element("BruteForceDetection"))
-    root.append(ET.Element("LocalMinDistance", angleCone = "0.0", alarmDistance=scene.sofa.alarmDistance,contactDistance=scene.sofa.contactDistance))
+    root.append(ET.Element("LocalMinDistance", angleCone = "0.0", alarmDistance=scene.sofaprops.alarmDistance,contactDistance=scene.sofaprops.contactDistance))
     root.append(ET.Element("CollisionGroup"))
     root.append(ET.Element('CollisionResponse', response="FrictionContact"))
 
@@ -981,7 +981,7 @@ def exportScene(opt):
 
 
     root.append(ET.Element("LightManager"))
-    if scene.sofa.showXYZFrame:
+    if scene.sofaprops.showXYZFrame:
       root.append(ET.Element("OglSceneFrame"))
 
     if selection:

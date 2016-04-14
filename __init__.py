@@ -31,7 +31,7 @@ def register():
     # Add the items in export menu
     bpy.types.INFO_MT_file_export.append(menu_func_export)
     # Add SOFA properties to scene and objects
-    bpy.types.Scene.sofa = bpy.props.PointerProperty(type=SOFASceneProperties)
+    bpy.types.Scene.sofaprops = bpy.props.PointerProperty(type=SOFASceneProperties)
     bpy.types.Object.sofaprops = bpy.props.PointerProperty(type=SOFAObjectProperties)
     # Add keyboard shortcut F5 for invoking RunSofa
     km = bpy.context.window_manager.keyconfigs.addon.keymaps.new(name='Object Mode', space_type='EMPTY')
@@ -44,7 +44,7 @@ def unregister():
         km.keymap_items.remove(kmi)
     addon_keymaps.clear()
     # Remove SOFA properties
-    del bpy.types.Scene.sofa
+    del bpy.types.Scene.sofaprops
     del bpy.types.Object.sofaprops
     # Remove items in export menu
     bpy.types.INFO_MT_file_export.remove(menu_func_export)

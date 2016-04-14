@@ -89,10 +89,10 @@ class SofaScenePropertyPanel(bpy.types.Panel):
         layout = self.layout
         s = context.scene
         c = layout.column(align=True)
-        c.prop(s.sofa, "mu")
-        c.prop(s.sofa, "alarmDistance")
-        c.prop(s.sofa, "contactDistance")
-        c.prop(s.sofa, "showXYZFrame")
+        c.prop(s.sofaprops, "mu")
+        c.prop(s.sofaprops, "alarmDistance")
+        c.prop(s.sofaprops, "contactDistance")
+        c.prop(s.sofaprops, "showXYZFrame")
 
 class SofaActionsPanel(bpy.types.Panel):
     bl_label = "SOFA Actions"
@@ -110,10 +110,58 @@ class SofaActionsPanel(bpy.types.Panel):
         layout.separator()
         layout.label('Create')
         c = layout.column(align=True)
-        c.operator("mesh.construct_connecting_tissue", icon='OUTLINER_OB_META', text='Connecting Tissue')
+        c.operator("mesh.construc t_connecting_tissue", icon='OUTLINER_OB_META', text='Connecting Tissue')
         c.operator("mesh.construct_fatty_tissue", icon='FACESEL_HLT', text = 'Fatty Tissue')
         layout.separator()
         layout.operator("mesh.add_thick_curve", icon= 'ROOTCURVE')
+        if ConvertFromCustomProperties.poll(context):
+            layout.operator(ConvertFromCustomProperties.bl_idname)
 
 
+PROPERTY_NAME_MAP = { 'topObject': 'object1', 'botObject': 'object2', 'stretchDamping' : 'damping',
+    'attach_stiffness': 'attachStiffness', '3dtexture':'texture3d' }
+TEMPLATE_MAP = { 'CONNECTIVETISSUE': 'VOLUMETRIC',
+    # the rest are identity mappings
+    'THICKSHELL': 'THICKSHELL', 'CLOTH': 'CLOTH','COLLISION':'COLLISION','ATTACHCONSTRAINT':'ATTACHCONSTRAINT','SPHERECONSTRAINT':'SPHERECONSTRAINT','VOLUMETRIC':'VOLUMETRIC','INSTRUMENT':'INSTRUMENT','INSTRUMENTPART':'INSTRUMENTPART','INSTRUMENTTIP':'INSTRUMENTTIP','THICKCURVE':'THICKCURVE' }
 
+def removeCustomProperty(o, k):
+    del o[k]
+    rna = o.get('_RNA_UI',{})
+    if k in rna:
+        del rna[k]
+
+
+class ConvertFromCustomProperties(bpy.types.Operator):
+    bl_idname = "scene.convert_from_custom_properties"
+    bl_label = "Recover from Older version of Blender2SOFA"
+    bl_description = "Automatically recover annotations and properties from older version of Blender2SOFA that used custom properties"
+
+
+    @classmethod
+    def poll(self, context):
+        return context.scene is not None and context.scene.get('sofa') != None or context.object is not None and context.object.get('annotated_type') != None
+
+    def execute(self, context):
+        scene = context.scene
+        # Convert scene properties
+        removeCustomProperty(scene, 'sofa')
+        for k, v in scene.items():
+            if hasattr(scene.sofaprops,k):
+                setattr(scene.sofaprops, k, v)
+                removeCustomProperty(scene, k)
+
+        for o in scene.objects:
+            template = o.get('annotated_type')
+            # set the object template
+            if template in TEMPLATE_MAP:
+                removeCustomProperty(o, 'annotated_type')
+                o.sofaprops.template = TEMPLATE_MAP[template]
+                # convert objects custom properties
+                for k, v in o.items():
+                    if hasattr(o.sofaprops, k):
+                        setattr(o.sofaprops, k, v)
+                        removeCustomProperty(o, k)
+                    elif k in PROPERTY_NAME_MAP:
+                        setattr(o.sofaprops, PROPERTY_NAME_MAP[k], v)
+                        removeCustomProperty(o, k)
+        return { 'FINISHED' }
