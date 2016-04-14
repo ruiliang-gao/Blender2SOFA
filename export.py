@@ -947,7 +947,7 @@ def exportConstraints(opt, o):
 #  b is a 2-tuple of vectors
 def insideBox(b, x):
     m, M = b
-    return x > m and x < M
+    return x[0] > m[0] and x[1] > m[1] and x[2] > m[2] and x[0] < M[0] and x[1] < M[1] and x[2] < M[2]
 
 
 def onenorm(v):
@@ -961,29 +961,31 @@ def addSpringsBetween(t, o, q, opt):
     oBB = Vector(o.bound_box[0]) * 1.1, Vector(o.bound_box[6]) * 1.1
     # we require that the distances be closer than 2 percent of
     # the size of the bounding box
-    distanceThreshold = onenorm(oBB[1] - oBB[0]) * 0.02
+    distanceThresholdSq = (onenorm(oBB[1] - oBB[0]) * 0.02) ** 2
 
     # gather all the vertices in q that fall in the extended bounding box
-    oinv = o.matrix_world.inverted()
+    o2q = o.matrix_world.inverted() * q.matrix_world
     qv = []
     for i, v in enumerate(qm.vertices):
-        if insideBox(oBB, oinv*q.matrix_world*v.co):
+        if insideBox(oBB, o2q*v.co):
             qv.append(i)
+
+    #print("There are %d vertices of %s in the box of %s" % (len(qv), q.name,o.name))
 
     # for each vertex in om, find a match
     vertexPairs = []
     for i, v in enumerate(om.vertices):
-        smallestDistanceSq = float('inf')
+        smallestDistanceSq = distanceThresholdSq
         optimalVert = -1
         for j in qv:
-            d = (q.matrix_world*qm.vertices[j].co - o.matrix_world*v.co).length_squared
+            d = (o2q*qm.vertices[j].co - v.co).length_squared
             if d < smallestDistanceSq:
                 optimalVert = j
                 smallestDistanceSq = d
         if optimalVert >= 0:
             vertexPairs.append((i, optimalVert, sqrt(smallestDistanceSq)))
 
-    springsTop = [ vector_to_string([i, j, stiffness, .1, d]) for (i,j,d) in vertexPairs ]
+    springsTop = [ vector_to_string([i, j, o.sofaprops.attachStiffness, .1, d]) for (i,j,d) in vertexPairs ]
     t.append(ET.Element("StiffSpringForceField", object1='@' + fixName(o.name), object2='@' + fixName(q.name), spring = ' '.join(springsTop)))
 
 def addConnectionsToTissue(t, o, opt):

@@ -40,9 +40,10 @@ class SofaObjectAnnotationPanel(bpy.types.Panel):
 
             if p.object1 != '' or p.object2 != '':
                 c = layout.column_flow(columns=1)
-                c.prop(p, 'attachStiffness')
+                c.label('Attached Objects')
                 c.prop_search(p, "object1", context.scene, "objects")
                 c.prop_search(p, "object2", context.scene, "objects")
+                c.prop(p, 'attachStiffness')
         elif t == 'CLOTH':
             c.prop(p, 'youngModulus')
             c.prop(p, 'bendingStiffness')
@@ -56,7 +57,8 @@ class SofaObjectAnnotationPanel(bpy.types.Panel):
             c.prop(p, 'alwaysMatchForObject2')
 
         if t in [ 'VOLUMETRIC', 'CLOTH', 'THICKSHELL', 'THICKCURVE' ]:
-            c = layout.column_flow(align=True,columns=1)
+            c = layout.column(align=True)
+            c.label('Collision Parameters')
             c.prop(p, 'collisionGroup')
             c.prop(p, 'contactFriction')
             c.prop(p, 'contactStiffness')
