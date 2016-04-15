@@ -80,7 +80,7 @@ class ConnectingTissue(bpy.types.Operator):
         ct.data = M
         ct.name = 'Tissue Connecting %s and %s' % (o1.name,o2.name)
         ct.sofaprops.template = 'VOLUMETRIC'
-        ct.sofaprops.object1 = o1.nameutils
+        ct.sofaprops.object1 = o1.name
         ct.sofaprops.object2 = o2.name
         ct.sofaprops.carvable = True
         ct.sofaprops.suture = True

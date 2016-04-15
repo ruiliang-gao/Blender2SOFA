@@ -110,7 +110,7 @@ class SofaActionsPanel(bpy.types.Panel):
         layout.separator()
         layout.label('Create')
         c = layout.column(align=True)
-        c.operator("mesh.construc t_connecting_tissue", icon='OUTLINER_OB_META', text='Connecting Tissue')
+        c.operator("mesh.construct_connecting_tissue", icon='OUTLINER_OB_META', text='Connecting Tissue')
         c.operator("mesh.construct_fatty_tissue", icon='FACESEL_HLT', text = 'Fatty Tissue')
         layout.separator()
         layout.operator("mesh.add_thick_curve", icon= 'ROOTCURVE')
