@@ -262,11 +262,11 @@ def exportThickQuadShell(o, opt):
     v.append(ET.Element("QuadSetTopologyAlgorithms", template="Vec3d"))
     v.append(ET.Element("Hexa2QuadTopologicalMapping", input='@../' + topo, output="@quadSurf"))
     v.append(ET.Element('RequiredPlugin', name='SurfLabSplineSurface'));
-    b3 = ET.Element('BiCubicSplineSurface');
-    addMaterialToBicubic(o, b3);
-    v.append(b3);
-    #v.append(exportVisual(o, opt, name = name + "-visual"))
-    #v.append(ET.Element("BarycentricMapping",template="Vec3d,ExtVec3f",input="@../MO",output='@' + name + "-visual"))
+    #b3 = ET.Element('BiCubicSplineSurface');
+    #addMaterialToBicubic(o, b3);
+    #v.append(b3);
+    v.append(exportVisual(o, opt, name = name + "-visual"))
+    v.append(ET.Element("BarycentricMapping",template="Vec3d,ExtVec3f",input="@../MO",output='@' + name + "-visual"))
     t.append(v)
 
 
@@ -1110,10 +1110,10 @@ def exportConnectiveTissue(o, opt):
       for i, v in enumerate(topVertices):
           oVertex = oMesh.vertices[v].co
           footprint = oTop.closest_point_on_mesh(oVertex,maxDim)
-          if footprint[2]==-1:
+          if footprint[3]==-1:
               print('Error: _init_.py: corresponding vertex not found')
               return             
-          face = otopMesh.polygons[footprint[2]].vertices 
+          face = otopMesh.polygons[footprint[3]].vertices 
           # in *face* find the closest vertex to *oVertex*
           smallestDistance = maxDim   
           optimalVert = -1        
@@ -1136,10 +1136,10 @@ def exportConnectiveTissue(o, opt):
     for i, v in enumerate(botVertices):
         oVertex = oMesh.vertices[v].co
         footprint = oBot.closest_point_on_mesh(oVertex,maxDim)
-        if footprint[2]==-1:
+        if footprint[3]==-1:
             print('Error: _init_.py: corresponding vertex not found')
             return
-        face = obotMesh.polygons[footprint[2]].vertices
+        face = obotMesh.polygons[footprint[3]].vertices
         smallestDistance = maxDim
         optimalVert = -1
         for j,vj in enumerate(face):
