@@ -148,8 +148,8 @@ def exportHexahedralTopology(o, opt, name):
 #   - Inner shell topology
 def exportThickShellTopologies(o, opt, name):
     m = o.to_mesh(opt.scene, True, 'PREVIEW')
-    thickness = o.sofaprops.thickness
-    layerCount    = o.sofaprops.layerCount
+    thickness = o.thickness
+    layerCount    = o.layerCount
     assert(layerCount >= 1)
     V = len(m.vertices)
     rj = list(range(-layerCount,1))
@@ -187,7 +187,7 @@ def exportThickShellTopologies(o, opt, name):
     return geometryNode(opt,c), geometryNode(opt, oshell), geometryNode(opt, ishell)
 
 def addConstraintCorrection(o, t):
-    if o.sofaprops.precomputeConstraints:
+    if o.precomputeConstraints:
         t.append(ET.Element('PrecomputedConstraintCorrection', rotations="true", recompute="false"))
     else:
         t.append(ET.Element('UncoupledConstraintCorrection'))
@@ -231,7 +231,7 @@ def exportThickCurve(o, opt):
     addConstraints(o, t)
 
 
-    if o.sofaprops.carvable:
+    if o.carvable:
       qs = ET.Element('Node', name="quad-surface")
       qs.append(ET.Element("QuadSetTopologyContainer", name=name + "-quadSurf"))
       qs.append(ET.Element("QuadSetGeometryAlgorithms", template="Vec3d"))
@@ -307,7 +307,7 @@ def exportThickQuadShell(o, opt):
       moc = createMechanicalObject(o)
       moc.set('name', 'MOC')
       n.append(moc)
-      n.extend(collisionModelParts(o, group = o.sofaprops.collisionGroup + i, bothSide = 0))
+      n.extend(collisionModelParts(o, group = o.collisionGroup + i, bothSide = 0))
       n.append(ET.Element("BarycentricMapping",input="@../MO",output="@MOC"))
       t.append(n)
 
@@ -355,7 +355,7 @@ def exportVolumetric(o, opt):
     addConstraintCorrection(o, t)
     addConstraints(o, t)
 
-    if o.sofaprops.carvable:
+    if o.carvable:
         n = ET.Element('Node', name="triangle-surface")
         n.append(ET.Element("TriangleSetTopologyContainer",name="topotri"))
         n.append(ET.Element("TriangleSetTopologyModifier",))
@@ -409,7 +409,7 @@ def exportHexVolumetric(o, opt):
     addConstraintCorrection(o, t)
     addConstraints(o, t)
 
-    if o.sofaprops.carvable:
+    if o.carvable:
       qs = ET.Element('Node', name="quad-surface")
       qs.append(ET.Element("QuadSetTopologyContainer", name=name + "-quadSurf"))
       qs.append(ET.Element("QuadSetGeometryAlgorithms", template="Vec3d"))
@@ -456,7 +456,7 @@ def addConstraints(o, t):
     for q in o.children:
       if not q.hide_render:
         n = fixName(q.name)
-        if q.name.startswith('BoxConstraint') or q.sofaprops.template == 'BOXCONSTRAINT':
+        if q.name.startswith('BoxConstraint') or q.template == 'BOXCONSTRAINT':
             tl = q.matrix_world * Vector(q.bound_box[0])
             br = q.matrix_world * Vector(q.bound_box[6])
             b = array('d')
@@ -464,12 +464,12 @@ def addConstraints(o, t):
             b.extend(br)
             t.append(ET.Element("BoxROI",name=n,box=b))
             t.append(ET.Element("FixedConstraint", indices="@%s.indices" % n))
-        elif q.name.startswith('SphereConstraint') or q.sofaprops.template == 'SPHERECONSTRAINT':
+        elif q.name.startswith('SphereConstraint') or q.template == 'SPHERECONSTRAINT':
             t.append(ET.Element("SphereROI",name=n,centers=(q.matrix_world.translation),radii=(max(cwisemul(q.parent.scale, q.scale)))))
             t.append(ET.Element("FixedConstraint", indices="@%s.indices" % n))
 
 def collisionModelParts(o, obstacle = False, group = None, bothSide = 0):
-    if o.sofaprops.suture:
+    if o.suture:
       sutureTag = 'HapticSurface'
     else:
       sutureTag = ''
@@ -478,12 +478,12 @@ def collisionModelParts(o, obstacle = False, group = None, bothSide = 0):
     else:
         M = "1"
 
-    sc = o.sofaprops.selfCollision
-    if group == None:  group = o.sofaprops.collisionGroup
+    sc = o.selfCollision
+    if group == None:  group = o.collisionGroup
     return [
-        ET.Element("PointModel",selfCollision=sc, contactFriction = o.sofaprops.contactFriction, contactStiffness = o.sofaprops.contactStiffness, group=group, moving = M, simulated = M, bothSide= bothSide ),
-        ET.Element("LineModel",selfCollision=sc, contactFriction = o.sofaprops.contactFriction, contactStiffness = o.sofaprops.contactStiffness, group=group, moving = M, simulated = M, bothSide= bothSide ),
-        ET.Element("TriangleModel", tags = sutureTag,selfCollision=sc, contactFriction = o.sofaprops.contactFriction, contactStiffness = o.sofaprops.contactStiffness, group=group, moving = M, simulated = M, bothSide= bothSide )
+        ET.Element("PointModel",selfCollision=sc, contactFriction = o.contactFriction, contactStiffness = o.contactStiffness, group=group, moving = M, simulated = M, bothSide= bothSide ),
+        ET.Element("LineModel",selfCollision=sc, contactFriction = o.contactFriction, contactStiffness = o.contactStiffness, group=group, moving = M, simulated = M, bothSide= bothSide ),
+        ET.Element("TriangleModel", tags = sutureTag,selfCollision=sc, contactFriction = o.contactFriction, contactStiffness = o.contactStiffness, group=group, moving = M, simulated = M, bothSide= bothSide )
     ]
 
 
@@ -497,7 +497,7 @@ def exportInstrument(o, opt):
     # an instrument usually has one tip, but in case of clamp object it can have two tips
     tip_names = []
     for i in o.children:
-        if i.sofaprops.template == 'INSTRUMENTTIP':
+        if i.template == 'INSTRUMENTTIP':
             n = fixName(i.name)
             child = ET.Element("Node", name= n)
             tip_names.append(n)
@@ -507,8 +507,8 @@ def exportInstrument(o, opt):
             mo.set('name', 'CM');
             child.append(mo)
             pm = ET.Element("TPointModel", name = 'toolTip',
-                             contactStiffness="0.01", bothSide="0", proximity = i.sofaprops.proximity,
-                             group= o.sofaprops.collisionGroup
+                             contactStiffness="0.01", bothSide="0", proximity = i.proximity,
+                             group= o.collisionGroup
                              )
             if toolFunction == 'carve':
               pm.set('tags', 'CarvingTool')
@@ -537,7 +537,7 @@ def exportInstrument(o, opt):
     for i in o.children:
       if i.type == 'MESH':
         INSTRUMENT_PART_MAP = { 'LEFTJAW': 1, 'RIGHTJAW': 2, 'FIXED': 3 }
-        idx = INSTRUMENT_PART_MAP[i.sofaprops.instrumentPart]
+        idx = INSTRUMENT_PART_MAP[i.instrumentPart]
         name = fixName(i.name)
         child =  ET.Element("Node", name = fixName(i.name))
         child.append(exportVisual(i, opt, name = name + '-visual', with_transform = True))
@@ -568,7 +568,7 @@ def exportCloth(o, opt):
     addElasticityParameters(o,tfff)
     t.append(tfff)
     t.append(ET.Element("TriangularBendingSprings",
-        stiffness= o.sofaprops.bendingStiffness, damping = o.sofaprops.damping))
+        stiffness= o.bendingStiffness, damping = o.damping))
 
     # Collision and Constraints
     addConstraints(o,t)
@@ -599,10 +599,10 @@ def verticesInsideSphere(o, m, s, factor = 1):
     return vindex
 
 def exportAttachConstraint(o, opt):
-    amf1 = s.sofaprops.alwaysMatchForObject1
-    amf2 = s.sofaprops.alwaysMatchForObject2
-    stiffness = o.sofaprops.attachStiffness
-    o1, o2 = opt.scene.objects[o.sofaprops.object1], opt.scene.objects[o.sofaprops.object2]
+    amf1 = s.alwaysMatchForObject1
+    amf2 = s.alwaysMatchForObject2
+    stiffness = o.attachStiffness
+    o1, o2 = opt.scene.objects[o.object1], opt.scene.objects[o.object2]
     m1, m2 = o1.to_mesh(opt.scene, True, 'PREVIEW'), o2.to_mesh(opt.scene, True, 'PREVIEW')
     v1, v2 = verticesInsideSphere(o1, m1, o), verticesInsideSphere(o2, m2, o)
 
@@ -671,10 +671,10 @@ def addTriangularTopology(o, t, opt):
     return t
 
 def addElasticityParameters(o, t):
-    t.set("youngModulus", o.sofaprops.youngModulus)
-    t.set("poissonRatio", o.sofaprops.poissonRatio)
-    t.set("rayleighStiffness", o.sofaprops.rayleighStiffness)
-    t.set("damping", o.sofaprops.damping)
+    t.set("youngModulus", o.youngModulus)
+    t.set("poissonRatio", o.poissonRatio)
+    t.set("rayleighStiffness", o.rayleighStiffness)
+    t.set("damping", o.damping)
     return t
 
 
@@ -754,8 +754,8 @@ def addMaterial(o, t):
             if tex.type == 'IMAGE' :
                 t.set("texturename", bpy.path.abspath(tex.image.filepath))
                 t.set("material","")
-    if o.sofaprops.texture3d != '':
-        t.set("texturename", o.sofaprops.texture3d)
+    if o.texture3d != '':
+        t.set("texturename", o.texture3d)
         t.set("genTex3d", '1')
 
 def exportVisual(o, opt, name = None,with_transform = True):
@@ -799,7 +799,7 @@ def exportVisual(o, opt, name = None,with_transform = True):
 def exportObject(opt, o):
     t = None
     if not o.hide_render and o.parent == None:
-        annotated_type = o.sofaprops.template
+        annotated_type = o.template
         name = fixName(o.name)
         if o.type == 'MESH' or o.type == 'SURFACE' or o.type == 'CURVE':
             if annotated_type == 'COLLISION':
@@ -878,14 +878,14 @@ def addSpringsBetween(t, o, q, opt):
         if optimalVert >= 0:
             vertexPairs.append((i, optimalVert, sqrt(smallestDistanceSq)))
 
-    springsTop = [ vector_to_string([i, j, o.sofaprops.attachStiffness, .1, d]) for (i,j,d) in vertexPairs ]
+    springsTop = [ vector_to_string([i, j, o.attachStiffness, .1, d]) for (i,j,d) in vertexPairs ]
     t.append(ET.Element("StiffSpringForceField", object1='@' + fixName(o.name), object2='@' + fixName(q.name), spring = ' '.join(springsTop)))
 
 def addConnectionsToTissue(t, o, opt):
-    if o.sofaprops.object1 in opt.scene.objects:
-        addSpringsBetween(t, o, opt.scene.objects[o.sofaprops.object1], opt)
-    if o.sofaprops.object2 in opt.scene.objects:
-        addSpringsBetween(t, o, opt.scene.objects[o.sofaprops.object2], opt)
+    if o.object1 in opt.scene.objects:
+        addSpringsBetween(t, o, opt.scene.objects[o.object1], opt)
+    if o.object2 in opt.scene.objects:
+        addSpringsBetween(t, o, opt.scene.objects[o.object2], opt)
 
 
 def exportHaptic(l, scene, opt):
@@ -905,7 +905,7 @@ def exportHaptic(l, scene, opt):
 
     # Prepare the instruments, they are included in each haptic
     for o in l:
-        if not o.hide_render and o.sofaprops.template == 'INSTRUMENT':
+        if not o.hide_render and o.template == 'INSTRUMENT':
             instruments.append(objectNode(opt, exportInstrument(o, opt)))
 
     for hp in hapticDevices:
@@ -965,14 +965,14 @@ def exportScene(opt):
     root.set("dt",0.01)
 
 
-    #lcp = ET.Element("LCPConstraintSolver", tolerance="1e-6", maxIt = "1000", mu = scene.sofaprops.mu, '1e-6'))
+    #lcp = ET.Element("LCPConstraintSolver", tolerance="1e-6", maxIt = "1000", mu = scene.mu, '1e-6'))
     lcp = ET.Element("GenericConstraintSolver", tolerance="1e-6", maxIterations = "1000")
     root.append(lcp)
 
     root.append(ET.Element('FreeMotionAnimationLoop'))
     root.append(ET.Element("CollisionPipeline", depth="6"))
     root.append(ET.Element("BruteForceDetection"))
-    root.append(ET.Element("LocalMinDistance", angleCone = "0.0", alarmDistance=scene.sofaprops.alarmDistance,contactDistance=scene.sofaprops.contactDistance))
+    root.append(ET.Element("LocalMinDistance", angleCone = "0.0", alarmDistance=scene.alarmDistance,contactDistance=scene.contactDistance))
     root.append(ET.Element("CollisionGroup"))
     root.append(ET.Element('CollisionResponse', response="FrictionContact"))
 
@@ -981,7 +981,7 @@ def exportScene(opt):
 
 
     root.append(ET.Element("LightManager"))
-    if scene.sofaprops.showXYZFrame:
+    if scene.showXYZFrame:
       root.append(ET.Element("OglSceneFrame"))
 
     if selection:
@@ -995,13 +995,13 @@ def exportScene(opt):
     for o in l:
         t = objectNode(opt, exportObject(opt, o))
         if t != None:
-            if o.sofaprops.template == 'COLLISION':
+            if o.template == 'COLLISION':
                 root.append(t)
             else:
                 solverNode.append(t)
 
     for o in l:
-        if not o.hide_render and o.sofaprops.template == 'ATTACHCONSTRAINT':
+        if not o.hide_render and o.template == 'ATTACHCONSTRAINT':
             solverNode.append( objectNode(opt, exportAttachConstraint(o, opt)) )
     root.append(solverNode)
     return root

@@ -19,7 +19,7 @@ class AddThickCurve(bpy.types.Operator):
         c = context.object.data
         c.bevel_depth = 0.1
         c.fill_mode = 'FULL'
-        context.object.sofaprops.template = 'THICKCURVE'
-        context.object.sofaprops.carvable = True
+        context.object.template = 'THICKCURVE'
+        context.object.carvable = True
 
         return { 'FINISHED' }

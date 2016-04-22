@@ -2,6 +2,30 @@ import bpy
 
 from .types import *
 
+
+class SofaActionsPanel(bpy.types.Panel):
+    bl_label = "SOFA Actions"
+    bl_space_type = 'VIEW_3D'
+    bl_region_type = 'TOOLS'
+
+    @classmethod
+    def poll(self, context):
+        return context.scene is not None
+
+    def draw(self, context):
+        layout = self.layout
+
+        layout.operator("scene.runsofa", icon='PLAY')
+        layout.separator()
+        layout.label('Create')
+        c = layout.column(align=True)
+        c.operator("mesh.construct_connecting_tissue", icon='OUTLINER_OB_META', text='Connecting Tissue')
+        c.operator("mesh.construct_fatty_tissue", icon='FACESEL_HLT', text = 'Fatty Tissue')
+        layout.separator()
+        layout.operator("mesh.add_thick_curve", icon= 'ROOTCURVE')
+        if ConvertFromCustomProperties.poll(context):
+            layout.operator(ConvertFromCustomProperties.bl_idname)
+
 class SofaObjectAnnotationPanel(bpy.types.Panel):
     """A panel to adjust object properties"""
     bl_label = "SOFA annotations"
@@ -15,7 +39,7 @@ class SofaObjectAnnotationPanel(bpy.types.Panel):
 
     def draw(self, context):
         o = context.object
-        p = o.sofaprops
+        p = o
         layout = self.layout
         layout.prop(p, 'template', text='')
 
@@ -89,33 +113,10 @@ class SofaScenePropertyPanel(bpy.types.Panel):
         layout = self.layout
         s = context.scene
         c = layout.column(align=True)
-        c.prop(s.sofaprops, "mu")
-        c.prop(s.sofaprops, "alarmDistance")
-        c.prop(s.sofaprops, "contactDistance")
-        c.prop(s.sofaprops, "showXYZFrame")
-
-class SofaActionsPanel(bpy.types.Panel):
-    bl_label = "SOFA Actions"
-    bl_space_type = 'VIEW_3D'
-    bl_region_type = 'TOOLS'
-
-    @classmethod
-    def poll(self, context):
-        return context.scene is not None
-
-    def draw(self, context):
-        layout = self.layout
-
-        layout.operator("scene.runsofa", icon='PLAY')
-        layout.separator()
-        layout.label('Create')
-        c = layout.column(align=True)
-        c.operator("mesh.construct_connecting_tissue", icon='OUTLINER_OB_META', text='Connecting Tissue')
-        c.operator("mesh.construct_fatty_tissue", icon='FACESEL_HLT', text = 'Fatty Tissue')
-        layout.separator()
-        layout.operator("mesh.add_thick_curve", icon= 'ROOTCURVE')
-        if ConvertFromCustomProperties.poll(context):
-            layout.operator(ConvertFromCustomProperties.bl_idname)
+        c.prop(s, "mu")
+        c.prop(s, "alarmDistance")
+        c.prop(s, "contactDistance")
+        c.prop(s, "showXYZFrame")
 
 
 PROPERTY_NAME_MAP = { 'topObject': 'object1', 'botObject': 'object2', 'stretchDamping' : 'damping',
@@ -145,23 +146,14 @@ class ConvertFromCustomProperties(bpy.types.Operator):
         scene = context.scene
         # Convert scene properties
         removeCustomProperty(scene, 'sofa')
-        for k, v in scene.items():
-            if hasattr(scene.sofaprops,k):
-                setattr(scene.sofaprops, k, v)
-                removeCustomProperty(scene, k)
-
         for o in scene.objects:
             template = o.get('annotated_type')
             # set the object template
             if template in TEMPLATE_MAP:
                 removeCustomProperty(o, 'annotated_type')
-                o.sofaprops.template = TEMPLATE_MAP[template]
-                # convert objects custom properties
-                for k, v in o.items():
-                    if hasattr(o.sofaprops, k):
-                        setattr(o.sofaprops, k, v)
-                        removeCustomProperty(o, k)
-                    elif k in PROPERTY_NAME_MAP:
-                        setattr(o.sofaprops, PROPERTY_NAME_MAP[k], v)
+                o.template = TEMPLATE_MAP[template]
+                for k,v in o.items():
+                    if k in PROPERTY_NAME_MAP:
+                        setattr(o, PROPERTY_NAME_MAP[k], v)
                         removeCustomProperty(o, k)
         return { 'FINISHED' }
