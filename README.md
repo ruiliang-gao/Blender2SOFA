@@ -26,3 +26,13 @@ To launch Sofa simulation directly from Blender, hit _F5_
 
 ## Supported functionality
 Tutorials and documentation are avaliable at http://www.cise.ufl.edu/~dxie/mastersproject/index.shtml
+
+## License
+This program is free for educational/research purpose.
+You will need to gain permissions from authors before you
+can use this program or any part of the source code for 
+commercial usage.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY.
+
