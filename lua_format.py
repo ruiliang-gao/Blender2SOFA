@@ -84,7 +84,7 @@ def writeNode(out, n, level, parent = None, serial = 0):
     for c in n:
         serial, v = writeNode(out, c, level+1, var, serial+1)
     
-    return serial, vare
+    return serial, var
 
 def writeElementTreeToLua(root, filepath):
     out = open(filepath, "w")

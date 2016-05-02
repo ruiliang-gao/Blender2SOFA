@@ -1110,10 +1110,10 @@ def exportConnectiveTissue(o, opt):
       for i, v in enumerate(topVertices):
           oVertex = oMesh.vertices[v].co
           footprint = oTop.closest_point_on_mesh(oVertex,maxDim)
-          if footprint[3]==-1:
+          if footprint[2]==-1:
               print('Error: _init_.py: corresponding vertex not found')
               return             
-          face = otopMesh.polygons[footprint[3]].vertices 
+          face = otopMesh.polygons[footprint[2]].vertices 
           # in *face* find the closest vertex to *oVertex*
           smallestDistance = maxDim   
           optimalVert = -1        
@@ -1136,10 +1136,10 @@ def exportConnectiveTissue(o, opt):
     for i, v in enumerate(botVertices):
         oVertex = oMesh.vertices[v].co
         footprint = oBot.closest_point_on_mesh(oVertex,maxDim)
-        if footprint[3]==-1:
+        if footprint[2]==-1:
             print('Error: _init_.py: corresponding vertex not found')
             return
-        face = obotMesh.polygons[footprint[3]].vertices
+        face = obotMesh.polygons[footprint[2]].vertices
         smallestDistance = maxDim
         optimalVert = -1
         for j,vj in enumerate(face):
