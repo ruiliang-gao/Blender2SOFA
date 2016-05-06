@@ -846,40 +846,60 @@ def insideBox(b, x):
 def onenorm(v):
     return sum(map(abs,v))
 
+
+# Extend the bounding box bb by the multiplier m (m=1.1 means extend by 10%)
+def extendBB(bb, m):
+  tl, br = Vector(bb[0]), Vector(bb[6])
+  c = (tl + br)  / 2
+  s = (br - tl)  / 2
+  return c - s * m, c + s * m
+
+# Create springs from o to q
+# This function is used in attaching connecting tissue to 
+# the objects it is connecting. In this case o is the connecting
+# tissue and q is the object it is attaching to.
+#
+# TODO: instead of trying to connect all the points to q we could 
+# tag the ones that need to be connecting by creating a new vertex group
+# we could also make the vertex group optional. When the vertex group
+# exists, use it. If it does not exist, then process all the vertices
 def addSpringsBetween(t, o, q, opt):
     qm = q.to_mesh(opt.scene, True, 'PREVIEW')
     om = o.to_mesh(opt.scene, True, 'PREVIEW')
 
     # bounding box of o extended by 10%
-    oBB = Vector(o.bound_box[0]) * 1.1, Vector(o.bound_box[6]) * 1.1
-    # we require that the distances be closer than 2 percent of
+    oBB = extendBB(o.bound_box, 1.1)
+    # we require that the distances be closer than 5 percent of
     # the size of the bounding box
-    distanceThresholdSq = (onenorm(oBB[1] - oBB[0]) * 0.1)** 2
+    distanceThresholdSq = (onenorm(oBB[1] - oBB[0]) * 0.02)** 2
 
     # gather all the vertices in q that fall in the extended bounding box
-    o2q = o.matrix_world.inverted() * q.matrix_world
+    q2o = o.matrix_world *  q.matrix_world.inverted() 
+    o2q = q.matrix_world *  o.matrix_world.inverted() 
     qv = []
     for i, v in enumerate(qm.vertices):
-        if insideBox(oBB, o2q*v.co):
+        if insideBox(oBB, q2o*v.co):
             qv.append(i)
 
     #print("There are %d vertices of %s in the box of %s" % (len(qv), q.name,o.name))
 
     # for each vertex in om, find a match
-    vertexPairs = []
+    oIndices, qIndices = array('I'), array('I')
     for i, v in enumerate(om.vertices):
         smallestDistanceSq = distanceThresholdSq
         optimalVert = -1
+        co = o2q * v.co
         for j in qv:
-            d = (o2q*qm.vertices[j].co - v.co).length_squared
+            d = (qm.vertices[j].co - co).length_squared
             if d < smallestDistanceSq:
                 optimalVert = j
                 smallestDistanceSq = d
         if optimalVert >= 0:
-            vertexPairs.append((i, optimalVert, sqrt(smallestDistanceSq)))
+            oIndices.append(i)
+            qIndices.append(optimalVert)
 
-    springsTop = [ vector_to_string([i, j, o.attachStiffness, .1, d]) for (i,j,d) in vertexPairs ]
-    t.append(ET.Element("StiffSpringForceField", object1='@' + fixName(o.name), object2='@' + fixName(q.name), spring = ' '.join(springsTop)))
+    t.append(ET.Element("RequiredPlugin", name = "SurfLabConnectingTissue"))
+    t.append(ET.Element("ConnectingTissue", object1='@' + fixName(o.name), object2='@' + fixName(q.name), indices1= oIndices, indices2 = qIndices, useConstraint="false"))
 
 def addConnectionsToTissue(t, o, opt):
     if o.object1 in opt.scene.objects:
