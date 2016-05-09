@@ -871,7 +871,7 @@ def addSpringsBetween(t, o, q, opt):
     oBB = extendBB(o.bound_box, 1.1)
     # we require that the distances be closer than 5 percent of
     # the size of the bounding box
-    distanceThresholdSq = (onenorm(oBB[1] - oBB[0]) * 0.02)** 2
+    distanceThresholdSq = (onenorm(oBB[1] - oBB[0]) * o.attachThreshold)** 2
 
     # gather all the vertices in q that fall in the extended bounding box
     q2o = o.matrix_world *  q.matrix_world.inverted() 

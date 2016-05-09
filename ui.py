@@ -62,10 +62,11 @@ class SofaObjectAnnotationPanel(bpy.types.Panel):
             c.prop(p, 'texture3d')
             c.prop(p, 'precomputeConstraints')
 
-            c = layout.column()
+            c = layout.column(align=True)
             c.label('Attached Objects')
             c.prop_search(p, "object1", context.scene, "objects")
             c.prop_search(p, "object2", context.scene, "objects")
+            c.prop(p, 'attachThreshold')
             c.prop(p, 'attachStiffness')
         elif t == 'CLOTH':
             c.prop(p, 'youngModulus')
@@ -74,6 +75,7 @@ class SofaObjectAnnotationPanel(bpy.types.Panel):
             c.prop(p, 'precomputeConstraints')
         elif t == 'ATTACHCONSTRAINT'  :
             c.prop(p, 'attachStiffness')
+            c.prop(p, 'attachThreshold')
             c.prop_search(p, 'object1', context.scene, "objects")
             c.prop(p, 'alwaysMatchForObject1')
             c.prop_search(p, 'object2', context.scene, "objects")
