@@ -8,6 +8,7 @@ def register_sofa_properties():
     bpy.types.Scene.alarmDistance = bpy.props.FloatProperty(name="Alarm Distance",description="Collision detection check distance",default=0.1,soft_min=1e-4,soft_max=0.1,step=1e-5,precision=3)
     bpy.types.Scene.contactDistance = bpy.props.FloatProperty(name="Contact Distance",default=0.01,soft_min=1e-5,soft_max=0.1,step=1e-5,precision=6)
     bpy.types.Scene.showXYZFrame = bpy.props.BoolProperty(name="Show XYZ frame",description="Show a small XYZ frame in the lower right corner in SOFA simulation",default=False)
+    bpy.types.Scene.hapticWorkspaceBox = bpy.props.StringProperty(name="Haptic Workspace Box",description="An empty object that defines the haptic workspace box")
 
     #"""SOFA properties and annotations for objects"""
     bpy.types.Object.template = bpy.props.EnumProperty(name="Template",default='VISUAL', items=[
@@ -76,6 +77,7 @@ def unregister_sofa_properties():
     del bpy.types.Scene.alarmDistance
     del bpy.types.Scene.contactDistance
     del bpy.types.Scene.showXYZFrame
+    del bpy.types.Scene.hapticWorkspaceBox
 
     #"""SOFA properties and annotations for objects"""
     del bpy.types.Object.template

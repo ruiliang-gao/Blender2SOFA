@@ -91,6 +91,13 @@ def rotation_to_XYZ_euler(o):
         v = q.to_euler('XYZ')
     return Vector(map(degrees,v))
 
+def rotation_to_quaternion(o):
+    if o.rotation_mode == 'QUATERNION':
+        q = o.rotation_quaternion
+    else:
+        q = Euler(o.rotation_euler, o.rotation_mode).to_quaternion()
+    return Vector([q[1],q[2],q[3],q[0]])
+
 def createMechanicalObject(o):
     t = ET.Element("MechanicalObject",template="Vec3d",name="MO")
     t.set("translation", o.location)
@@ -510,9 +517,9 @@ def exportInstrument(o, opt):
                              contactStiffness="0.01", bothSide="0", proximity = i.proximity,
                              group= o.collisionGroup
                              )
-            if toolFunction == 'carve':
+            if i.toolFunction == 'CARVIE':
               pm.set('tags', 'CarvingTool')
-            elif toolFunction == 'suture':
+            elif i.toolFunction == 'SUTURE':
               pm.set('tags', 'SuturingTool')
             else:
               pm.set('tags', 'GraspingTool')
@@ -927,6 +934,17 @@ def exportHaptic(l, scene, opt):
     for o in l:
         if not o.hide_render and o.template == 'INSTRUMENT':
             instruments.append(objectNode(opt, exportInstrument(o, opt)))
+            
+    if scene.hapticWorkspaceBox in scene.objects:
+        b = scene.objects[scene.hapticWorkspaceBox]
+        positionBase = b.location
+        orientationBase = rotation_to_quaternion(b)
+        scaleBase = pow(b.scale[0] * b.scale[1] * b.scale[2], 1./3)
+    else:
+        positionBase = [0, 0, 0]
+        orientationBase = [0, 0, 0, 1]
+        scaleBase = 1
+      
 
     for hp in hapticDevices:
         n = hp.deviceName
@@ -938,8 +956,8 @@ def exportHaptic(l, scene, opt):
         rl.append(ET.Element("NewOmniDriver",
                              name = 'driver',
                              deviceName = hp.deviceName,
-                             tags= omniTag, scale = hp.scale,
-                             permanent="true", listening="true", alignOmniWithCamera="true",
+                             tags= omniTag, scale = hp.scale * scaleBase , positionBase = positionBase, orientationBase = orientationBase,
+                             permanent="true", listening="true", alignOmniWithCamera="false",
                              forceScale = hp.forceScale));
         rl.append(ET.Element("MechanicalObject", name="ToolRealPosition", tags=omniTag, template="Rigid", position="0 0 0 0 0 0 1",free_position="0 0 0 0 0 0 1"))
         nt = ET.Element("Node",name = "Tool");

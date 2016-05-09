@@ -119,6 +119,7 @@ class SofaScenePropertyPanel(bpy.types.Panel):
         c.prop(s, "alarmDistance")
         c.prop(s, "contactDistance")
         c.prop(s, "showXYZFrame")
+        c.prop_search(s, "hapticWorkspaceBox", context.scene, "objects")
 
 
 PROPERTY_NAME_MAP = { 'topObject': 'object1', 'botObject': 'object2', 'stretchDamping' : 'damping',
