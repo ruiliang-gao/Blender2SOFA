@@ -826,8 +826,7 @@ def exportObject(opt, o):
                 t = exportThickCurve(o, opt)
             elif annotated_type == 'VISUAL':
                 t = exportVisual(o, opt)
-
-        elif o.type == "LAMP":
+        elif o.type == 'LAMP':
             if o.data.type == 'SPOT':
                 t = ET.Element("SpotLight", name=fixName(o.name))
                 o.rotation_mode = "QUATERNION"
@@ -988,6 +987,24 @@ def objectNode(opt, t):
     else:
         return t
 
+import math
+
+# Calculate field of view in degrees from focal length of a lens, assuming the standard film size
+def fovOfFocalLength(f):
+    x = 43.266615300557
+    return 2 * math.atan(x / (2 * f)) * 180 / math.pi
+
+
+def exportCamera(o, opt):
+    if o.data.lens_unit == 'FOV':
+        fov = o.data.lens
+    else:
+        fov = fovOfFocalLength(o.data.lens)
+    position=o.location
+    orientation=rotation_to_quaternion(o)
+    lookAt = o.matrix_world * Vector((0,0,-1))
+    return ET.Element("InteractiveCamera", position=position, orientation=orientation, fieldOfView=fov, distance=1)
+
 def exportScene(opt):
     scene = opt.scene
     selection = opt.selection_only
@@ -1001,6 +1018,10 @@ def exportScene(opt):
     else:
         root.set("gravity",[0,0,0])
     root.set("dt",0.01)
+
+
+    if scene.camera is not None:
+        root.append(exportCamera(scene.camera, opt))
 
 
     #lcp = ET.Element("LCPConstraintSolver", tolerance="1e-6", maxIt = "1000", mu = scene.mu, '1e-6'))
