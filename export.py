@@ -453,7 +453,6 @@ def exportHexVolumetric(o, opt):
         v.append(ET.Element("BarycentricMapping",template="Vec3d,ExtVec3f",object1="../MO",object2=name + "-visual"))
         t.append(v)
 
-    addConnectionsToTissue(t, o, opt)
     return t
 
 def cwisemul(a, b):
@@ -905,7 +904,8 @@ def addSpringsBetween(t, o, q, opt):
             qIndices.append(optimalVert)
 
     t.append(ET.Element("RequiredPlugin", name = "SurfLabConnectingTissue"))
-    t.append(ET.Element("ConnectingTissue", object1='@' + fixName(o.name), object2='@' + fixName(q.name), indices1= oIndices, indices2 = qIndices, useConstraint="false"))
+    t.append(ET.Element("ConnectingTissue", object1='@' + fixName(o.name) + '/MO', object2='@' + fixName(q.name) + '/MO',useConstraint="false", threshold=0.2))
+    #  indices1= oIndices, indices2 = qIndices,
 
 def addConnectionsToTissue(t, o, opt):
     if o.object1 in opt.scene.objects:
@@ -1057,6 +1057,8 @@ def exportScene(opt):
                 solverNode.append(t)
 
     for o in l:
+        if not o.hide_render and (o.object1 != '' or o.object2 != ''):
+            addConnectionsToTissue(solverNode, o, opt)
         if not o.hide_render and o.template == 'ATTACHCONSTRAINT':
             solverNode.append( objectNode(opt, exportAttachConstraint(o, opt)) )
     root.append(solverNode)

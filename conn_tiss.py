@@ -44,7 +44,7 @@ class ConnectingTissue(bpy.types.Operator):
         def shrinkwrapTo(o):
             sh = plane.modifiers.new('Shrinkwrap-' + o.name,'SHRINKWRAP')
             sh.use_keep_above_surface = True
-            sh.wrap_method = 'NEAREST_VERTEX'
+            sh.wrap_method = 'NEAREST_SURFACEPOINT'
             sh.target = o
             M = plane.to_mesh(context.scene, True, 'PREVIEW')
             plane.modifiers.remove(sh)
