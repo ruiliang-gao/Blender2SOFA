@@ -990,16 +990,13 @@ def objectNode(opt, t):
 import math
 
 # Calculate field of view in degrees from focal length of a lens, assuming the standard film size
-def fovOfFocalLength(f):
-    x = 43.266615300557
-    return 2 * math.atan(x / (2 * f)) * 180 / math.pi
+def fovOfCamera(c):
+    correction = 717 / 1024.0
+    return 2 * math.atan(c.sensor_width / (2 * c.lens)) * 180 / math.pi * correction
 
 
 def exportCamera(o, opt):
-    if o.data.lens_unit == 'FOV':
-        fov = o.data.lens
-    else:
-        fov = fovOfFocalLength(o.data.lens)
+    fov = fovOfCamera(o.data)
     position=o.location
     orientation=rotation_to_quaternion(o)
     lookAt = o.matrix_world * Vector((0,0,-1))
