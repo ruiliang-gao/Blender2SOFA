@@ -2,7 +2,7 @@ import bpy
 import os
 import xml.etree.ElementTree as ET
 from mathutils import Vector, Euler, Quaternion
-from math import degrees
+from math import degrees, sqrt
 from array import array
 from io import StringIO
 from .lua_format import *
@@ -11,6 +11,7 @@ from bpy_extras.io_utils import ExportHelper
 from bpy.props import StringProperty, BoolProperty, EnumProperty
 from bpy.types import Operator
 FILEFORMATS = [ ('.salua', 'SaLua', 'Lua based scene file'), ('.scn', 'XML', 'XML scene file') ]
+import bmesh
 
 class ExportException(Exception):
   def __init__(self, message):
@@ -48,6 +49,8 @@ def stringify_etree(node):
             node.set(a, ndarray_to_flat_string(o))
         elif iterable(o):
             node.set(a, vector_to_string(o))
+        elif isinstance(o, bool):
+            node.set(a, str(int(o)))
         else:
             node.set(a, str(o))
     for c in node:
@@ -88,11 +91,18 @@ def rotation_to_XYZ_euler(o):
         v = q.to_euler('XYZ')
     return Vector(map(degrees,v))
 
+def rotation_to_quaternion(o):
+    if o.rotation_mode == 'QUATERNION':
+        q = o.rotation_quaternion
+    else:
+        q = Euler(o.rotation_euler, o.rotation_mode).to_quaternion()
+    return Vector([q[1],q[2],q[3],q[0]])
+
 def createMechanicalObject(o):
     t = ET.Element("MechanicalObject",template="Vec3d",name="MO")
-    t.set("translation", (o.location))
-    t.set("rotation", (rotation_to_XYZ_euler(o)))
-    t.set("scale3d", (o.scale))
+    t.set("translation", o.location)
+    t.set("rotation", rotation_to_XYZ_euler(o))
+    t.set("scale3d", o.scale)
     return t
 
 def addSolvers(t):
@@ -107,20 +117,13 @@ def exportTetrahedralTopology(o, opt, name):
 
     points =  np.empty((len(m.vertices),3))
     for i, v in enumerate(m.vertices):
-        points[i][0] = v.co[0]
-        points[i][1] = v.co[1]
-        points[i][2] = v.co[2]
+        points[i] = v.co
 
     tetrahedra = np.empty([len(m.tetrahedra), 4],dtype=int)
     for i, f in enumerate(m.tetrahedra):
-        tetrahedra[i][0] = f.vertices[0]
-        tetrahedra[i][1] = f.vertices[1]
-        tetrahedra[i][2] = f.vertices[2]
-        tetrahedra[i][3] = f.vertices[3]
+        tetrahedra[i] = f.vertices
 
-    c =  ET.Element('TetrahedronSetTopologyContainer', name= name, createTriangleArray='1')
-    c.set('points', points)
-    c.set('tetrahedra', tetrahedra)
+    c =  ET.Element('TetrahedronSetTopologyContainer', name= name, createTriangleArray='true', points = points, tetrahedra = tetrahedra)
     return geometryNode(opt,c)
 
 def exportHexahedralTopology(o, opt, name):
@@ -131,18 +134,13 @@ def exportHexahedralTopology(o, opt, name):
 
     points =  np.empty((len(m.vertices),3))
     for i, v in enumerate(m.vertices):
-      for j in range(3):
-        points[i][j] = v.co[j]
+        points[i] = v.co
 
     hexahedra = np.empty([len(m.hexahedra), 8],dtype=int)
     for i, f in enumerate(m.hexahedra):
-      for j in range(8):
-        hexahedra[i][j] = f.vertices[j]
+        hexahedra[i] = f.vertices
 
-    # c =  ET.Element('HexahedronSetTopologyContainer', name= name, createTriangleArray='1')
-    c =  ET.Element('HexahedronSetTopologyContainer', name= name)
-    c.set('points', points)
-    c.set('hexahedra', hexahedra)
+    c =  ET.Element('HexahedronSetTopologyContainer', name= name, points = points, hexahedra = hexahedra) # createTriangleArray='1'
     return geometryNode(opt,c)
 
 # Export a HexahedronSetTopology container with the topology of a
@@ -157,13 +155,10 @@ def exportHexahedralTopology(o, opt, name):
 #   - Inner shell topology
 def exportThickShellTopologies(o, opt, name):
     m = o.to_mesh(opt.scene, True, 'PREVIEW')
-    thickness = o.get('thickness', 0.1)
-    layerCount    = o.get('layerCount', 1)
-    if layerCount < 1: raise ExportException("Object '%s': Number of layers has to be a positive number" % o.name)
+    thickness = o.thickness
+    layerCount    = o.layerCount
+    assert(layerCount >= 1)
     V = len(m.vertices)
-    #r = (layerCount+1)//2
-    #rj = list(range(-r,r+1))
-    #if (layerCount%2==1) : del rj[r]
     rj = list(range(-layerCount,1))
     points =  np.empty([V * (layerCount+1),3])
     for i, v in enumerate(m.vertices):
@@ -188,17 +183,99 @@ def exportThickShellTopologies(o, opt, name):
     shell = [ np.empty([quadCount*2, 3], dtype=int), np.empty([quadCount*2, 3], dtype=int) ]
 
     for i, f in enumerate(quads):
-      shell[1][i*2] = [f.vertices[0],f.vertices[1],f.vertices[2]]
+      shell[1][i*2  ] = [f.vertices[0],f.vertices[1],f.vertices[2]]
       shell[1][i*2+1] = [f.vertices[0],f.vertices[2],f.vertices[3]]
-      shell[0][i*2] = [f.vertices[0],f.vertices[2],f.vertices[1]]
+      shell[0][i*2  ] = [f.vertices[0],f.vertices[2],f.vertices[1]]
       shell[0][i*2+1] = [f.vertices[0],f.vertices[3],f.vertices[2]]
 
     oshell = ET.Element('MeshTopology', name = name + "-outer", triangles = shell[1], points = points[V*layerCount:V*(layerCount+1), ...])
     ishell = ET.Element('MeshTopology', name = name + "-inner", triangles = shell[0], points = points[0:V, ...])
-    c =  ET.Element('HexahedronSetTopologyContainer', name= name)
-    c.set('points', points)
-    c.set('hexahedra', hexahedra)
+    c =  ET.Element('HexahedronSetTopologyContainer', name= name, points = points, hexahedra = hexahedra)
     return geometryNode(opt,c), geometryNode(opt, oshell), geometryNode(opt, ishell)
+
+def addConstraintCorrection(o, t):
+    if o.precomputeConstraints:
+        t.append(ET.Element('PrecomputedConstraintCorrection', rotations="true", recompute="false"))
+    else:
+        t.append(ET.Element('UncoupledConstraintCorrection'))
+
+def exportThickCurveTopology(o, opt, name):
+    m = o.to_mesh(opt.scene, True, 'PREVIEW')
+
+    points =  np.empty([len(m.vertices),3], dtype=float)
+    for i, v in enumerate(m.vertices):
+        points[i] = v.co
+
+    H = int(len(m.vertices)/4-1)
+    hexahedra = np.empty([H, 8], dtype=int)
+    for i in range(H):
+      for j in range(8):
+        hexahedra[i][j] = i*4 + j
+
+    return geometryNode(opt, ET.Element('HexahedronSetTopologyContainer',name = name, points = points, hexahedra = hexahedra))
+
+def exportThickCurve(o, opt):
+    name = fixName(o.name)
+    t = ET.Element('Node', name = name)
+    t.set('author-parent', 'SolverNode')
+    t.set('author-order', 1)
+
+    topo = name + '-topology'
+    t.append(exportThickCurveTopology(o, opt, topo))
+
+    t.append(createMechanicalObject(o))
+    t.append(ET.Element('HexahedronSetTopologyModifier', removeIsolated = 'false'))
+    t.append(ET.Element('HexahedronSetTopologyAlgorithms'))
+    t.append(ET.Element('HexahedronSetGeometryAlgorithms'))
+
+    # set massDensity later
+    t.append(ET.Element("DiagonalMass"))
+
+    h = ET.Element("HexahedronFEMForceField",template="Vec3d", method="large")
+    addElasticityParameters(o,h)
+    t.append(h)
+    addConstraintCorrection(o, t)
+    addConstraints(o, t)
+
+
+    if o.carvable:
+      qs = ET.Element('Node', name="quad-surface")
+      qs.append(ET.Element("QuadSetTopologyContainer", name=name + "-quadSurf"))
+      qs.append(ET.Element("QuadSetGeometryAlgorithms", template="Vec3d"))
+      qs.append(ET.Element("QuadSetTopologyModifier"))
+      qs.append(ET.Element("QuadSetTopologyAlgorithms", template="Vec3d"))
+      qs.append(ET.Element("Hexa2QuadTopologicalMapping", input='@../' + topo, output="@" + name + "-quadSurf"))
+      ogl = ET.Element("OglModel", name= name + '-visual');
+      qs.append(ogl)
+      addMaterial(o, ogl);
+      qs.append(ET.Element('IdentityMapping', input="@../MO", output="@" + name + '-visual'))
+
+      ts = ET.Element('Node', name="triangle-surface")
+      ts.append(ET.Element('TriangleSetTopologyContainer',name=name + '-triSurf'))
+      ts.append(ET.Element('TriangleSetTopologyModifier'))
+      ts.append(ET.Element('TriangleSetTopologyAlgorithms', template="Vec3d"))
+      ts.append(ET.Element('TriangleSetGeometryAlgorithms', template="Vec3d"))
+      ts.append(ET.Element('Quad2TriangleTopologicalMapping', input = "@../" + name + "-quadSurf", output = "@" + name + "-triSurf"))
+      ts.extend(collisionModelParts(o))
+
+      qs.append(ts)
+      t.append(qs)
+    else:
+        n = ET.Element('Node', name="Collision")
+        n.append(exportTriangularTopology(o,opt))
+        moc = createMechanicalObject(o)
+        moc.set('name', 'MOC')
+        n.append(moc)
+        n.extend(collisionModelParts(o))
+        n.append(ET.Element("BarycentricMapping",input="@../MO",output="@MOC"))
+        t.append(n)
+
+        v = ET.Element('Node', name="Visual")
+        v.append(exportVisual(o, opt, name = name + "-visual"))
+        v.append(ET.Element("BarycentricMapping",template="Vec3d,ExtVec3f",input="@../MO",output= '@' + name + "-visual"))
+        t.append(v)
+
+    return t
 
 def exportThickQuadShell(o, opt):
     name = fixName(o.name)
@@ -210,34 +287,20 @@ def exportThickQuadShell(o, opt):
     c, oshell, ishell = exportThickShellTopologies(o, opt, topo)
     t.append(c)
 
-    mo = createMechanicalObject(o)
-
-    #mo.set('position','@'+topo+'.position')
-    t.append(mo)
+    t.append(createMechanicalObject(o))
 
     t.append(ET.Element('HexahedronSetTopologyModifier'))
-    t.append(ET.Element('HexahedronSetTopologyAlgorithms', template = 'Vec3d'))
-    t.append(ET.Element('HexahedronSetGeometryAlgorithms', template = 'Vec3d'))
+    t.append(ET.Element('HexahedronSetTopologyAlgorithms'))
+    t.append(ET.Element('HexahedronSetGeometryAlgorithms'))
 
-    # set massDensity later
+    # TODO: set massDensity later
     t.append(ET.Element("DiagonalMass"))
-
-    h = ET.Element("HexahedronFEMForceField",template="Vec3d", method="large")
-
+    h = ET.Element("HexahedronFEMForceField", method="large")
     addElasticityParameters(o,h)
-    #h.set("rayleighStiffness", (o.get('rayleighStiffness')))
     t.append(h)
-
-    if o.get('precomputeConstraints') == True:
-        t.append(ET.Element('PrecomputedConstraintCorrection', rotations="true", recompute="0"))
-    else:
-        t.append(ET.Element('UncoupledConstraintCorrection'))
-
-
+    addConstraintCorrection(o, t)
     addConstraints(o, t)
 
-
-    collisionGroup = int(o.get('collisionGroup', 1))
 
     for i, tp in enumerate([ ishell, oshell ]):
       n = ET.Element('Node')
@@ -251,93 +314,31 @@ def exportThickQuadShell(o, opt):
       moc = createMechanicalObject(o)
       moc.set('name', 'MOC')
       n.append(moc)
-      n.extend(collisionModelParts(o, group = collisionGroup + i, bothSide = 0))
+      n.extend(collisionModelParts(o, group = o.collisionGroup + i, bothSide = 0))
       n.append(ET.Element("BarycentricMapping",input="@../MO",output="@MOC"))
       t.append(n)
 
     v = ET.Element('Node', name="Visual")
-    v.append(ET.Element("QuadSetTopologyContainer", name="quadSurf"))
+    v.append(ET.Element("QuadSetTopologyContainer", name= name + "-quadSurf"))
     v.append(ET.Element("QuadSetGeometryAlgorithms", template="Vec3d"))
     v.append(ET.Element("QuadSetTopologyModifier"))
     v.append(ET.Element("QuadSetTopologyAlgorithms", template="Vec3d"))
-    v.append(ET.Element("Hexa2QuadTopologicalMapping", input='@../' + topo, output="@quadSurf"))
-    v.append(ET.Element('RequiredPlugin', name='SurfLabSplineSurface'));
-    #b3 = ET.Element('BiCubicSplineSurface');
-    #addMaterialToBicubic(o, b3);
-    #v.append(b3);
-    v.append(exportVisual(o, opt, name = name + "-visual"))
-    v.append(ET.Element("BarycentricMapping",template="Vec3d,ExtVec3f",input="@../MO",output='@' + name + "-visual"))
+    v.append(ET.Element("Hexa2QuadTopologicalMapping", input='@../' + topo, output="@" + name + "-quadSurf"))
+    smoothSurface = False
+    if smoothSurface:
+        v.append(ET.Element('RequiredPlugin', name='SurfLabSplineSurface'));
+        b3 = ET.Element('BiCubicSplineSurface');
+        addMaterialToBicubic(o, b3);
+        v.append(b3);
+    else:
+        v.append(exportVisual(o, opt, name = name + "-visual"))
+        v.append(ET.Element("BarycentricMapping",template="Vec3d,ExtVec3f",input="@../MO",output='@' + name + "-visual"))
     t.append(v)
 
 
     return t
 
 
-# Export a TriCubicBezier with the topology of a thick shell.
-# In order to test our TriCubicBezier construction
-# The object can have two custom attributes:
-#   - thickness: total thickness of the shell multiplied by normal
-#   - layerCount: total number of layers generated. 3 means 4 layers of surfaces and 3 layers of hexahedral elements.
-#
-# Returns volumetric topology for physical model
-def export3BThickShellTopology(o, opt, name):
-    m = o.to_mesh(opt.scene, True, 'PREVIEW')
-    thickness = o.get('thickness', 0.1)
-    layerCount    = o.get('layerCount', 1)
-    if layerCount < 1: raise ExportException("Object '%s': Number of layers has to be a positive number" % o.name)
-    quads = list(filter(lambda f: len(f.vertices) == 4, m.polygons))
-    quadCount = len(quads)
-    if quadCount == 0 or quadCount != len(m.polygons) : raise ExportException("Object '%s' has to be a quad mesh for a thick shell topology" % o.name)
-
-    V = len(m.vertices)
-    rj = list(range(-layerCount,1))
-    points =  np.empty([V * (layerCount+1),3])
-    for i, v in enumerate(m.vertices):
-      for j, offset in enumerate(rj):
-        vn = v.co + v.normal * offset * thickness
-        points[i+V*j][0] = vn[0]
-        points[i+V*j][1] = vn[1]
-        points[i+V*j][2] = vn[2]
-
-
-    hexahedra = np.empty([quadCount * layerCount, 8], dtype=int)
-    for i, f in enumerate(quads):
-      for l in range(0, layerCount):
-            hexahedra[l*quadCount+i] = [
-                f.vertices[0]+ l   *V,f.vertices[1]+ l   *V,f.vertices[3]+ l   *V,f.vertices[2]+ l   *V,
-                f.vertices[0]+(l+1)*V,f.vertices[1]+(l+1)*V,f.vertices[3]+(l+1)*V,f.vertices[2]+(l+1)*V]
-
-
-    c =  ET.Element('TricubicBezierSetTopologyContainer', name= name)
-    c.set('points', points)
-    c.set('hexahedra', hexahedra)
-    return geometryNode(opt,c)
-
-
-def export3BThickQuadShell(o, opt):
-    name = fixName(o.name)
-    t = ET.Element("Node", name = name)
-
-    t.append(ET.Element('RequiredPlugin', name = 'SurfLabHexahedralIGA'));
-
-    t.append(export3BThickShellTopology(o, opt, name + '-hexahedral-topology'))
-    t.append(createMechanicalObject(o))
-    #t.append(ET.Element("DiagonalMass"))
-    t.append(addElasticityParameters(o,ET.Element("TricubicBezierForceField")))
-
-    #if o.get('precomputeConstraints') == True:
-    #    t.append(ET.Element('PrecomputedConstraintCorrection', rotations="true", recompute="0"))
-    #else:
-    #    t.append(ET.Element('UncoupledConstraintCorrection'))
-
-    addConstraints(o, t)
-
-    t.extend(collisionModelParts(o))
-
-    #t.append(ET.Element('RequiredPlugin', name='SurfLabSplineSurface'));
-    #t.append(ET.Element('BiCubicSplineSurface'));
-
-    return t
 
 
 def exportVolumetric(o, opt):
@@ -347,41 +348,28 @@ def exportVolumetric(o, opt):
     t.set('author-order', 1)
 
     topotetra = name + '-topology'
-    c = exportTetrahedralTopology(o, opt, topotetra)
-    t.append(c)
-
-    mo = createMechanicalObject(o)
-
-    mo.set('position','@'+topotetra+'.position')
-    t.append(mo)
+    t.append(exportTetrahedralTopology(o, opt, topotetra))
+    t.append(createMechanicalObject(o))
     t.append(ET.Element('TetrahedronSetTopologyModifier', removeIsolated = "false"))
     t.append(ET.Element('TetrahedronSetTopologyAlgorithms', template = 'Vec3d'))
     t.append(ET.Element('TetrahedronSetGeometryAlgorithms', template = 'Vec3d'))
 
     # set massDensity later
     t.append(ET.Element("DiagonalMass"))
-
-    # set youngModulus and poissonRatio later, and method=large
-    tetrahedralCorotationalFEMForceField = ET.Element('TetrahedralCorotationalFEMForceField')
-    addElasticityParameters(o,tetrahedralCorotationalFEMForceField)
-    t.append(tetrahedralCorotationalFEMForceField)
-
-    if o.get('precomputeConstraints') == True:
-        t.append(ET.Element('PrecomputedConstraintCorrection', rotations="true", recompute="0"))
-    else:
-        t.append(ET.Element('UncoupledConstraintCorrection'))
-
-
+    f = ET.Element('TetrahedralCorotationalFEMForceField')
+    addElasticityParameters(o,f)
+    t.append(f)
+    addConstraintCorrection(o, t)
     addConstraints(o, t)
 
-    if o.get('carvable'):
+    if o.carvable:
         n = ET.Element('Node', name="triangle-surface")
         n.append(ET.Element("TriangleSetTopologyContainer",name="topotri"))
         n.append(ET.Element("TriangleSetTopologyModifier",))
         n.append(ET.Element("TriangleSetTopologyAlgorithms", template="Vec3d" ))
         n.append(ET.Element("TriangleSetGeometryAlgorithms", template="Vec3d"))
 
-        n.append(ET.Element('Tetra2TriangleTopologicalMapping', input="@../"+topotetra, output="@topotri", flipNormals='1'))
+        n.append(ET.Element('Tetra2TriangleTopologicalMapping', input="@../"+topotetra, output="@topotri", flipNormals='true'))
 
         ogl = ET.Element("OglModel", name="Visual");
         addMaterial(o, ogl);
@@ -392,7 +380,7 @@ def exportVolumetric(o, opt):
 
     else:
         n = ET.Element('Node', name="Collision")
-        n.append(exportTopology(o,opt))
+        n.append(exportTriangularTopology(o,opt))
         moc = createMechanicalObject(o)
         moc.set('name', 'MOC')
         n.append(moc)
@@ -405,7 +393,7 @@ def exportVolumetric(o, opt):
         v.append(ET.Element("BarycentricMapping",template="Vec3d,ExtVec3f",object1="../MO",object2=name + "-visual"))
         t.append(v)
 
-
+    addConnectionsToTissue(t, o, opt)
     return t
 
 def exportHexVolumetric(o, opt):
@@ -413,65 +401,46 @@ def exportHexVolumetric(o, opt):
     t = ET.Element("Node", name = name)
 
     topotetra = name + '-topology'
-    c = exportHexahedralTopology(o, opt, topotetra)
-    t.append(c)
+    t.append(exportHexahedralTopology(o, opt, topotetra))
 
-    mo = createMechanicalObject(o)
-
-    mo.set('position','@'+topotetra+'.position')
-    t.append(mo)
+    t.append(createMechanicalObject(o))
     t.append(ET.Element('HexahedronSetTopologyModifier', removeIsolated = "false"))
     t.append(ET.Element('HexahedronSetTopologyAlgorithms', template = 'Vec3d'))
     t.append(ET.Element('HexahedronSetGeometryAlgorithms', template = 'Vec3d'))
 
     # set massDensity later
     t.append(ET.Element("DiagonalMass"))
-
-    # set youngModulus and poissonRatio later, and method=large
-    h = ET.Element("HexahedronFEMForceField",template="Vec3d", method="large")
+    h = ET.Element("HexahedronFEMForceField",method="large")
     addElasticityParameters(o,h)
-    #h.set("rayleighStiffness", (o.get('rayleighStiffness')))
     t.append(h)
-    # nn.append(ET.Element("IdentityMapping", object1='MO', object2='ctOglModel'))
-
-    if o.get('precomputeConstraints') == True:
-        t.append(ET.Element('PrecomputedConstraintCorrection', rotations="true", recompute="0"))
-    else:
-        t.append(ET.Element('UncoupledConstraintCorrection'))
-
+    addConstraintCorrection(o, t)
     addConstraints(o, t)
 
-    collisionGroup = int(o.get('collisionGroup', 1));
-
-    if o.get('carvable'):
-      nn = ET.Element('Node', name="quad-surface")
-      nn.append(ET.Element("QuadSetTopologyContainer", name="quadSurf"))
-      nn.append(ET.Element("QuadSetGeometryAlgorithms", template="Vec3d"))
-      nn.append(ET.Element("QuadSetTopologyModifier"))
-      nn.append(ET.Element("QuadSetTopologyAlgorithms", template="Vec3d"))
-      nn.append(ET.Element("Hexa2QuadTopologicalMapping", input='@../' + topotetra, output="@quadSurf"))
+    if o.carvable:
+      qs = ET.Element('Node', name="quad-surface")
+      qs.append(ET.Element("QuadSetTopologyContainer", name=name + "-quadSurf"))
+      qs.append(ET.Element("QuadSetGeometryAlgorithms", template="Vec3d"))
+      qs.append(ET.Element("QuadSetTopologyModifier"))
+      qs.append(ET.Element("QuadSetTopologyAlgorithms", template="Vec3d"))
+      qs.append(ET.Element("Hexa2QuadTopologicalMapping", input='@../' + topotetra, output="@" + name + "-quadSurf"))
       ogl = ET.Element("OglModel", name= name + '-visual');
-      nn.append(ogl)
+      qs.append(ogl)
       addMaterial(o, ogl);
-      nn.append(ET.Element('IdentityMapping', input="@../MO", output="@" + name + '-visual'))
+      qs.append(ET.Element('IdentityMapping', input="@../MO", output="@" + name + '-visual'))
 
-      nnn = ET.Element('Node', name="triangle-surface")
-      nnn.append(ET.Element('TriangleSetTopologyContainer',name='triSurf'))
-      nnn.append(ET.Element('TriangleSetTopologyModifier'))
-      nnn.append(ET.Element('TriangleSetTopologyAlgorithms', template="Vec3d"))
-      nnn.append(ET.Element('TriangleSetGeometryAlgorithms', template="Vec3d"))
-      # nnn.append(ET.Element('MechanicalObject', template="Vec3d", name="ctTriMO"))
-      nnn.append(ET.Element('Quad2TriangleTopologicalMapping', input = "@../quadSurf", output = "@triSurf"))
-      nnn.append(ET.Element('LineModel', bothSide="0", contactFriction="0", contactStiffness="500", group=collisionGroup, moving="1", selfCollision="0", simulated="1"))
-      nnn.append(ET.Element('PointModel', bothSide="0", contactFriction="0", contactStiffness="500", group=collisionGroup, moving="1", selfCollision="0", simulated="1"))
-      nnn.append(ET.Element('TriangleModel', bothSide="0", contactFriction="0", contactStiffness="500", group=collisionGroup, moving="1", selfCollision="0", simulated="1", tags="HapticSurface")) 
+      ts = ET.Element('Node', name="triangle-surface")
+      ts.append(ET.Element('TriangleSetTopologyContainer',name=name + '-triSurf'))
+      ts.append(ET.Element('TriangleSetTopologyModifier'))
+      ts.append(ET.Element('TriangleSetTopologyAlgorithms', template="Vec3d"))
+      ts.append(ET.Element('TriangleSetGeometryAlgorithms', template="Vec3d"))
+      ts.append(ET.Element('Quad2TriangleTopologicalMapping', input = "@../" + name + "-quadSurf", output = "@" + name + "-triSurf"))
+      ts.extend(collisionModelParts(o))
 
-
-      nn.append(nnn)
-      t.append(nn)
+      qs.append(ts)
+      t.append(qs)
     else:
         n = ET.Element('Node', name="Collision")
-        n.append(exportTopology(o,opt))
+        n.append(exportTriangularTopology(o,opt))
         moc = createMechanicalObject(o)
         moc.set('name', 'MOC')
         n.append(moc)
@@ -493,7 +462,7 @@ def addConstraints(o, t):
     for q in o.children:
       if not q.hide_render:
         n = fixName(q.name)
-        if q.name.startswith('BoxConstraint') or q.get('annotated_type') == 'BOXCONSTRAINT':
+        if q.name.startswith('BoxConstraint') or q.template == 'BOXCONSTRAINT':
             tl = q.matrix_world * Vector(q.bound_box[0])
             br = q.matrix_world * Vector(q.bound_box[6])
             b = array('d')
@@ -501,12 +470,12 @@ def addConstraints(o, t):
             b.extend(br)
             t.append(ET.Element("BoxROI",name=n,box=b))
             t.append(ET.Element("FixedConstraint", indices="@%s.indices" % n))
-        elif q.name.startswith('SphereConstraint') or q.get('annotated_type') == 'SPHERECONSTRAINT':
+        elif q.name.startswith('SphereConstraint') or q.template == 'SPHERECONSTRAINT':
             t.append(ET.Element("SphereROI",name=n,centers=(q.matrix_world.translation),radii=(max(cwisemul(q.parent.scale, q.scale)))))
             t.append(ET.Element("FixedConstraint", indices="@%s.indices" % n))
 
 def collisionModelParts(o, obstacle = False, group = None, bothSide = 0):
-    if o.get('suture', False):
+    if o.suture:
       sutureTag = 'HapticSurface'
     else:
       sutureTag = ''
@@ -515,53 +484,13 @@ def collisionModelParts(o, obstacle = False, group = None, bothSide = 0):
     else:
         M = "1"
 
-    sc = o.get('selfCollision',0)
-    if group == None: group = o.get('collisionGroup','1')
+    sc = o.selfCollision
+    if group == None:  group = o.collisionGroup
     return [
-        ET.Element("PointModel",selfCollision=sc, contactFriction = (o.get('contactFriction', 0)), contactStiffness = (o.get('contactStiffness', 500)), group=group, moving = M, simulated = M, bothSide= bothSide ),
-        ET.Element("LineModel",selfCollision=sc, contactFriction = (o.get('contactFriction', 0)), contactStiffness = (o.get('contactStiffness', 500)), group=group, moving = M, simulated = M, bothSide = bothSide ),
-        ET.Element("TriangleModel",selfCollision=sc, contactFriction = (o.get('contactFriction', 0)), contactStiffness = (o.get('contactStiffness', 500)), group=group, moving = M, simulated = M, tags = sutureTag)
+        ET.Element("PointModel",selfCollision=sc, contactFriction = o.contactFriction, contactStiffness = o.contactStiffness, group=group, moving = M, simulated = M, bothSide= bothSide ),
+        ET.Element("LineModel",selfCollision=sc, contactFriction = o.contactFriction, contactStiffness = o.contactStiffness, group=group, moving = M, simulated = M, bothSide= bothSide ),
+        ET.Element("TriangleModel", tags = sutureTag,selfCollision=sc, contactFriction = o.contactFriction, contactStiffness = o.contactStiffness, group=group, moving = M, simulated = M, bothSide= bothSide )
     ]
-
-def exportSoftBody(o, opt):
-    name=fixName(o.name)
-    t = ET.Element("Node",name = name)
-    t.set('author-parent' , 'SolverNode')
-    t.set('author-order', 1)
-
-    t.append(createMechanicalObject(o))
-    t.append(ET.Element("UniformMass",template="Vec3d", mass=(o.get('mass') or 1)))
-    v = ET.Element("Node",name="Visual")
-    og = exportVisual(o, opt,name = name + '-visual', with_transform = False)
-    og.set('template', 'ExtVec3f')
-    v.append(og)
-    v.append(ET.Element("BarycentricMapping",template="Vec3d,ExtVec3f",input="@../MO",output='@' + name + "-visual"))
-    t.append(v)
-
-    # set n later
-    sparseGridTopology = ET.Element("SparseGridTopology",position="@Visual/Visual.position",quads="@Visual/Visual.quads",triangles="@Visual/Visual.triangles",n="10 10 10")
-    sparseGridTopology.set("n",[o.get('resX'),o.get('resY'),o.get('resZ')] )
-    t.append(sparseGridTopology)
-
-   # set young modulus later
-    #t.append(ET.Element("HexahedronFEMForceField",template="Vec3d",youngModulus=(o.get('youngModulus')),poissonRatio=(o.get('poissonRatio'))))
-    h = ET.Element("HexahedronFEMForceField",template="Vec3d", method="large")
-    addElasticityParameters(o,h)
-    h.set("rayleighStiffness", (o.get('rayleighStiffness')))
-    t.append(h)
-
-    t.append(ET.fromstring('<UncoupledConstraintCorrection />'))
-    addConstraints(o, t)
-
-    c = ET.Element("Node",name="Collision")
-    c.append(exportTopology(o,opt))
-    moc = createMechanicalObject(o)
-    moc.set('name', 'MOC')
-    c.append(moc)
-    c.extend(collisionModelParts(o))
-    c.append(ET.Element("BarycentricMapping",input="@../",output="@./"))
-    t.append(c)
-    return t
 
 
 def exportInstrument(o, opt):
@@ -570,75 +499,51 @@ def exportInstrument(o, opt):
     t.set('author-parent' , 'Haptic-Instrument')
     t.set('author-order', 1)
 
+    # Collision parts of the instrument, the instrument tips
+    # an instrument usually has one tip, but in case of clamp object it can have two tips
+    tip_names = []
     for i in o.children:
-        if i.get('annotated_type') == 'INSTRUMENTTIP':
-            toolFunction = o.get('function', 'grasp')
-            if toolFunction == 'clamp':
-                child1 = ET.Element("Node", name= fixName(i.name) + "__UpperJaw")
-                if i.type == 'MESH':
-                    child1.append(exportTopology(i, opt))
-                mo1 = createMechanicalObject(i)
-                mo1.set('name', 'CM1')
-                mo1.set('position','1 0 -1')
-                child1.append(mo1)
-                pm1 = ET.Element("TPointModel", name = 'toolTip1',
-                                 template="Vec3d",
-                                 contactStiffness="0.01", bothSide="0", proximity = o.get('proximity', 0.02),
-                                 group= o.get('collisionGroup')
-                                 )
-                child1.append(pm1)
-                child1.append(ET.Element("RigidMapping", input="@../../instrumentState",output="@CM1",index= 0))
-                t.append(child1)
-                
-                child2 = ET.Element("Node", name= fixName(i.name) + "__LowerJaw")
-                if i.type == 'MESH':
-                    child2.append(exportTopology(i, opt))
-                mo2 = createMechanicalObject(i)
-                mo2.set('name', 'CM2')
-                mo2.set('position','-1 0 -1')
-                child2.append(mo2)
-                pm2 = ET.Element("TPointModel", name = 'toolTip2',
-                                 template="Vec3d",
-                                 contactStiffness="0.01", bothSide="0", proximity = o.get('proximity', 0.02),
-                                 group= o.get('collisionGroup')
-                                 )
-                child2.append(pm2)
-                child2.append(ET.Element("RigidMapping", input="@../../instrumentState",output="@CM2",index= 0))
-                t.append(child2)
-
-                t.append(ET.Element("HapticManager", toolModel = '' , omniDriver = '@../../RigidLayer/driver', graspStiffness = "1e3", attachStiffness="1e12", grasp_force_scale = "-1e-3",
-                                    upperJaw = '@'+fixName(i.name) + "__UpperJaw/toolTip1", lowerJaw = '@'+fixName(i.name) + "__LowerJaw/toolTip2", clampScale = "1 0.1 0.1" ))
+        if i.template == 'INSTRUMENTTIP':
+            n = fixName(i.name)
+            child = ET.Element("Node", name= n)
+            tip_names.append(n)
+            if i.type == 'MESH':
+                child.append(exportTriangularTopology(i, opt))
+            mo = createMechanicalObject(i)
+            mo.set('name', 'CM');
+            child.append(mo)
+            pm = ET.Element("TPointModel", name = 'toolTip',
+                             contactStiffness="0.01", bothSide="0", proximity = i.proximity,
+                             group= o.collisionGroup
+                             )
+            if i.toolFunction == 'CARVIE':
+              pm.set('tags', 'CarvingTool')
+            elif i.toolFunction == 'SUTURE':
+              pm.set('tags', 'SuturingTool')
             else:
-                child = ET.Element("Node", name= fixName(i.name) + "__CM")
-                if i.type == 'MESH':
-                    child.append(exportTopology(i, opt))
-                mo = createMechanicalObject(i)
-                mo.set('name', 'CM');
-                child.append(mo)
-                pm = ET.Element("TPointModel", name = 'toolTip',
-                                 template="Vec3d",
-                                 contactStiffness="0.01", bothSide="0", proximity = o.get('proximity', 0.02),
-                                 group= o.get('collisionGroup')
-                                 )
-                if toolFunction == 'carve':
-                  pm.set('tags', 'CarvingTool')
-                elif toolFunction == 'suture':
-                  pm.set('tags', 'SuturingTool')
-                else:
-                  pm.set('tags', 'GraspingTool')
+              pm.set('tags', 'GraspingTool')
 
-                child.append(pm)
-                child.append(ET.Element("RigidMapping", input="@../../instrumentState",output="@CM",index= 0))
-                t.append(ET.Element("HapticManager", toolModel = '@'+ fixName(i.name) + '__CM/toolTip' , omniDriver = '@../../RigidLayer/driver', graspStiffness = "1e3", attachStiffness="1e12", grasp_force_scale = "-1e-3", duration = "50"))
-                t.append(child)
+            child.append(pm)
+            child.append(ET.Element("RigidMapping", input="@../../instrumentState",output="@CM",index= 0))
+            t.append(child)
 
-            break
+    hm = ET.Element("HapticManager", omniDriver = '@../../RigidLayer/driver',
+        graspStiffness = "1e3", attachStiffness="1e12", grasp_force_scale = "-1e-3", duration = "50")
 
-    #Children start here
-    #index is a custom property of a child object if index is missing, then set index=1
+    if len(tip_names) == 1:
+        hm.set('toolModel', '@'+ tip_names[0] + '/toolTip')
+    elif len(tip_names) == 2:
+        hm.set('upperJaw', '@'+ tip_names[0] + '/toolTip')
+        hm.set('lowerJaw', '@'+ tip_names[1] + '/toolTip')
+        hm.set('clampScale', '1 0.1 0.1')
+
+    t.append(hm)
+
+    # Visual parts of the instrument
     for i in o.children:
       if i.type == 'MESH':
-        idx = i.get('index', 3)
+        INSTRUMENT_PART_MAP = { 'LEFTJAW': 1, 'RIGHTJAW': 2, 'FIXED': 3 }
+        idx = INSTRUMENT_PART_MAP[i.instrumentPart]
         name = fixName(i.name)
         child =  ET.Element("Node", name = fixName(i.name))
         child.append(exportVisual(i, opt, name = name + '-visual', with_transform = True))
@@ -647,44 +552,6 @@ def exportInstrument(o, opt):
 
     return t
 
-def exportCM(o,opt):
-    """
-    This function generates a XML hierarchy for a simple obstacle
-    collision model.
-    """
-    t = ET.Element("Node",name= fixName(o.name))
-    t.set('author-parent', 'SolverNode')
-    t.set('author-order', 1)
-    momain = createMechanicalObject(o)
-    t.append(momain)
-    for i in o.children:
-        if not i.hide_render:
-            annotated_type = i.get('annotated_type')
-            if annotated_type == 'COLLISIONMODEL':
-                c = ET.Element("Node",name = i.name)
-                c.append(exportTopology(i,opt))
-                c.append(createMechanicalObject(i))
-                c.extend(collisionModelParts(o))
-                #c.append(ET.Element("BarycentricMapping",input="@../",output="@./"))
-                t.append(c)
-            elif annotated_type == 'SPARSEGRID':
-                # set n later
-                s = ET.Element("SparseGridTopology",name = i.name)
-                generateTopology(i,s, opt)
-                # set young modulus later
-                t.append(geometryNode(s))
-
-                h = ET.Element("HexahedronFEMForceField",template="Vec3d")
-                addElasticityParameters(i,h)
-                t.append(h)
-            else:
-                v = ET.Element("Node",name = i.name)
-                og = exportVisual(i, opt,name = fixName(i.name)+ '-visual', with_transform = False)
-                og.set('template', 'ExtVec3f')
-                v.append(og)
-                #v.append(ET.Element("BarycentricMapping",template="Vec3d,ExtVec3f",input="@../MO",output='@' + fixName(i.name) + "-visual"))
-                t.append(v)
-    return t
 
 def exportCloth(o, opt):
     name=fixName(o.name)
@@ -692,147 +559,128 @@ def exportCloth(o, opt):
     t.set('author-parent', 'SolverNode')
     t.set('author-order', 1)
 
-    t.append(exportTopologyContainer(o,opt))
-
+    # Toploogy
+    t.append(exportTriangularTopologyContainer(o,opt))
     t.append(ET.Element("TriangleSetTopologyModifier", removeIsolated = "false"))
-    t.append(ET.Element("TriangleSetTopologyAlgorithms", template="Vec3d" ))
-    t.append(ET.Element("TriangleSetGeometryAlgorithms", template="Vec3d"))
+    t.append(ET.Element("TriangleSetTopologyAlgorithms"))
+    t.append(ET.Element("TriangleSetGeometryAlgorithms"))
 
-    momain = createMechanicalObject(o)
-    t.append(momain)
+    # Mechanical Object
+    t.append(createMechanicalObject(o))
+    t.append(ET.Element("DiagonalMass"))
 
-    t.append(ET.Element("DiagonalMass", template="Vec3d", massDensity="0.15"))
-
-    tfff=ET.Element("TriangularFEMForceField", template="Vec3d",  method="large" )
+    # Force fields
+    tfff=ET.Element("TriangularFEMForceField", method="large" )
     addElasticityParameters(o,tfff)
-    tfff.set("damping", (o.get('stretchDamping')))
     t.append(tfff)
+    t.append(ET.Element("TriangularBendingSprings",
+        stiffness= o.bendingStiffness, damping = o.damping))
 
-    triangularBendingSprings = ET.Element("TriangularBendingSprings", template="Vec3d")
-    triangularBendingSprings.set("stiffness", (o.get('bendingStiffness')))
-    triangularBendingSprings.set("damping", (o.get('bendingDamping')))
-    t.append(triangularBendingSprings)
+    # Collision and Constraints
     addConstraints(o,t)
+    addConstraintCorrection(o, t)
     t.extend(collisionModelParts(o))
 
-    t.append(ET.Element('UncoupledConstraintCorrection'))
-
+    # Visual
     ogl = ET.Element("OglModel", name= name + '-visual');
     addMaterial(o, ogl);
     t.append(ogl)
-
     t.append(ET.Element("IdentityMapping",template="Vec3d,ExtVec3f",input="@MO",output='@' + name + "-visual"))
     return t
 
-def pointInsideSphere(v,s):
+def pointInsideSphere(v,s,f):
     center = s.location
     radius = max(s.scale)
     distance = (v - center).length
-    if (distance < radius):
+    if (distance < radius * f):
         return True
     else:
         return False
 
-def verticesInsideSphere(o, m, s):
+def verticesInsideSphere(o, m, s, factor = 1):
     vindex = []
     for v in m.vertices:
-        if pointInsideSphere((o.matrix_world*v.co), s):
+        if pointInsideSphere(o.matrix_world*v.co, s, f):
             vindex.append(v.index)
-    #print(vindex)
     return vindex
 
-def matchVertices(o1, o2, s, opt):
-    amf = s.get('alwaysMatchFor')
+def exportAttachConstraint(o, opt):
+    amf1 = s.alwaysMatchForObject1
+    amf2 = s.alwaysMatchForObject2
+    stiffness = o.attachStiffness
+    o1, o2 = opt.scene.objects[o.object1], opt.scene.objects[o.object2]
+    m1, m2 = o1.to_mesh(opt.scene, True, 'PREVIEW'), o2.to_mesh(opt.scene, True, 'PREVIEW')
+    v1, v2 = verticesInsideSphere(o1, m1, o), verticesInsideSphere(o2, m2, o)
 
-    o = [o1, o2]
-    m = [o1.to_mesh(opt.scene, True, 'PREVIEW'), o2.to_mesh(opt.scene, True, 'PREVIEW')]
-    v = [verticesInsideSphere(o1, m[0], s), verticesInsideSphere(o2, m[1], s)]
+    # Find points inside sphere by enlarging the sphere gradually
+    f = 1
+    while amf1 and len(v1) == 0 and f < 1000:
+        f *= 1.404
+        v1 = verticesInsideSphere(o1, m1, o, f)
 
-    sph = s.copy()
-    while (amf and len(v[amf-1]) == 0):
-        sph.scale = sph.scale*2.0
-        v[amf-1] = verticesInsideSphere(o[amf-1], m[amf-1], sph)
-    bpy.data.objects.remove(sph)
+    f = 1
+    while amf2 and len(v2) == 0 and f < 1000:
+        f *= 1.404
+        v2 = verticesInsideSphere(o2, m2, o, f)
 
-    v3 = []
-    for i in v[0]:
+
+    # Find the matching vertex pairs, the tuples are:
+    #    (index_from_first_object, index_from_second_object, distance_between_two_points)
+    vertexPairs = []
+    for i in v1:
         mindist = 1E+38
         minindex = -1
-        for j in v[1]:
-            #print(i)
-            #print(j)
-            dist = (o1.matrix_world*m[0].vertices[i].co - o2.matrix_world*m[1].vertices[j].co).length
+        for j in v2:
+            dist = (o1.matrix_world*m1.vertices[i].co - o2.matrix_world*m2.vertices[j].co).length
             if dist < mindist :
                 minindex = j
                 mindist = dist
         if minindex != -1:
-            v3.append((i,minindex, mindist))
-    return v3
+            vertexPairs.append((i,minindex, mindist))
 
-def exportAttachConstraint(o, o1, o2, opt):
-    stiffness = o.get('stiffness', 500)
-    springs = [
-        vector_to_string([i, j, stiffness, .1, d]) for (i,j,d) in matchVertices(o1,o2,o, opt)
-        ]
-    ff = ET.Element("StiffSpringForceField", object1='@' + fixName(o1.name), object2='@' + fixName(o2.name),
-                    spring = ' '.join(springs))
-                        
+    # Create the springs between the vertex pairs
+    springs = [ vector_to_string([i, j, stiffness, .1, d]) for (i,j,d) in vertexPairs ]
+
+    ff = ET.Element("StiffSpringForceField", object1='@' + fixName(o1.name), object2='@' + fixName(o2.name), spring = ' '.join(springs))
     ff.set('author-parent', 'SolverNode')
     ff.set('author-order', 100)
-    
-
     return ff
 
-import bmesh
+def exportTriangularTopologyContainer(o,opt):
+    t = ET.Element("TriangleSetTopologyContainer")
+    addTriangularTopology(o, t, opt)
+    return geometryNode(opt, t)
 
-def triangulatedBMesh(o, opt):
-    """
-    Return a triangulated mesh of o in the BMesh object format
-    """
+def addTriangularTopology(o, t, opt):
+    # First triangulate the mesh
     m = o.to_mesh(opt.scene, True, 'PREVIEW')
     bm = bmesh.new()
     bm.from_mesh(m)
     r = bmesh.ops.triangulate(bm, faces = bm.faces)
-    return bm, r['faces']
+    triangles = r['faces']
 
-def exportTopologyContainer(o,opt):
-
-    bm, triangles = triangulatedBMesh(o, opt)
-    position = array('d')
-    for v in bm.verts:
-      position.extend([v.co[0],v.co[1],v.co[2]])
-    edges = [ ([ v.index for v in e.verts ]) for e in bm.edges ]
-    triangles = [ ([ v.index for v in f.verts ]) for f in triangles ]
+    # Then create position, edge and tri arrays
+    position = np.empty([len(bm.verts), 3],dtype=float)
+    for i, v in enumerate(bm.verts):
+        position[i] = v.co
+    edges = np.empty([len(bm.edges), 2],dtype=int)
+    for i, e in enumerate(bm.edges):
+        edges[i] = [ v.index for v in e.verts ]
+    tri = np.empty([len(triangles), 3],dtype=int)
+    for i, f in enumerate(triangles):
+        tri[i] = [ v.index for v in f.verts ]
     bm.free()
 
-    t = ET.Element("TriangleSetTopologyContainer")
-
-    t.set("position", (position))
-    t.set("edges", (edges))
-    t.set("triangles", (triangles))
-    return geometryNode(opt, t)
-
-def generateTopology(o, t, opt):
-
-    bm, triangles = triangulatedBMesh(o, opt)
-    position = array('d')
-    for v in bm.verts:
-      position.extend([v.co[0],v.co[1],v.co[2]])
-    triangles = [ [ v.index for v in f.verts ] for f in triangles ]
-    bm.free()
-
-    t.set("position", (position))
-    t.set("triangles", (triangles))
-
+    t.set("position", position)
+    t.set("edges", edges)
+    t.set("triangles", tri)
     return t
 
 def addElasticityParameters(o, t):
-    if o.get('youngModulus') != None :
-        t.set("youngModulus", (o.get('youngModulus')))
-    if o.get('poissonRatio') != None :
-        t.set("poissonRatio", (o.get('poissonRatio')))
-    if o.get('rayleighStiffness') != None:
-        t.set("rayleighStiffness", (o.get('rayleighStiffness')))
+    t.set("youngModulus", o.youngModulus)
+    t.set("poissonRatio", o.poissonRatio)
+    t.set("rayleighStiffness", o.rayleighStiffness)
+    t.set("damping", o.damping)
     return t
 
 
@@ -842,17 +690,13 @@ def exportObstacle(o, opt):
     t.set('author-parent', 'root')
     t.set('author-order', 1)
     t.append(exportVisual(o, opt, name = name+'-visual', with_transform = True))
-    if True or len(o.data.vertices) < 200:
-        t.append(exportTopology(o,opt))
-        t.append(createMechanicalObject(o))
-        t.extend(collisionModelParts(o,obstacle = True))
-    else:
-        t.append(ET.Element("SparseGridTopology",position="@Visual.position",quads="@Visual.quads",triangles="@Visual.triangles",n="10 10 10"))
-        t.append(createMechanicalObject(o))
-        t.append(ET.Element('TSphereModel'))
-    t.append(ET.fromstring('<UncoupledConstraintCorrection />'))
+    t.append(exportTriangularTopology(o,opt))
+    t.append(createMechanicalObject(o))
+    t.extend(collisionModelParts(o,obstacle = True))
+    t.append(ET.Element('UncoupledConstraintCorrection'))
     return t
 
+# TODO: test that exported rigid object actually works
 def exportRigid(o, opt):
     name=fixName(o.name)
     t = ET.Element("Node",name=name)
@@ -860,7 +704,7 @@ def exportRigid(o, opt):
     t.set('author-order', 1)
     
     t.append(exportVisual(o, opt, name = name + '-visual', with_transform = False))
-    t.append(exportTopology(o,opt))
+    t.append(exportTriangularTopology(o,opt))
 
     mo = createMechanicalObject(o)
     mo.set('template','Rigid')
@@ -869,9 +713,9 @@ def exportRigid(o, opt):
     t.extend(collisionModelParts(o,obstacle = False))
     return t
 
-def exportTopology(o,opt):
+def exportTriangularTopology(o,opt):
     t = ET.Element("MeshTopology",name=fixName(o.name) + '-topology')
-    generateTopology(o,t,opt)
+    addTriangularTopology(o,t,opt)
     return geometryNode(opt, t)
 
 def fixName(name):
@@ -916,8 +760,8 @@ def addMaterial(o, t):
             if tex.type == 'IMAGE' :
                 t.set("texturename", bpy.path.abspath(tex.image.filepath))
                 t.set("material","")
-    if o.get('3dtexture','') != '':
-        t.set("texturename", o.get('3dtexture'))
+    if o.texture3d != '':
+        t.set("texturename", o.texture3d)
         t.set("genTex3d", '1')
 
 def exportVisual(o, opt, name = None,with_transform = True):
@@ -941,10 +785,10 @@ def exportVisual(o, opt, name = None,with_transform = True):
 
     t.set("normal", normal)
 
-    triangles = [ (f.vertices) for f in m.polygons if len(f.vertices) == 3 ]
-    quads     = [ (f.vertices) for f in m.polygons if len(f.vertices) == 4 ]
-    t.set("triangles", (triangles))
-    t.set("quads", (quads))
+    triangles = [ f.vertices for f in m.polygons if len(f.vertices) == 3 ]
+    quads     = [ f.vertices for f in m.polygons if len(f.vertices) == 4 ]
+    t.set("triangles", triangles)
+    t.set("quads", quads)
 
     if len(m.uv_layers) >= 1 :
         uvl = m.uv_layers[0].data
@@ -952,84 +796,36 @@ def exportVisual(o, opt, name = None,with_transform = True):
         mapping = array('I',[ 0 for i in range(0,len(m.vertices)) ])
         for l in m.loops: mapping[l.vertex_index] = l.index
         texcoords = [ (uvl[mapping[i]].uv) for i in range(0,len(m.vertices))]
-        t.set("texcoords", (texcoords))
+        t.set("texcoords", texcoords)
 
     addMaterial(o, t);
     return geometryNode(opt, t)
-
-def exportCurveTopology(o, opt):
-    t = ET.Element("MeshTopology",name=fixName(o.name) + '-topology')
-    m = o.to_mesh(opt.scene, True, 'PREVIEW')
-
-    position = array('d')
-    for v in m.vertices:
-      position.extend([v.co[0],v.co[1],v.co[2]])
-    edges = array('I')
-    for e in m.edges:
-      edges.extend(e.vertices)
-
-    t.set("position", position)
-    t.set("edges", edges)
-
-    return geometryNode(opt, t)
-
-def exportThickCurve(o, opt):
-
-    thickness = o.get('thickness', 0.3)
-    t = ET.Element("Node", name = fixName(o.name))
-    t.set('author-parent', 'root')
-    t.set('author-order', 1)
-    
-    t.append(exportCurveTopology(o, opt))
-    t.append(createMechanicalObject(o))
-    t.append(ET.Element("Line", proximity = thickness, moving="0", simulated="0"))
-    t.append(ET.Element("Point", proximity = thickness, moving="0", simulated="0"))
-    addConstraints(o, t)
-    return t;
-
-def has_modifier(o,name_of_modifier):
-    for i in o.modifiers:
-        if i.type == name_of_modifier:
-            return True
-    return False
 
 
 def exportObject(opt, o):
     t = None
     if not o.hide_render and o.parent == None:
-        annotated_type = o.get('annotated_type')
+        annotated_type = o.template
         name = fixName(o.name)
         if o.type == 'MESH' or o.type == 'SURFACE' or o.type == 'CURVE':
-            if has_modifier(o,'SOFT_BODY') or annotated_type == 'SOFT_BODY':
-                t = exportSoftBody(o, opt)
-            elif has_modifier(o,'COLLISION') or annotated_type == 'COLLISION':
+            if annotated_type == 'COLLISION':
                 t = exportObstacle(o, opt)
-            elif has_modifier(o,'CLOTH') or annotated_type == 'CLOTH':
+            elif annotated_type == 'CLOTH':
                 t = exportCloth(o, opt)
-            elif o.rigid_body != None and o.rigid_body.enabled or annotated_type == 'RIGID':
-                t = exportRigid(o, opt)
-            elif annotated_type == 'CONNECTIVETISSUE':
-                t = exportConnectiveTissue(o, opt)
-            # elif annotated_type == 'VOLUMETRIC':
-                # t = exportVolumetric(o, opt)
-            elif annotated_type == 'VOLUMETRIC' and o.type == 'MESH' and hasattr(o.data,'tetrahedra') and len(o.data.tetrahedra) > 0:
-                t = exportVolumetric(o, opt)
-            elif annotated_type == 'VOLUMETRIC' and o.type == 'MESH' and hasattr(o.data,'hexahedra') and len(o.data.hexahedra) > 0:
-                print("here ------------------------------------------")
-                name = fixName(o.name)
-                t = ET.Element("Node", name = name)
-                t = exportHexVolumetric(o, opt)
-            elif annotated_type == 'THICKSHELL':
-                if o.get('degree',1) == 3:
-                    t= export3BThickQuadShell(o, opt)
+            elif annotated_type == 'VOLUMETRIC':
+                if o.type == 'MESH' and hasattr(o.data,'tetrahedra') and len(o.data.tetrahedra) > 0:
+                    t = exportVolumetric(o, opt)
+                elif o.type == 'MESH' and hasattr(o.data,'hexahedra') and len(o.data.hexahedra) > 0:
+                    t = exportHexVolumetric(o, opt)
                 else:
-                    t = exportThickQuadShell(o, opt)
+                    raise ExportException("Volumetric mesh expected: '%s'" % o.name)
+            elif annotated_type == 'THICKSHELL':
+                t = exportThickQuadShell(o, opt)
             elif annotated_type == 'THICKCURVE':
                 t = exportThickCurve(o, opt)
-            elif annotated_type == None or annotated_type == 'VISUAL':
+            elif annotated_type == 'VISUAL':
                 t = exportVisual(o, opt)
-
-        elif o.type == "LAMP":
+        elif o.type == 'LAMP':
             if o.data.type == 'SPOT':
                 t = ET.Element("SpotLight", name=fixName(o.name))
                 o.rotation_mode = "QUATERNION"
@@ -1041,127 +837,89 @@ def exportObject(opt, o):
                 t = ET.Element("PositionalLight", name=fixName(o.name))
                 t.set("position", (o.location))
                 t.set("color", (o.data.color))
-        elif o.type == "EMPTY":
-            if has_modifier(o,'CM') or annotated_type == 'CM':
-                t = exportCM(o,opt)
     return t
 
 
-def exportConstraints(opt, o):
-    result = []
-    if not o.hide_render and o.parent == None:
-        annotated_type = o.get('annotated_type')
-        o_list = []
-        if  has_modifier(o,'ATTACHCONSTRAINT') or annotated_type == 'ATTACHCONSTRAINT':
-            o_list.append(o)
-        elif  has_modifier(o,'ATTACHCONSTRAINTGROUP') or annotated_type == 'ATTACHCONSTRAINTGROUP':
-            o_list = o.children
 
-        for o in o_list:
-            if (isinstance(o.get('object1'),str) and isinstance(o.get('object2'),str)):
-                o1 = bpy.data.objects[o.get('object1')]
-                o2 = bpy.data.objects[o.get('object2')]
-                result.append(exportAttachConstraint(o, o1, o2, opt))
+# Return true of vector x is inside the bounding box b
+#  b is a 2-tuple of vectors
+def insideBox(b, x):
+    m, M = b
+    return x[0] > m[0] and x[1] > m[1] and x[2] > m[2] and x[0] < M[0] and x[1] < M[1] and x[2] < M[2]
 
-    return result
 
-def exportConnectiveTissue(o, opt):
-    scene = opt.scene
+def onenorm(v):
+    return sum(map(abs,v))
 
-    if o.type == 'MESH' and hasattr(o.data,'tetrahedra') and len(o.data.tetrahedra) > 0:
-      t = exportVolumetric(o, opt)
-    elif o.type == 'MESH' and hasattr(o.data,'hexahedra') and len(o.data.hexahedra) > 0:
-      t = exportHexVolumetric(o, opt)
-    else:
-      raise ExportException("While processing %s: Tetrahedral or Hexahedral mesh expected!" % o.name)
-    
-    oMesh = o.to_mesh(opt.scene, True, 'PREVIEW')
-    
-    oTop = scene.objects[o.get('topObject')]
-    oBot = scene.objects[o.get('botObject')]
-    hasTop = True
-    if oTop == oBot:
-      hasTop = False
-    
-    if hasTop:
-      topVertices = o.get('topVertices')
-      otopMesh = oTop.to_mesh(opt.scene, True, 'PREVIEW')
-      ntop = len(otopMesh.vertices)
 
-    
-    
-    
-    botVertices = o.get('botVertices')       
-    obotMesh = oBot.to_mesh(opt.scene, True, 'PREVIEW')    
-     
-    
-    bpy.ops.object.select_all(action='DESELECT')
-    o.select = True
-    if hasTop:
-      oTop.select = True 
-    oBot.select = True
-    bpy.ops.object.transform_apply(location=True, rotation=True, scale=True)
+# Extend the bounding box bb by the multiplier m (m=1.1 means extend by 10%)
+def extendBB(bb, m):
+  tl, br = Vector(bb[0]), Vector(bb[6])
+  c = (tl + br)  / 2
+  s = (br - tl)  / 2
+  return c - s * m, c + s * m
 
-    maxDim = 1e+9 # todo: maxDim = max dimension of the whole scene
-    stiffness = o.get('attach_stiffness', 500)
-    
-    if hasTop:
-      map2top = []
-      for i, v in enumerate(topVertices):
-          oVertex = oMesh.vertices[v].co
-          footprint = oTop.closest_point_on_mesh(oVertex,maxDim)
-          if footprint[2]==-1:
-              print('Error: _init_.py: corresponding vertex not found')
-              return             
-          face = otopMesh.polygons[footprint[2]].vertices 
-          # in *face* find the closest vertex to *oVertex*
-          smallestDistance = maxDim   
-          optimalVert = -1        
-          for j,vj in enumerate(face):        
-              distance_vj = (otopMesh.vertices[vj].co-oVertex).length 
-              # map2top.append((v,vj,distance_vj))    
-              if distance_vj < smallestDistance:            
-                  optimalVert = vj 
-                  smallestDistance = distance_vj              
-          if optimalVert > 0:
-              map2top.append((v,optimalVert,smallestDistance))            
-      springsTop = [
-          vector_to_string([i, j, stiffness, .1, d]) for (i,j,d) in map2top
-          ]
-      ffTop = ET.Element("StiffSpringForceField", object1='@' + fixName(o.name), object2='@' + fixName(oTop.name), 
-                      spring = ' '.join(springsTop))
-      t.append(ffTop)
+# Create springs from o to q
+# This function is used in attaching connecting tissue to 
+# the objects it is connecting. In this case o is the connecting
+# tissue and q is the object it is attaching to.
+#
+# TODO: instead of trying to connect all the points to q we could 
+# tag the ones that need to be connecting by creating a new vertex group
+# we could also make the vertex group optional. When the vertex group
+# exists, use it. If it does not exist, then process all the vertices
+def addSpringsBetween(t, o, q, opt):
+    qm = q.to_mesh(opt.scene, True, 'PREVIEW')
+    om = o.to_mesh(opt.scene, True, 'PREVIEW')
 
-    map2bot = []
-    for i, v in enumerate(botVertices):
-        oVertex = oMesh.vertices[v].co
-        footprint = oBot.closest_point_on_mesh(oVertex,maxDim)
-        if footprint[2]==-1:
-            print('Error: _init_.py: corresponding vertex not found')
-            return
-        face = obotMesh.polygons[footprint[2]].vertices
-        smallestDistance = maxDim
+    # bounding box of o extended by 10%
+    oBB = extendBB(o.bound_box, 1.1)
+    # we require that the distances be closer than 5 percent of
+    # the size of the bounding box
+    distanceThresholdSq = (onenorm(oBB[1] - oBB[0]) * o.attachThreshold)** 2
+
+    # gather all the vertices in q that fall in the extended bounding box
+    q2o = o.matrix_world *  q.matrix_world.inverted() 
+    o2q = q.matrix_world *  o.matrix_world.inverted() 
+    qv = []
+    for i, v in enumerate(qm.vertices):
+        if insideBox(oBB, q2o*v.co):
+            qv.append(i)
+
+    #print("There are %d vertices of %s in the box of %s" % (len(qv), q.name,o.name))
+
+    # for each vertex in om, find a match
+    oIndices, qIndices = array('I'), array('I')
+    for i, v in enumerate(om.vertices):
+        smallestDistanceSq = distanceThresholdSq
         optimalVert = -1
-        for j,vj in enumerate(face):
-            distance_vj = (obotMesh.vertices[vj].co-oVertex).length
-            # map2bot.append((v,vj,distance_vj))
-            if distance_vj < smallestDistance:
-                optimalVert = vj
-                smallestDistance = distance_vj
-        if optimalVert > 0:
-            map2bot.append((v,optimalVert,smallestDistance))
+        co = o2q * v.co
+        for j in qv:
+            d = (qm.vertices[j].co - co).length_squared
+            if d < smallestDistanceSq:
+                optimalVert = j
+                smallestDistanceSq = d
+        if optimalVert >= 0:
+            oIndices.append(i)
+            qIndices.append(optimalVert)
 
-    springsBot = [
-        vector_to_string([i, j, stiffness, .1, d]) for (i,j,d) in map2bot
-        ]
-    ffBot = ET.Element("StiffSpringForceField", object1='@' + fixName(o.name), object2='@' + fixName(oBot.name),
-                    spring = ' '.join(springsBot))
-    t.append(ffBot)
-    t.set('author-order', 50)
-    return t
+    t.append(ET.Element("RequiredPlugin", name = "SurfLabConnectingTissue"))
+    t.append(ET.Element("ConnectingTissue", object1='@' + fixName(o.name) + '/MO', object2='@' + fixName(q.name) + '/MO',useConstraint="false", threshold=0.2))
+    #  indices1= oIndices, indices2 = qIndices,
+
+def addConnectionsToTissue(t, o, opt):
+    if o.object1 in opt.scene.objects:
+        addSpringsBetween(t, o, opt.scene.objects[o.object1], opt)
+    if o.object2 in opt.scene.objects:
+        addSpringsBetween(t, o, opt.scene.objects[o.object2], opt)
+
 
 def exportHaptic(l, scene, opt):
-    hapticExists = False
+    hapticDevices = opt.pref.hapticDevices
+    # If there are no haptic devices, then haptic is not enabled
+    if len(hapticDevices) == 0:
+        return []
+
     nodes = []
     instruments = []
 
@@ -1173,55 +931,76 @@ def exportHaptic(l, scene, opt):
 
     # Prepare the instruments, they are included in each haptic
     for o in l:
-        if not o.hide_render and o.get("annotated_type") == 'INSTRUMENT':
-            t = exportInstrument(o, opt)
-            if opt.separate:
-              t = exportSeparateFile(opt, t, o.name)
-            instruments.append(t)
-
-    for o in l:
-        if not o.hide_render and o.get("annotated_type") == 'HAPTIC':
-            n = fixName(o.name)
-            t = ET.Element("Node", name = n, tags='haptic')
-            omniTag = n + "__omni"
-
-            ## Omni driver wrapper
-            rl = ET.Element("Node", name="RigidLayer")
+        if not o.hide_render and o.template == 'INSTRUMENT':
+            instruments.append(objectNode(opt, exportInstrument(o, opt)))
             
-            rl.append(ET.Element("NewOmniDriver",
-                                 name = 'driver',
-                                 deviceName = (o.get('deviceName',o.name)),
-                                 tags= omniTag, scale = (o.get("scale", 300)),
-                                 permanent="true", listening="true", alignOmniWithCamera="true",
-                                 forceScale = (o.get("forceScale", 0.01))));
-            rl.append(ET.Element("MechanicalObject", name="ToolRealPosition", tags=omniTag, template="Rigid", position="0 0 0 0 0 0 1",free_position="0 0 0 0 0 0 1"))
-            nt = ET.Element("Node",name = "Tool");
-            nt.append(ET.Element("MechanicalObject", template="Rigid", name="RealPosition"))
-            nt.append(ET.Element("SubsetMapping", indices="0"));
-            rl.append(nt);
-            t.append(rl)
-
-            # State of the tool
-            isn = ET.Element("Node",name = "Instrument__"+n);
-            isn.append(ET.Element("EulerImplicitSolver", rayleighMass="0.0", rayleighStiffness="0.0"))
-            isn.append(ET.Element("CGLinearSolver",iterations="100", tolerance="1.0e-20", threshold="1.0e-20"))
-            isn.append(ET.Element("MechanicalObject", name = "instrumentState", template="Rigid3d", position="0 0 0 0 0 0 1 0 0 0 0 0 0 1 0 0 0 0 0 0 1 0 0 0 0 0 0 1", free_position="0 0 0 0 0 0 1 0 0 0 0 0 0 1 0 0 0 0 0 0 1 0 0 0 0 0 0 1" ))
-            isn.append(ET.Element("UniformMass", template = "Rigid3d", name="mass", totalmass="0.1"))
-            isn.append(ET.Element("LCPForceFeedback", activate=(o.get('forceFeedback',"true")), tags=omniTag, forceCoef="1.0"))
-            isn.extend(instruments)
-            isn.append(ET.Element("RestShapeSpringsForceField", template="Rigid",stiffness="1e12",angularStiffness="1e12", external_rest_shape="../RigidLayer/ToolRealPosition", points = "0"))
-            isn.append(ET.Element("UncoupledConstraintCorrection"))
-            t.append(isn)
-
-            hapticExists = True
-            if opt.separate:
-              t = exportSeparateFile(opt, t, o.name)
-            nodes.append(t)
-
-    if hapticExists:
-        return nodes
+    if scene.hapticWorkspaceBox in scene.objects:
+        b = scene.objects[scene.hapticWorkspaceBox]
+        positionBase = b.location
+        orientationBase = rotation_to_quaternion(b)
+        scaleBase = pow(b.scale[0] * b.scale[1] * b.scale[2], 1./3)
     else:
-        return []
+        positionBase = [0, 0, 0]
+        orientationBase = [0, 0, 0, 1]
+        scaleBase = 1
+      
+
+    for hp in hapticDevices:
+        n = hp.deviceName
+        t = ET.Element("Node", name = hp.deviceName, tags='haptic')
+        omniTag = n + "__omni"
+
+        ## Omni driver wrapper
+        rl = ET.Element("Node", name="RigidLayer")
+        rl.append(ET.Element("NewOmniDriver",
+                             name = 'driver',
+                             deviceName = hp.deviceName,
+                             tags= omniTag, scale = hp.scale * scaleBase , positionBase = positionBase, orientationBase = orientationBase,
+                             permanent="true", listening="true", alignOmniWithCamera="false",
+                             forceScale = hp.forceScale));
+        rl.append(ET.Element("MechanicalObject", name="ToolRealPosition", tags=omniTag, template="Rigid", position="0 0 0 0 0 0 1",free_position="0 0 0 0 0 0 1"))
+        nt = ET.Element("Node",name = "Tool");
+        nt.append(ET.Element("MechanicalObject", template="Rigid", name="RealPosition"))
+        nt.append(ET.Element("SubsetMapping", indices="0"));
+        rl.append(nt);
+        t.append(rl)
+
+        # State of the tool
+        isn = ET.Element("Node",name = "Instruments_of_"+n);
+        isn.append(ET.Element("EulerImplicitSolver", rayleighMass="0.0", rayleighStiffness="0.0"))
+        isn.append(ET.Element("CGLinearSolver",iterations="100", tolerance="1.0e-20", threshold="1.0e-20"))
+        isn.append(ET.Element("MechanicalObject", name = "instrumentState", template="Rigid3d", position="0 0 0 0 0 0 1 0 0 0 0 0 0 1 0 0 0 0 0 0 1 0 0 0 0 0 0 1", free_position="0 0 0 0 0 0 1 0 0 0 0 0 0 1 0 0 0 0 0 0 1 0 0 0 0 0 0 1" ))
+        isn.append(ET.Element("UniformMass", template = "Rigid3d", name="mass", totalmass="0.1"))
+        isn.append(ET.Element("LCPForceFeedback", activate=hp.forceFeedback, tags=omniTag, forceCoef="1.0"))
+        isn.extend(instruments)
+        isn.append(ET.Element("RestShapeSpringsForceField", template="Rigid",stiffness="1e12",angularStiffness="1e12", external_rest_shape="../RigidLayer/ToolRealPosition", points = "0"))
+        isn.append(ET.Element("UncoupledConstraintCorrection"))
+        t.append(isn)
+
+        nodes.append(objectNode(opt, t))
+
+    return nodes
+
+def objectNode(opt, t):
+    if t != None and opt.separate:
+        return exportSeparateFile(opt, t, t.get('name'))
+    else:
+        return t
+
+import math
+
+# Calculate field of view in degrees from focal length of a lens, assuming the standard film size
+def fovOfCamera(c):
+    correction = 717 / 1024.0
+    return 2 * math.atan(c.sensor_width / (2 * c.lens)) * 180 / math.pi * correction
+
+
+def exportCamera(o, opt):
+    fov = fovOfCamera(o.data)
+    position=o.location
+    orientation=rotation_to_quaternion(o)
+    lookAt = o.matrix_world * Vector((0,0,-1))
+    return ET.Element("InteractiveCamera", position=position, orientation=orientation, fieldOfView=fov, distance=1)
 
 def exportScene(opt):
     scene = opt.scene
@@ -1232,30 +1011,36 @@ def exportScene(opt):
     root= ET.Element("Node")
     root.set("name", "root")
     if scene.use_gravity :
-        root.set("gravity",(scene.gravity))
+        root.set("gravity",scene.gravity)
     else:
-        root.set("gravity","0 0 0")
+        root.set("gravity",[0,0,0])
     root.set("dt",0.01)
 
 
-    #lcp = ET.Element("LCPConstraintSolver", tolerance="1e-6", maxIt = "1000", mu = scene.get('mu', '1e-6'))
-    lcp = ET.Element("GenericConstraintSolver", tolerance="1e-3", maxIterations = "1000")
+    if scene.camera is not None:
+        root.append(exportCamera(scene.camera, opt))
+
+
+    #lcp = ET.Element("LCPConstraintSolver", tolerance="1e-6", maxIt = "1000", mu = scene.mu, '1e-6'))
+    lcp = ET.Element("GenericConstraintSolver", tolerance="1e-6", maxIterations = "1000")
     root.append(lcp)
 
     root.append(ET.Element('FreeMotionAnimationLoop'))
     root.append(ET.Element("CollisionPipeline", depth="6"))
     root.append(ET.Element("BruteForceDetection"))
-    root.append(ET.Element("LocalMinDistance", angleCone = "0.0", alarmDistance=scene.sofa.alarmDistance,contactDistance=scene.sofa.contactDistance))
+    root.append(ET.Element("LocalMinDistance", angleCone = "0.0", alarmDistance=scene.alarmDistance,contactDistance=scene.contactDistance))
     root.append(ET.Element("CollisionGroup"))
     root.append(ET.Element('CollisionResponse', response="FrictionContact"))
 
     solverNode = ET.Element("Node", name="SolverNode")
     addSolvers(solverNode)
 
+
     root.append(ET.Element("LightManager"))
-    if scene.sofa.showXYZFrame:
+    if scene.showXYZFrame:
       root.append(ET.Element("OglSceneFrame"))
-    if (selection == True):
+
+    if selection:
         l = list(bpy.context.selected_objects)
     else:
         l = list(scene.objects)
@@ -1264,25 +1049,18 @@ def exportScene(opt):
     root.extend(exportHaptic(l, scene, opt))
 
     for o in l:
-        t = exportObject(opt, o)
-        name = fixName(o.name)
-        annotated_type = o.get('annotated_type')
-        if (t != None):
-            if separate:
-              t = exportSeparateFile(opt, t, name)
-            if(has_modifier(o,'COLLISION') or o.get("annotated_type") == 'COLLISION'):
+        t = objectNode(opt, exportObject(opt, o))
+        if t != None:
+            if o.template == 'COLLISION':
                 root.append(t)
             else:
                 solverNode.append(t)
 
     for o in l:
-        t_list = exportConstraints(opt, o)
-        name = fixName(o.name)
-        for t in t_list:
-            if separate:
-              t = exportSeparateFile(opt, t, name)
-            solverNode.append(t)
-
+        if not o.hide_render and (o.object1 != '' or o.object2 != ''):
+            addConnectionsToTissue(solverNode, o, opt)
+        if not o.hide_render and o.template == 'ATTACHCONSTRAINT':
+            solverNode.append( objectNode(opt, exportAttachConstraint(o, opt)) )
     root.append(solverNode)
     return root
 
@@ -1299,7 +1077,7 @@ def writeNodesToFile(root, filepath, opt):
 
 class ExportToSofa(Operator, ExportHelper):
     """Export to SOFA scene"""
-    bl_idname = "export.tosofa"  # important since its how bpy.ops.import_test.some_data is constructed
+    bl_idname = "export.tosofa"
     bl_label = "Export To SOFA"
 
     # ExportHelper mixin class uses this
@@ -1344,6 +1122,7 @@ class ExportToSofa(Operator, ExportHelper):
             opt.selection_only = self.use_selection
             opt.directory = os.path.dirname(self.filepath)
             opt.file_format = self.filename_ext
+            opt.pref = context.user_preferences.addons[__package__].preferences
             root = exportScene(opt)
             writeNodesToFile(root, self.filepath, opt)
 

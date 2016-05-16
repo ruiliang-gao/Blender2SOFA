@@ -41,6 +41,7 @@ class RunSofaOperator(bpy.types.Operator):
             opt.selection_only = False
             opt.directory = os.path.dirname(self.filepath)
             opt.file_format = self.file_format
+            opt.pref = context.user_preferences.addons[__package__].preferences
             root = exportScene(opt)
             writeNodesToFile(root,self.filepath, opt)
             if sys.platform == 'linux':
