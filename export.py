@@ -904,7 +904,7 @@ def addSpringsBetween(t, o, q, opt):
             qIndices.append(optimalVert)
 
     t.append(ET.Element("RequiredPlugin", name = "SurfLabConnectingTissue"))
-    t.append(ET.Element("ConnectingTissue", object1='@' + fixName(o.name) + '/MO', object2='@' + fixName(q.name) + '/MO',useConstraint="false", threshold=0.2))
+    t.append(ET.Element("ConnectingTissue", object1='@' + fixName(o.name), object2='@' + fixName(q.name),useConstraint="false", threshold=0.2))
     #  indices1= oIndices, indices2 = qIndices,
 
 def addConnectionsToTissue(t, o, opt):
