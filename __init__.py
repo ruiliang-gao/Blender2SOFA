@@ -19,7 +19,7 @@ from .types import *
 
 
 def menu_func_export(self, context):
-    self.layout.operator(runsofa.ExportToSofa.bl_idname, text="SOFA Scene (.scn;.salua)")
+    self.layout.operator(export.ExportToSofa.bl_idname, text="SOFA Scene (.scn;.salua)")
 
 addon_keymaps = []
 
