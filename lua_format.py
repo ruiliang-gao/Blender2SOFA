@@ -59,7 +59,7 @@ def writeNode(out, n, level, parent = None, serial = 0):
             var = "node{}".format(serial)
             writeln(out,level, 'local {} = {}:newChild({})'.format(var, parent, name))
         for a in n.attrib:
-            if a != 'name':
+            if a != 'name' and not '-' in a:
                 writeln(out,level,  '{}.{} = {}'.format(var, a, luarepr(n.get(a))))
     elif n.tag == 'require':
         var = "{}{}".format(n.tag, serial)

@@ -91,7 +91,7 @@ class FattyTissue(bpy.types.Operator):
           for z in range(L):
             # Check that all the vertices required for this hexa are available and outside
             # the surface
-            verticesAvailable = all([ isVertexOutside(x+i,y+j,z+k) for i,j,k in HEX_VERTICES ])
+            verticesAvailable = all([ isVertexOutside[x+i,y+j,z+k] for i,j,k in HEX_VERTICES ])
             # Build the hexa if all the vertices are available
             if verticesAvailable:
                 h = M.hexahedra.add()

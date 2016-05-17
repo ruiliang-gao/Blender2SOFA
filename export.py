@@ -10,8 +10,10 @@ import numpy as np
 from bpy_extras.io_utils import ExportHelper
 from bpy.props import StringProperty, BoolProperty, EnumProperty
 from bpy.types import Operator
-FILEFORMATS = [ ('.salua', 'SaLua', 'Lua based scene file'), ('.scn', 'XML', 'XML scene file') ]
+import math
 import bmesh
+
+FILEFORMATS = [ ('.salua', 'SaLua', 'Lua based scene file'), ('.scn', 'XML', 'XML scene file') ]
 
 class ExportException(Exception):
   def __init__(self, message):
@@ -69,12 +71,6 @@ def exportSeparateFile(opt, t, name):
   return r
 
 def geometryNode(opt, t):
-    """
-    Special handling for geometry nodes when needed
-    Most of the time this is identity function. But when isolate_geometry
-    is enabled it will put the geometry node into a separate file
-    and return the node.
-    """
     if opt.isolate_geometry and t.get('name') != None:
         return exportSeparateFile(opt, t, t.get('name') + "-geometry")
     else:
@@ -143,16 +139,6 @@ def exportHexahedralTopology(o, opt, name):
     c =  ET.Element('HexahedronSetTopologyContainer', name= name, points = points, hexahedra = hexahedra) # createTriangleArray='1'
     return geometryNode(opt,c)
 
-# Export a HexahedronSetTopology container with the topology of a
-# thick shell. The object is supposed to be convertible to a quad mesh.
-# The object can have two custom attributes:
-#   - thickness: total thickness of the shell multiplied by normal
-#   - layerCount: total number of layers generated. 3 means 4 layers of surfaces and 3 layers of hexahedral elements.
-#
-# Return value is three nodes,
-#   - Volumetric topology for physical model
-#   - Outer shell topology
-#   - Inner shell topology
 def exportThickShellTopologies(o, opt, name):
     m = o.to_mesh(opt.scene, True, 'PREVIEW')
     thickness = o.thickness
@@ -479,11 +465,7 @@ def collisionModelParts(o, obstacle = False, group = None, bothSide = 0):
       sutureTag = 'HapticSurface'
     else:
       sutureTag = ''
-    if obstacle:
-        M = "0"
-    else:
-        M = "1"
-
+    M = not obstacle
     sc = o.selfCollision
     if group == None:  group = o.collisionGroup
     return [
@@ -605,8 +587,8 @@ def verticesInsideSphere(o, m, s, factor = 1):
     return vindex
 
 def exportAttachConstraint(o, opt):
-    amf1 = s.alwaysMatchForObject1
-    amf2 = s.alwaysMatchForObject2
+    amf1 = o.alwaysMatchForObject1
+    amf2 = o.alwaysMatchForObject2
     stiffness = o.attachStiffness
     o1, o2 = opt.scene.objects[o.object1], opt.scene.objects[o.object2]
     m1, m2 = o1.to_mesh(opt.scene, True, 'PREVIEW'), o2.to_mesh(opt.scene, True, 'PREVIEW')
@@ -696,7 +678,7 @@ def exportObstacle(o, opt):
     t.append(ET.Element('UncoupledConstraintCorrection'))
     return t
 
-# TODO: test that exported rigid object actually works
+# TODO: debug this and make it work
 def exportRigid(o, opt):
     name=fixName(o.name)
     t = ET.Element("Node",name=name)
@@ -707,10 +689,12 @@ def exportRigid(o, opt):
     t.append(exportTriangularTopology(o,opt))
 
     mo = createMechanicalObject(o)
+
     mo.set('template','Rigid')
     t.append(mo)
     t.append(ET.Element("RigidMapping",template='Rigid,ExtVec3f',input="@MO",output='@' + name + "-visual"))
     t.extend(collisionModelParts(o,obstacle = False))
+    t.append(ET.Element('UncoupledConstraintCorrection'))
     return t
 
 def exportTriangularTopology(o,opt):
@@ -825,6 +809,8 @@ def exportObject(opt, o):
                 t = exportThickCurve(o, opt)
             elif annotated_type == 'VISUAL':
                 t = exportVisual(o, opt)
+            elif annotated_type == 'RIGID':
+                t = exportRigid(o, opt)
         elif o.type == 'LAMP':
             if o.data.type == 'SPOT':
                 t = ET.Element("SpotLight", name=fixName(o.name))
@@ -840,81 +826,19 @@ def exportObject(opt, o):
     return t
 
 
-
-# Return true of vector x is inside the bounding box b
-#  b is a 2-tuple of vectors
-def insideBox(b, x):
-    m, M = b
-    return x[0] > m[0] and x[1] > m[1] and x[2] > m[2] and x[0] < M[0] and x[1] < M[1] and x[2] < M[2]
-
-
-def onenorm(v):
-    return sum(map(abs,v))
-
-
-# Extend the bounding box bb by the multiplier m (m=1.1 means extend by 10%)
-def extendBB(bb, m):
-  tl, br = Vector(bb[0]), Vector(bb[6])
-  c = (tl + br)  / 2
-  s = (br - tl)  / 2
-  return c - s * m, c + s * m
-
-# Create springs from o to q
-# This function is used in attaching connecting tissue to 
-# the objects it is connecting. In this case o is the connecting
-# tissue and q is the object it is attaching to.
-#
-# TODO: instead of trying to connect all the points to q we could 
-# tag the ones that need to be connecting by creating a new vertex group
-# we could also make the vertex group optional. When the vertex group
-# exists, use it. If it does not exist, then process all the vertices
-def addSpringsBetween(t, o, q, opt):
-    qm = q.to_mesh(opt.scene, True, 'PREVIEW')
-    om = o.to_mesh(opt.scene, True, 'PREVIEW')
-
-    # bounding box of o extended by 10%
-    oBB = extendBB(o.bound_box, 1.1)
-    # we require that the distances be closer than 5 percent of
-    # the size of the bounding box
-    distanceThresholdSq = (onenorm(oBB[1] - oBB[0]) * o.attachThreshold)** 2
-
-    # gather all the vertices in q that fall in the extended bounding box
-    q2o = o.matrix_world *  q.matrix_world.inverted() 
-    o2q = q.matrix_world *  o.matrix_world.inverted() 
-    qv = []
-    for i, v in enumerate(qm.vertices):
-        if insideBox(oBB, q2o*v.co):
-            qv.append(i)
-
-    #print("There are %d vertices of %s in the box of %s" % (len(qv), q.name,o.name))
-
-    # for each vertex in om, find a match
-    oIndices, qIndices = array('I'), array('I')
-    for i, v in enumerate(om.vertices):
-        smallestDistanceSq = distanceThresholdSq
-        optimalVert = -1
-        co = o2q * v.co
-        for j in qv:
-            d = (qm.vertices[j].co - co).length_squared
-            if d < smallestDistanceSq:
-                optimalVert = j
-                smallestDistanceSq = d
-        if optimalVert >= 0:
-            oIndices.append(i)
-            qIndices.append(optimalVert)
-
+def addConnectionsBetween(t, o, q, opt):
     t.append(ET.Element("RequiredPlugin", name = "SurfLabConnectingTissue"))
-    t.append(ET.Element("ConnectingTissue", object1='@' + fixName(o.name) + '/MO', object2='@' + fixName(q.name) + '/MO',useConstraint="false", threshold=0.2))
-    #  indices1= oIndices, indices2 = qIndices,
+    t.append(ET.Element("ConnectingTissue", object1='@' + fixName(o.name), object2='@' + fixName(q.name),useConstraint="false", threshold=o.attachThreshold))
 
 def addConnectionsToTissue(t, o, opt):
     if o.object1 in opt.scene.objects:
-        addSpringsBetween(t, o, opt.scene.objects[o.object1], opt)
+        addConnectionsBetween(t, o, opt.scene.objects[o.object1], opt)
     if o.object2 in opt.scene.objects:
-        addSpringsBetween(t, o, opt.scene.objects[o.object2], opt)
+        addConnectionsBetween(t, o, opt.scene.objects[o.object2], opt)
 
 
-def exportHaptic(l, scene, opt):
+def exportHaptic(l, opt):
+    scene = opt.scene
     hapticDevices = opt.pref.hapticDevices
     # If there are no haptic devices, then haptic is not enabled
     if len(hapticDevices) == 0:
@@ -987,10 +911,10 @@ def objectNode(opt, t):
     else:
         return t
 
-import math
 
-# Calculate field of view in degrees from focal length of a lens, assuming the standard film size
 def fovOfCamera(c):
+    """Calculate field of view in degrees from focal length of a lens, 
+    assuming the standard film size"""
     correction = 717 / 1024.0
     return 2 * math.atan(c.sensor_width / (2 * c.lens)) * 180 / math.pi * correction
 
@@ -1046,7 +970,7 @@ def exportScene(opt):
         l = list(scene.objects)
     l.reverse()
 
-    root.extend(exportHaptic(l, scene, opt))
+    root.extend(exportHaptic(l, opt))
 
     for o in l:
         t = objectNode(opt, exportObject(opt, o))
@@ -1080,7 +1004,6 @@ class ExportToSofa(Operator, ExportHelper):
     bl_idname = "export.tosofa"
     bl_label = "Export To SOFA"
 
-    # ExportHelper mixin class uses this
     filename_ext = EnumProperty(
       name ='File format', description='File format of the SOFA scene file to be created',
        items = FILEFORMATS, default='.scn' )
