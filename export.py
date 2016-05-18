@@ -288,12 +288,12 @@ def exportThickQuadShell(o, opt):
     addConstraints(o, t)
 
 
-    for i, tp in enumerate([ ishell, oshell ]):
+    for i, tp in enumerate([ oshell, ishell ]):
       n = ET.Element('Node')
-      if i == 1:
-        n.set('name', 'Collision Outer')
+      if i == 0:
+        n.set('name', 'CollisionOuter')
       else:
-        n.set('name', 'Collision Inner')
+        n.set('name', 'CollisionInner')
       n.append(tp)
       n.append(ET.Element('TriangleSetTopologyContainer', src = "@" + tp.get('name')))
       n.append(ET.Element('EdgeSetTopologyModifier'))
@@ -684,7 +684,7 @@ def exportRigid(o, opt):
     t = ET.Element("Node",name=name)
     t.set('author-parent', 'SolverNode')
     t.set('author-order', 1)
-    
+
     t.append(exportVisual(o, opt, name = name + '-visual', with_transform = False))
     t.append(exportTriangularTopology(o,opt))
 
@@ -788,7 +788,7 @@ def exportVisual(o, opt, name = None,with_transform = True):
 
 def exportObject(opt, o):
     t = None
-    if not o.hide_render and o.parent == None:
+    if not o.hide_render:
         annotated_type = o.template
         name = fixName(o.name)
         if o.type == 'MESH' or o.type == 'SURFACE' or o.type == 'CURVE':
@@ -857,7 +857,7 @@ def exportHaptic(l, opt):
     for o in l:
         if not o.hide_render and o.template == 'INSTRUMENT':
             instruments.append(objectNode(opt, exportInstrument(o, opt)))
-            
+
     if scene.hapticWorkspaceBox in scene.objects:
         b = scene.objects[scene.hapticWorkspaceBox]
         positionBase = b.location
@@ -867,7 +867,7 @@ def exportHaptic(l, opt):
         positionBase = [0, 0, 0]
         orientationBase = [0, 0, 0, 1]
         scaleBase = 1
-      
+
 
     for hp in hapticDevices:
         n = hp.deviceName
@@ -913,7 +913,7 @@ def objectNode(opt, t):
 
 
 def fovOfCamera(c):
-    """Calculate field of view in degrees from focal length of a lens, 
+    """Calculate field of view in degrees from focal length of a lens,
     assuming the standard film size"""
     correction = 717 / 1024.0
     return 2 * math.atan(c.sensor_width / (2 * c.lens)) * 180 / math.pi * correction
