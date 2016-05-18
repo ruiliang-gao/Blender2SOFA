@@ -582,7 +582,7 @@ def pointInsideSphere(v,s,f):
 def verticesInsideSphere(o, m, s, factor = 1):
     vindex = []
     for v in m.vertices:
-        if pointInsideSphere(o.matrix_world*v.co, s, f):
+        if pointInsideSphere(o.matrix_world*v.co, s, factor):
             vindex.append(v.index)
     return vindex
 
