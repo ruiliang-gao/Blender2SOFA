@@ -879,7 +879,7 @@ def exportHaptic(l, opt):
         rl.append(ET.Element("NewOmniDriver",
                              name = 'driver',
                              deviceName = hp.deviceName,
-                             tags= omniTag, scale = hp.scale * scaleBase , positionBase = positionBase, orientationBase = orientationBase,
+                             tags= omniTag, scale = hp.scale * scaleBase , positionBase = positionBase, orientationBase = orientationBase, desirePosition = positionBase,
                              permanent="true", listening="true", alignOmniWithCamera="false",
                              forceScale = hp.forceScale));
         rl.append(ET.Element("MechanicalObject", name="ToolRealPosition", tags=omniTag, template="Rigid", position="0 0 0 0 0 0 1",free_position="0 0 0 0 0 0 1"))
