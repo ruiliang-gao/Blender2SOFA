@@ -498,9 +498,9 @@ def exportInstrument(o, opt):
                              contactStiffness="0.01", bothSide="0", proximity = i.proximity,
                              group= o.collisionGroup
                              )
-            if i.toolFunction == 'CARVIE':
+            if o.toolFunction == 'CARVE':
               pm.set('tags', 'CarvingTool')
-            elif i.toolFunction == 'SUTURE':
+            elif o.toolFunction == 'SUTURE':
               pm.set('tags', 'SuturingTool')
             else:
               pm.set('tags', 'GraspingTool')

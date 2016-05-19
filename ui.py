@@ -49,6 +49,8 @@ class SofaObjectAnnotationPanel(bpy.types.Panel):
             c.prop(p, 'toolFunction')
         elif t == 'INSTRUMENTPART':
             c.prop(p, 'instrumentPart')
+        elif t == 'INSTRUMENTTIP':
+            c.prop(p, 'proximity')
         elif t in [ 'VOLUMETRIC', 'THICKSHELL', 'THICKCURVE' ]:
             c.prop(p, 'youngModulus')
             c.prop(p, 'poissonRatio')
@@ -90,7 +92,7 @@ class SofaObjectAnnotationPanel(bpy.types.Panel):
             c.prop(p, 'selfCollision')
             c.prop(p, 'carvable')
             c.prop(p, 'suture')
-          
+
 
         if t == 'VOLUMETRIC':
             if o.type != 'MESH' or len(o.data.hexahedra) + len(o.data.tetrahedra) == 0:
