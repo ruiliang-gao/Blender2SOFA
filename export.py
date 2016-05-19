@@ -672,7 +672,7 @@ def exportObstacle(o, opt):
     t.set('author-parent', 'root')
     t.set('author-order', 1)
     t.append(exportVisual(o, opt, name = name+'-visual', with_transform = True))
-    t.append(exportTriangularTopology(o,opt))
+    t.append(exportTriangularTopologyContainer(o,opt))
     t.append(createMechanicalObject(o))
     t.extend(collisionModelParts(o,obstacle = True))
     t.append(ET.Element('UncoupledConstraintCorrection'))
