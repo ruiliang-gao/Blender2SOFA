@@ -4,7 +4,7 @@ from .io_msh import recalc_outer_surface
 from mathutils import Vector
 
 # Relative vertex indices of a hexahedron
-HEX_VERTICES = [ (0,0,0), (1,0,0), (1,1,0), (0,1,0), (0,0,1), (1,0,1), (0,1,1) ]
+HEX_VERTICES = [ (0,0,0), (1,0,0), (1,1,0), (0,1,0), (0,0,1), (1,0,1), (1,1,1), (0,1,1) ]
 
 class FattyTissue(bpy.types.Operator):
     bl_idname = "mesh.construct_fatty_tissue"
@@ -14,7 +14,7 @@ class FattyTissue(bpy.types.Operator):
 
     cube = bpy.props.StringProperty(name = 'Sampling Cube', description = 'The cube used for sampling')
     organ = bpy.props.StringProperty(name = 'Organ', description = 'The organ on which the fat is wrapped around')
-    distance_from_surface = bpy.props.FloatProperty(name = 'Distance from Surface',description='Distance of fatty tissue from organ surface',default=0,min=0,step=0.01)
+    thickness_from_surface = bpy.props.FloatProperty(name = 'Distance from Surface',description='Distance of fatty tissue from organ surface',default=0,min=0,step=0.01)
     resolution = bpy.props.IntProperty(name = 'Resolution', description = 'Number of subdivisions along each edge of the cube. Determines the number of hexahedra generated',default=5,min=2,max=20)
     project_to_surface = bpy.props.BoolProperty(name = 'Project points to surface',default=False,description='If set, the grid points are moved to the surface, may procedue some degenerate hexahedra')
     keep_the_cube = bpy.props.BoolProperty(name = 'Keep the Cube',default=False, description='If set, the input cube will not be removed after the mesh is generated')
@@ -41,7 +41,7 @@ class FattyTissue(bpy.types.Operator):
         l.prop(self, 'resolution')
         l.prop(self, 'project_to_surface')
         if not self.project_to_surface:
-          l.prop(self, 'distance_from_surface')
+          l.prop(self, 'thickness_from_surface')
         l.prop(self, 'keep_the_cube')
 
     def execute(self, context):
@@ -52,7 +52,7 @@ class FattyTissue(bpy.types.Operator):
         if project:
           D = 0
         else:
-          D = self.distance_from_surface
+          D = self.thickness_from_surface
 
         # Create a new mesh to be associated with the empty object
         M = bpy.data.meshes.new(name = 'Fatty tissue around %s' % o.name)
@@ -74,7 +74,7 @@ class FattyTissue(bpy.types.Operator):
             v = oinv * c.matrix_world * co
             location,normal,_ = o.closest_point_on_mesh(v)
             d = (o.matrix_world*v - o.matrix_world*location).length
-            if normal.dot(v - location) > 0 and d > D or project and d < radius:
+            if normal.dot(v - location) > 0 and d < D or project and d < radius:
                 isVertexOutside[x,y,z] = True
                 vertexIndex[x,y,z] = len(M.vertices)
                 M.vertices.add(1)
@@ -111,11 +111,6 @@ class FattyTissue(bpy.types.Operator):
         O.rotation_axis_angle = c.rotation_axis_angle
         O.scale = c.scale
 
-        # Remove the cube
-        if not self.keep_the_cube:
-            context.scene.objects.unlink(c)
-            bpy.data.objects.remove(c)
-
         # Add the object to the scene
         context.scene.objects.link(O)
 
@@ -123,5 +118,10 @@ class FattyTissue(bpy.types.Operator):
         c.select = False
         o.select = False
         O.select = True
+        
+        # Remove the cube
+        if not self.keep_the_cube:
+            context.scene.objects.unlink(c)
+            bpy.data.objects.remove(c)
 
         return { 'FINISHED' }
