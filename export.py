@@ -849,7 +849,7 @@ def exportHaptic(l, opt):
 
     # Stuff at the root that are needed for a haptic scene
     nodes.append(ET.Element("RequiredPlugin", pluginName="Sensable"))
-    nodes.append(ET.Element("RequiredPlugin", pluginName="SofaSuturing"))
+    nodes.append(ET.Element("RequiredPlugin", pluginName="SurfLabHaptic"))
     nodes.append(ET.Element("RequiredPlugin", pluginName="SaLua"))
     nodes.append(ET.Element("LuaController", source = "changeInstrumentController.lua", listening=1))
 
