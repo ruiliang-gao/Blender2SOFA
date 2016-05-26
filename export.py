@@ -185,6 +185,8 @@ def addConstraintCorrection(o, t):
     else:
         t.append(ET.Element('UncoupledConstraintCorrection'))
 
+#CURVE2HEX = [ 3,2,1,0, 7,6,5,4 ]
+CURVE2HEX = [ 0,1,2,3,4,5,6,7 ]
 def exportThickCurveTopology(o, opt, name):
     m = o.to_mesh(opt.scene, True, 'PREVIEW')
 
@@ -196,28 +198,29 @@ def exportThickCurveTopology(o, opt, name):
     hexahedra = np.empty([H, 8], dtype=int)
     for i in range(H):
       for j in range(8):
-        hexahedra[i][j] = i*4 + j
+        hexahedra[i][j] = i*4 + CURVE2HEX[j]
 
     return geometryNode(opt, ET.Element('HexahedronSetTopologyContainer',name = name, points = points, hexahedra = hexahedra))
 
 def exportThickCurve(o, opt):
     name = fixName(o.name)
-    t = ET.Element('Node', name = name)
-    t.set('author-parent', 'SolverNode')
-    t.set('author-order', 1)
+    t = ET.Element("Node", name = name)
+    #t.set('authorparent', 'SolverNode')
+    #t.set('authororder', 1)
 
     topo = name + '-topology'
     t.append(exportThickCurveTopology(o, opt, topo))
 
     t.append(createMechanicalObject(o))
     t.append(ET.Element('HexahedronSetTopologyModifier', removeIsolated = 'false'))
-    t.append(ET.Element('HexahedronSetTopologyAlgorithms'))
-    t.append(ET.Element('HexahedronSetGeometryAlgorithms'))
+    t.append(ET.Element('HexahedronSetTopologyAlgorithms',template="Vec3d"))
+    t.append(ET.Element('HexahedronSetGeometryAlgorithms',template="Vec3d"))
 
     # set massDensity later
     t.append(ET.Element("DiagonalMass"))
 
-    h = ET.Element("HexahedronFEMForceField",template="Vec3d", method="large")
+    #h = ET.Element("HexahedronFEMForceField",template="Vec3d", method="large")
+    h = ET.Element("HexahedronFEMForceField", method="large")
     addElasticityParameters(o,h)
     t.append(h)
     addConstraintCorrection(o, t)
@@ -253,7 +256,7 @@ def exportThickCurve(o, opt):
         moc.set('name', 'MOC')
         n.append(moc)
         n.extend(collisionModelParts(o))
-        n.append(ET.Element("BarycentricMapping",input="@../MO",output="@MOC"))
+        n.append(ET.Element("BarycentricMapping",object1="../MO",object2="MOC"))
         t.append(n)
 
         v = ET.Element('Node', name="Visual")
@@ -323,8 +326,6 @@ def exportThickQuadShell(o, opt):
 
 
     return t
-
-
 
 
 def exportVolumetric(o, opt):
@@ -664,7 +665,6 @@ def addElasticityParameters(o, t):
     t.set("rayleighStiffness", o.rayleighStiffness)
     t.set("damping", o.damping)
     return t
-
 
 def exportObstacle(o, opt):
     name=fixName(o.name)
