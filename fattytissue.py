@@ -72,7 +72,7 @@ class FattyTissue(bpy.types.Operator):
           for z in range(L+1):
             co = c.empty_draw_size * ( 2.0 * Vector((x,y,z)) / L - Vector((1,1,1)) )
             v = oinv * c.matrix_world * co
-            location,normal,_ = o.closest_point_on_mesh(v)
+            result,location,normal,_ = o.closest_point_on_mesh(v)
             d = (o.matrix_world*v - o.matrix_world*location).length
             if normal.dot(v - location) > 0 and d < D or project and d < radius:
                 isVertexOutside[x,y,z] = True

@@ -23,7 +23,7 @@ class SofaActionsPanel(bpy.types.Panel):
         c.operator("mesh.construct_fatty_tissue", icon='FACESEL_HLT', text = 'Fatty Tissue')
         layout.separator()
         layout.operator("mesh.add_thick_curve", icon= 'ROOTCURVE')
-        layout.operator("mesh.add_hex_rod", icon= 'ROOTCURVE')
+        #layout.operator("mesh.add_hex_rod", icon= 'ROOTCURVE')
         if ConvertFromCustomProperties.poll(context):
             layout.operator(ConvertFromCustomProperties.bl_idname)
 
