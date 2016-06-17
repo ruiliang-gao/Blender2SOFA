@@ -503,6 +503,8 @@ def exportInstrument(o, opt):
               pm.set('tags', 'CarvingTool')
             elif o.toolFunction == 'SUTURE':
               pm.set('tags', 'SuturingTool')
+            elif o.toolFunction == 'CLAMP':
+              pm.set('tags', 'ClampingTool')
             else:
               pm.set('tags', 'GraspingTool')
 
