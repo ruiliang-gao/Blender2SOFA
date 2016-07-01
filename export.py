@@ -59,16 +59,16 @@ def stringify_etree(node):
         stringify_etree(c)
 
 def exportSeparateFile(opt, t, name):
-  base = os.path.join(opt.directory, name)
-  if opt.file_format == '.salua':
-    r = ET.Element("require", href=name)
-    writeSubTreeToLua(t, base + '.lua')
-  else:
-    ext = '.xml'
-    r = ET.Element("include", href=name + ext)
-    stringify_etree(t)
-    ET.ElementTree(t).write(base + ext)
-  return r
+    base = os.path.join(opt.directory, name)
+    if opt.file_format == '.salua':
+        r = ET.Element("require", href=name)
+        writeSubTreeToLua(t, base + '.lua')
+    else:
+        ext = '.xml'
+        r = ET.Element("include", href=name + ext)
+        stringify_etree(t)
+        ET.ElementTree(t).write(base + ext)
+    return r
 
 def geometryNode(opt, t):
     if opt.isolate_geometry and t.get('name') != None:
@@ -928,6 +928,47 @@ def exportCamera(o, opt):
     lookAt = o.matrix_world * Vector((0,0,-1))
     return ET.Element("InteractiveCamera", position=position, orientation=orientation, fieldOfView=fov, distance=1)
 
+def get_obj_family(obj):    # get object and its children
+    objs = set()
+    def add_obj(obj):
+        objs.add(obj)
+        for child in obj.children:
+            add_obj(child)
+    add_obj(obj)
+    return objs
+
+def remove_others(objs):    # remove objects not contained in objs
+    scene = bpy.context.scene
+    for obj in scene.objects:
+        if obj not in objs:
+            scene.objects.unlink(obj)
+            try:
+                bpy.data.objects.remove(obj)
+            except RuntimeError: # non-zero users
+                pass
+    scene.update()
+   
+def prepare_name(opt, name):  
+    chars_to_replace = [ '.','/',':','*','?','"','<','>','|' ]
+    for c in chars_to_replace:
+        name = name.replace(c, '_')
+    return  os.path.join(opt.directory, name + ".blend")
+    
+def export2Blend(opt, l):
+    names = [ o.name for o in l ]   # object names in scene as obj pointers are to be nullified in remove_others
+    print(names)
+    for name in names:
+        obj = bpy.data.objects[name]
+        if not obj.hide_render:
+            bpy.ops.ed.undo_push(message="Delete others")           # set a restore point
+            
+            objs = get_obj_family(obj)                              # get object and its children
+            remove_others(objs)                                     # remove other objects
+            path = prepare_name(opt, name)                          # get file name
+            bpy.ops.wm.save_as_mainfile(filepath=path, copy=True,)  # save .blend file
+            
+            bpy.ops.ed.undo()                                       # restore deleted objects
+
 def exportScene(opt):
     scene = opt.scene
     selection = opt.selection_only
@@ -942,10 +983,8 @@ def exportScene(opt):
         root.set("gravity",[0,0,0])
     root.set("dt",0.01)
 
-
     if scene.camera is not None:
         root.append(exportCamera(scene.camera, opt))
-
 
     #lcp = ET.Element("LCPConstraintSolver", tolerance="1e-6", maxIt = "1000", mu = scene.mu, '1e-6'))
     lcp = ET.Element("GenericConstraintSolver", tolerance="1e-6", maxIterations = "1000")
@@ -961,7 +1000,6 @@ def exportScene(opt):
     solverNode = ET.Element("Node", name="SolverNode")
     addSolvers(solverNode)
 
-
     root.append(ET.Element("LightManager"))
     if scene.showXYZFrame:
       root.append(ET.Element("OglSceneFrame"))
@@ -973,7 +1011,7 @@ def exportScene(opt):
     l.reverse()
 
     root.extend(exportHaptic(l, opt))
-
+    
     for o in l:
         t = objectNode(opt, exportObject(opt, o))
         if t != None:
@@ -988,6 +1026,11 @@ def exportScene(opt):
         if not o.hide_render and o.template == 'ATTACHCONSTRAINT':
             solverNode.append( objectNode(opt, exportAttachConstraint(o, opt)) )
     root.append(solverNode)
+    
+    # export objects in separate .blend files ATTN: opt.scene might be affected after this code is ran.
+    if opt.separate:
+        export2Blend(opt, l)
+    
     return root
 
 class ExportOptions:
