@@ -13,7 +13,7 @@ bl_info = {
 
 import bpy
 
-from . import io_msh, ui, conn_tiss, fattytissue, export, runsofa, thick_curve, preferences, types
+from . import io_msh, io_zip, ui, conn_tiss, fattytissue, export, runsofa, thick_curve, preferences, types
 from .types import *
 
 
@@ -29,6 +29,8 @@ def register():
     bpy.utils.register_module(__name__)
     # Register properties in io_msh
     io_msh.register_other()
+	# Register properties in io_zip
+    io_zip.register_other()
     # Add the items in export menu
     bpy.types.INFO_MT_file_export.append(menu_func_export)
     # Add SOFA properties to scene and objects
@@ -47,6 +49,8 @@ def unregister():
     types.unregister_sofa_properties()
     # Remove items in export menu
     bpy.types.INFO_MT_file_export.remove(menu_func_export)
+	# Remove io_zip properties
+    io_zip.unregister_other()
     # Remove io_msh properties
     io_msh.unregister_other()
     # Unregister everything
