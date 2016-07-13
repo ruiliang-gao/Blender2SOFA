@@ -14,8 +14,9 @@ class FattyTissue(bpy.types.Operator):
 
     cube = bpy.props.StringProperty(name = 'Sampling Cube', description = 'The cube used for sampling')
     organ = bpy.props.StringProperty(name = 'Organ', description = 'The organ on which the fat is wrapped around')
-    thickness_from_surface = bpy.props.FloatProperty(name = 'Distance from Surface',description='Distance of fatty tissue from organ surface',default=0,min=0,step=0.01)
-    resolution = bpy.props.IntProperty(name = 'Resolution', description = 'Number of subdivisions along each edge of the cube. Determines the number of hexahedra generated',default=5,min=2,max=20)
+    thickness_from_surface = bpy.props.FloatProperty(name = 'Distance from Surface',description='Distance of fatty tissue from organ surface',default=0.5,min=0,step=0.01)
+    resolution = bpy.props.IntProperty(name = 'Resolution', description = 'Number of subdivisions along each edge of the cube. Determines the number of hexahedra generated',default=8,min=2,max=20)
+    smoothness = bpy.props.IntProperty(name = 'Smoothness', description = 'How smooth the fatty tissue should be. Ideal is 2.',default=2,min=0,max=3)
     project_to_surface = bpy.props.BoolProperty(name = 'Project points to surface',default=False,description='If set, the grid points are moved to the surface, may procedue some degenerate hexahedra')
     keep_the_cube = bpy.props.BoolProperty(name = 'Keep the Cube',default=False, description='If set, the input cube will not be removed after the mesh is generated')
 
@@ -42,6 +43,7 @@ class FattyTissue(bpy.types.Operator):
         l.prop(self, 'project_to_surface')
         if not self.project_to_surface:
           l.prop(self, 'thickness_from_surface')
+        l.prop(self, 'smoothness')
         l.prop(self, 'keep_the_cube')
 
     def execute(self, context):
@@ -58,7 +60,7 @@ class FattyTissue(bpy.types.Operator):
         M = bpy.data.meshes.new(name = 'Fatty tissue around %s' % o.name)
 
         # Flags of which vertices on the grid are outside
-        isVertexOutside = np.zeros([L+1,L+1,L+1],dtype=bool)
+        isNearParentOrgan = np.zeros([L+1,L+1,L+1],dtype=bool)
         # The index of the grid vertex in the mesh
         vertexIndex = np.zeros([L+1,L+1,L+1],dtype=int)
         # Generate vertices for the points, test each one against the
@@ -72,26 +74,40 @@ class FattyTissue(bpy.types.Operator):
           for z in range(L+1):
             co = c.empty_draw_size * ( 2.0 * Vector((x,y,z)) / L - Vector((1,1,1)) )
             v = oinv * c.matrix_world * co
-            result,location,normal,_ = o.closest_point_on_mesh(v)
-            d = (o.matrix_world*v - o.matrix_world*location).length
-            if normal.dot(v - location) > 0 and d < D or project and d < radius:
-                isVertexOutside[x,y,z] = True
-                vertexIndex[x,y,z] = len(M.vertices)
-                M.vertices.add(1)
-                if project and d < radius:
-                    M.vertices[-1].co = cinv * o.matrix_world * location
-                else:
-                    M.vertices[-1].co = co
+            # version_string is a string composed of Blender version + "(sub 0)". E.g. "2.76 (sub 0)"
+            # blenderVer stores the first 4 digits of the string, that is the version number.
+            blenderVer = bpy.app.version_string[0:4]
+            if (float(blenderVer) >= 2.77):
+                result,location,normal,_ = o.closest_point_on_mesh(v)
             else:
-                vertexIndex[x,y,z] = -1
-                isVertexOutside[x,y,z] = False
+                location,normal,_ = o.closest_point_on_mesh(v)
+            d = (o.matrix_world*v - o.matrix_world*location).length
+            
+            if normal.dot(v - location) > 0:
+                if d < D: #or project and d < radius:
+                    isNearParentOrgan[x,y,z] = True
+                    vertexIndex[x,y,z] = len(M.vertices) 
+                    M.vertices.add(1)
+                    M.vertices[-1].co = co
+                else:
+                    vertexIndex[x,y,z] = -1
+                    isNearParentOrgan[x,y,z] = False
+            else:
+                if d < 1.5 * D: #Make sure all inside vertices of a hex are in the M list
+                    isNearParentOrgan[x,y,z] = True
+                    vertexIndex[x,y,z] = len(M.vertices) 
+                    M.vertices.add(1)
+                    M.vertices[-1].co = co
+                else:
+                    vertexIndex[x,y,z] = -1
+                    isNearParentOrgan[x,y,z] = False
 
         for x in range(L):
          for y in range(L):
           for z in range(L):
             # Check that all the vertices required for this hexa are available and outside
             # the surface
-            verticesAvailable = all([ isVertexOutside[x+i,y+j,z+k] for i,j,k in HEX_VERTICES ])
+            verticesAvailable = all([ isNearParentOrgan[x+i,y+j,z+k] for i,j,k in HEX_VERTICES ])
             # Build the hexa if all the vertices are available
             if verticesAvailable:
                 h = M.hexahedra.add()
@@ -114,14 +130,32 @@ class FattyTissue(bpy.types.Operator):
         # Add the object to the scene
         context.scene.objects.link(O)
 
-        # Select the new object
+        # Deselect all objects (Note: Only c and o could  be selected at this time)
+        #bpy.ops.object.select_all(action='DESELECT')
         c.select = False
         o.select = False
-        O.select = True
+        #O.select = True
         
         # Remove the cube
         if not self.keep_the_cube:
             context.scene.objects.unlink(c)
             bpy.data.objects.remove(c)
+            
+        # Select the fatty tissue object and runs the smooth function the number of times specified by the user in Blender
+        # The smooth function can only be executed in Edit Mode
+        O.select = True
+        bpy.context.scene.objects.active = O
+        bpy.ops.object.mode_set(mode = 'EDIT')
+        for i in range (0, self.smoothness):
+          bpy.ops.mesh.vertices_smooth()
+        bpy.ops.object.mode_set(mode = 'OBJECT')
+        
+        # Set the default values for the fatty tissue
+        O.template = 'VOLUMETRIC'
+        O.youngModulus = 9000
+        O.rayleighStiffness = 0.1
+        O.carvable = True
+        # Attaches the fatty tissue to the organ
+        O.object1 = o.name
 
         return { 'FINISHED' }
