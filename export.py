@@ -12,6 +12,8 @@ from bpy.props import StringProperty, BoolProperty, EnumProperty
 from bpy.types import Operator
 import math
 import bmesh
+import zipfile
+from os.path import basename
 
 FILEFORMATS = [ ('.salua', 'SaLua', 'Lua based scene file'), ('.scn', 'XML', 'XML scene file') ]
 
@@ -68,6 +70,8 @@ def exportSeparateFile(opt, t, name):
         r = ET.Element("include", href=name + ext)
         stringify_etree(t)
         ET.ElementTree(t).write(base + ext)
+	#add to the xml files to the filepath
+    opt.filepath_list.append(base+ext)
     return r
 
 def geometryNode(opt, t):
@@ -955,20 +959,33 @@ def prepare_name(opt, name):
     return  os.path.join(opt.directory, name + ".blend")
     
 def export2Blend(opt, l):
+
     names = [ o.name for o in l ]   # object names in scene as obj pointers are to be nullified in remove_others
     print(names)
     for name in names:
         obj = bpy.data.objects[name]
+        print(obj)
         if not obj.hide_render:
             bpy.ops.ed.undo_push(message="Delete others")           # set a restore point
             
             objs = get_obj_family(obj)                              # get object and its children
             remove_others(objs)                                     # remove other objects
             path = prepare_name(opt, name)                          # get file name
+            opt.filepath_list.append(path)							# add this blend file path to the list of exported files
             bpy.ops.wm.save_as_mainfile(filepath=path, copy=True,)  # save .blend file
-            
-            bpy.ops.ed.undo()                                       # restore deleted objects
 
+            bpy.ops.ed.undo()                                       # restore deleted objects
+    		 
+                
+        
+def zipExportedFiles(opt):
+    if opt.export_to_zip:
+        archive = zipfile.ZipFile(opt.directory+"\\"+os.path.splitext(basename(opt.filepath))[0]+".zip", mode='w')
+        for file in opt.filepath_list:
+                archive.write(file, basename(file))
+                os.remove(file)
+
+   
 def exportScene(opt):
     scene = opt.scene
     selection = opt.selection_only
@@ -1026,11 +1043,10 @@ def exportScene(opt):
         if not o.hide_render and o.template == 'ATTACHCONSTRAINT':
             solverNode.append( objectNode(opt, exportAttachConstraint(o, opt)) )
     root.append(solverNode)
-    
-    # export objects in separate .blend files ATTN: opt.scene might be affected after this code is ran.
     if opt.separate:
-        export2Blend(opt, l)
+        export2Blend(opt, l)    
     
+
     return root
 
 class ExportOptions:
@@ -1075,7 +1091,12 @@ class ExportToSofa(Operator, ExportHelper):
             description="Put each geometry components of objects into separate files",
             default=False,
             )
-
+    export_to_zip = BoolProperty(
+            name="Export the isolated objects into a zip file",
+            description="Export Isolated Objects into Separate Files Inside A *.zip File",
+            default=False,
+            )
+			
     @classmethod
     def poll(cls, context):
         return context.scene is not None
@@ -1085,15 +1106,25 @@ class ExportToSofa(Operator, ExportHelper):
         try:
             opt = ExportOptions()
             opt.isolate_geometry = self.isolate_geometry
+            opt.export_to_zip = self.export_to_zip
             opt.scene = context.scene
             opt.separate = self.export_separate
             opt.selection_only = self.use_selection
             opt.directory = os.path.dirname(self.filepath)
+            opt.filepath = self.filepath
+            opt.filepath_list = []
+			#adds the self.filepath that is the scene filepath
+            opt.filepath_list.append(self.filepath)
             opt.file_format = self.filename_ext
             opt.pref = context.user_preferences.addons[__package__].preferences
             root = exportScene(opt)
             writeNodesToFile(root, self.filepath, opt)
+			
+			# export objects in separate .blend files ATTN: opt.scene might be affected after this code is ran.
 
+            if(opt.export_to_zip):
+                zipExportedFiles(opt)
+			
             return {'FINISHED'}
         except ExportException as et:
             self.report({'ERROR'}, "Export failed: %s" % et.message)

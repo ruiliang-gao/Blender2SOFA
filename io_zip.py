@@ -19,6 +19,7 @@ from bpy_extras.io_utils import ImportHelper
 from bpy.props import StringProperty, BoolProperty
 import os
 import zipfile
+import shutil
 
 class ImportZIP(bpy.types.Operator, ImportHelper):
   """Import blend files from zip files"""
@@ -42,11 +43,11 @@ class ImportZIP(bpy.types.Operator, ImportHelper):
     #here
     filepath = self.filepath
     fileDirectory = os.path.dirname(filepath)
+    tempPath = fileDirectory +"\\temp_zip_extracted_blend_files"
     scn = bpy.context.scene
-    objName = os.path.basename(filepath)#bpy.path.display_name()
-    archive = zipfile.ZipFile(self.filepath, 'r')
-    filesToDelete=[]
+    archive = zipfile.ZipFile(filepath, 'r')
 	
+	#check if the the option to erase the scene is checked
     if(self.erase_scene):
       for ob in bpy.context.scene.objects:
         ob.select = True
@@ -55,20 +56,27 @@ class ImportZIP(bpy.types.Operator, ImportHelper):
 	
 	#file names inside the zip file
     for file in archive.namelist():
-      
+	  #extracts files ending with .blend
       if file.endswith(".blend"):
-        extractedFile = archive.extract(file,fileDirectory)
-        filesToDelete.append(extractedFile)
+        extractedFile = archive.extract(file,tempPath)
+		#load objects to blender
         with bpy.data.libraries.load(extractedFile) as (data_from, data_to):
           data_to.objects = data_from.objects
-	#link object to current scene
+	    #link object to current scene
         for obj in data_to.objects:
           if obj is not None:
             scn.objects.link(obj)
-    #here 2
-    for file in filesToDelete:
-      os.remove(file)
+			#select the new objects in the scene
+            obj.select = True
+			
+	#if the scene was erased, deselect all.		
+    if(self.erase_scene):
+      for obj in scn:
+        obj.select = False
 		
+    #deletes the temporary created folder
+    shutil.rmtree(tempPath)	
+	
     return { 'FINISHED' }
 
 
