@@ -825,6 +825,8 @@ def exportObject(opt, o):
                 t.set("color", (o.data.color))
                 direction = o.rotation_quaternion * Vector((0,0,-1))
                 t.set("direction",(direction))
+                t.set("exponent", 0.5)
+                t.set("cutoff", 60)
             elif o.data.type == 'POINT':
                 t = ET.Element("PositionalLight", name=fixName(o.name))
                 t.set("position", (o.location))
