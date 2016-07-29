@@ -50,7 +50,7 @@ class SofaObjectAnnotationPanel(bpy.types.Panel):
             c.prop(p, 'toolFunction')
         elif t == 'INSTRUMENTPART':
             c.prop(p, 'instrumentPart')
-        elif t == 'INSTRUMENTTIP':
+        elif t == 'INSTRUMENTTIP' or 'INSTRUMENTCOLLISION':
             c.prop(p, 'proximity')
         elif t in [ 'VOLUMETRIC', 'THICKSHELL', 'THICKCURVE' ]:
             c.prop(p, 'youngModulus')
@@ -129,7 +129,7 @@ PROPERTY_NAME_MAP = { 'topObject': 'object1', 'botObject': 'object2', 'stretchDa
     'attach_stiffness': 'attachStiffness', '3dtexture':'texture3d' }
 TEMPLATE_MAP = { 'CONNECTIVETISSUE': 'VOLUMETRIC',
     # the rest are identity mappings
-    'THICKSHELL': 'THICKSHELL', 'CLOTH': 'CLOTH','COLLISION':'COLLISION','ATTACHCONSTRAINT':'ATTACHCONSTRAINT','SPHERECONSTRAINT':'SPHERECONSTRAINT','VOLUMETRIC':'VOLUMETRIC','INSTRUMENT':'INSTRUMENT','INSTRUMENTPART':'INSTRUMENTPART','INSTRUMENTTIP':'INSTRUMENTTIP','THICKCURVE':'THICKCURVE' }
+    'THICKSHELL': 'THICKSHELL', 'CLOTH': 'CLOTH','COLLISION':'COLLISION','ATTACHCONSTRAINT':'ATTACHCONSTRAINT','SPHERECONSTRAINT':'SPHERECONSTRAINT','VOLUMETRIC':'VOLUMETRIC','INSTRUMENT':'INSTRUMENT','INSTRUMENTPART':'INSTRUMENTPART','INSTRUMENTTIP':'INSTRUMENTTIP','THICKCURVE':'THICKCURVE','INSTRUMENTCOLLISION':'INSTRUMENTCOLLISION' }
 
 def removeCustomProperty(o, k):
     del o[k]

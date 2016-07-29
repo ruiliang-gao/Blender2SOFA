@@ -23,7 +23,8 @@ def register_sofa_properties():
         ('ATTACHCONSTRAINT', 'Spring Attachment', '', 'LINKED', 9),
         ('INSTRUMENT','Haptic Instrument','A haptically enabled surgical instrument', 'SCULPTMODE_HLT',10),
         ('INSTRUMENTPART', 'Intrument part', 'An animated part of the instrument', 'OOPS', 11),
-        ('INSTRUMENTTIP','Tip of Instrument','Active part of the instrument that performs actions', 'OOPS', 12)
+        ('INSTRUMENTTIP','Tip of Instrument','Active part of the instrument that performs actions', 'OOPS', 12),
+        ('INSTRUMENTCOLLISION','Collision part of Instrument','Collision part of the instrument along the shaft', 'OOPS', 13)
         # Rigid does not work as expected. It is hidden until it is fixed
         # ('RIGID', 'Rigid', '', 'SOLID', 13),
         ])

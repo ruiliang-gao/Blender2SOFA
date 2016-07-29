@@ -515,6 +515,21 @@ def exportInstrument(o, opt):
             child.append(pm)
             child.append(ET.Element("RigidMapping", input="@../../instrumentState",output="@CM",index= 0))
             t.append(child)
+        if i.template == 'INSTRUMENTCOLLISION':
+            n = fixName(i.name)
+            child = ET.Element("Node", name= n)
+            if i.type == 'MESH':
+                child.append(exportTriangularTopology(i, opt))
+            mo = createMechanicalObject(i)
+            mo.set('name', 'CM');
+            child.append(mo)
+            pm = ET.Element("PointModel", name = 'toolCollision', bothSide="0",
+                             contactStiffness="0.01", contactFriction="500.0", proximity = i.proximity,
+                             group= o.collisionGroup, moving="1", selfCollision="0", simulated="1"
+                             )
+            child.append(pm)
+            child.append(ET.Element("RigidMapping", input="@../../instrumentState",output="@CM",index= 0))
+            t.append(child)
 
     hm = ET.Element("HapticManager", omniDriver = '@../../RigidLayer/driver',
         graspStiffness = "1e3", attachStiffness="1e12", grasp_force_scale = "-1e-3", duration = "50")
@@ -736,6 +751,7 @@ def addMaterial(o, t):
 
         d = vector_to_string(mat.diffuse_color*mat.diffuse_intensity)
         a = vector_to_string(mat.diffuse_color*mat.ambient)
+        
         s = vector_to_string(mat.specular_color*mat.specular_intensity)
         e = vector_to_string(mat.diffuse_color*mat.emit)
         tr = mat.alpha
@@ -902,7 +918,7 @@ def exportHaptic(l, opt):
         isn.append(ET.Element("EulerImplicitSolver", rayleighMass="0.0", rayleighStiffness="0.0"))
         isn.append(ET.Element("CGLinearSolver",iterations="100", tolerance="1.0e-20", threshold="1.0e-20"))
         isn.append(ET.Element("MechanicalObject", name = "instrumentState", template="Rigid3d", position="0 0 0 0 0 0 1 0 0 0 0 0 0 1 0 0 0 0 0 0 1 0 0 0 0 0 0 1", free_position="0 0 0 0 0 0 1 0 0 0 0 0 0 1 0 0 0 0 0 0 1 0 0 0 0 0 0 1" ))
-        isn.append(ET.Element("UniformMass", template = "Rigid3d", name="mass", totalmass="1"))
+        isn.append(ET.Element("UniformMass", template = "Rigid3d", name="mass", totalmass="0.5"))
         isn.append(ET.Element("LCPForceFeedback", activate=hp.forceFeedback, tags=omniTag, forceCoef="1.0"))
         isn.extend(instruments)
         isn.append(ET.Element("RestShapeSpringsForceField", template="Rigid",stiffness="1e12",angularStiffness="1e12", external_rest_shape="../RigidLayer/ToolRealPosition", points = "0"))
