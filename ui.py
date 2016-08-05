@@ -50,7 +50,7 @@ class SofaObjectAnnotationPanel(bpy.types.Panel):
             c.prop(p, 'toolFunction')
         elif t == 'INSTRUMENTPART':
             c.prop(p, 'instrumentPart')
-        elif t == 'INSTRUMENTTIP' or 'INSTRUMENTCOLLISION':
+        elif t in ['INSTRUMENTTIP', 'INSTRUMENTCOLLISION']:
             c.prop(p, 'proximity')
         elif t in [ 'VOLUMETRIC', 'THICKSHELL', 'THICKCURVE' ]:
             c.prop(p, 'youngModulus')
