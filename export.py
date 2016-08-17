@@ -106,7 +106,7 @@ def createMechanicalObject(o):
     return t
 
 def addSolvers(t):
-    t.append(ET.Element("EulerImplicitSolver", rayleighMass="0.0", rayleighStiffness="0.0"))
+    t.append(ET.Element("EulerImplicitSolver", rayleighMass="0.2", rayleighStiffness="0.2"))
     t.append(ET.Element("CGLinearSolver",iterations="50", tolerance="1.0e-10", threshold="1.0e-6"))
 
 def exportTetrahedralTopology(o, opt, name):
@@ -249,7 +249,7 @@ def exportThickCurve(o, opt):
       ts.append(ET.Element('TriangleSetTopologyAlgorithms', template="Vec3d"))
       ts.append(ET.Element('TriangleSetGeometryAlgorithms', template="Vec3d"))
       ts.append(ET.Element('Quad2TriangleTopologicalMapping', input = "@../" + name + "-quadSurf", output = "@" + name + "-triSurf"))
-      ts.extend(collisionModelParts(o))
+      ts.extend(fatCollisionModelParts(o))
 
       qs.append(ts)
       t.append(qs)
@@ -259,7 +259,7 @@ def exportThickCurve(o, opt):
         moc = createMechanicalObject(o)
         moc.set('name', 'MOC')
         n.append(moc)
-        n.extend(collisionModelParts(o))
+        n.extend(fatCollisionModelParts(o))
         n.append(ET.Element("BarycentricMapping",object1="../MO",object2="MOC"))
         t.append(n)
 
@@ -366,7 +366,7 @@ def exportVolumetric(o, opt):
         addMaterial(o, ogl);
         n.append(ogl)
         n.append(ET.Element("IdentityMapping",input="@../MO",output="@Visual"))
-        n.extend(collisionModelParts(o))
+        n.extend(fatCollisionModelParts(o))
         t.append(n)
 
     else:
@@ -425,7 +425,7 @@ def exportHexVolumetric(o, opt):
       ts.append(ET.Element('TriangleSetTopologyAlgorithms', template="Vec3d"))
       ts.append(ET.Element('TriangleSetGeometryAlgorithms', template="Vec3d"))
       ts.append(ET.Element('Quad2TriangleTopologicalMapping', input = "@../" + name + "-quadSurf", output = "@" + name + "-triSurf"))
-      ts.extend(collisionModelParts(o))
+      ts.extend(fatCollisionModelParts(o))
 
       qs.append(ts)
       t.append(qs)
@@ -474,10 +474,24 @@ def collisionModelParts(o, obstacle = False, group = None, bothSide = 0):
     sc = o.selfCollision
     if group == None:  group = o.collisionGroup
     return [
+        # ET.Element("PointModel",selfCollision=sc, contactFriction = o.contactFriction, contactStiffness = o.contactStiffness, group=group, moving = M, simulated = M, bothSide= bothSide ),
         ET.Element("PointModel",selfCollision=sc, contactFriction = o.contactFriction, contactStiffness = o.contactStiffness, group=group, moving = M, simulated = M, bothSide= bothSide ),
         ET.Element("LineModel",selfCollision=sc, contactFriction = o.contactFriction, contactStiffness = o.contactStiffness, group=group, moving = M, simulated = M, bothSide= bothSide ),
         ET.Element("TriangleModel", tags = sutureTag,selfCollision=sc, contactFriction = o.contactFriction, contactStiffness = o.contactStiffness, group=group, moving = M, simulated = M, bothSide= bothSide )
     ]
+    
+def fatCollisionModelParts(o, obstacle = False, group = None, bothSide = 0):
+    if o.suture:
+      sutureTag = 'HapticSurface'
+    else:
+      sutureTag = ''
+    M = not obstacle
+    sc = o.selfCollision
+    if group == None:  group = o.collisionGroup
+    return [
+        ET.Element("LineModel",selfCollision=sc, contactFriction = o.contactFriction, contactStiffness = o.contactStiffness, group=group, moving = M, simulated = M, bothSide= bothSide ),
+        ET.Element("TriangleModel", tags = sutureTag,selfCollision=sc, contactFriction = o.contactFriction, contactStiffness = o.contactStiffness, group=group, moving = M, simulated = M, bothSide= bothSide )
+    ]   
 
 
 def exportInstrument(o, opt):
@@ -499,8 +513,9 @@ def exportInstrument(o, opt):
             mo = createMechanicalObject(i)
             mo.set('name', 'CM');
             child.append(mo)
+            # the contactStiffness below used to be 0.01, Ruiliang changed to 2 to soften the organs.
             pm = ET.Element("TPointModel", name = 'toolTip',
-                             contactStiffness="0.01", bothSide="0", proximity = i.proximity,
+                             contactStiffness="2", bothSide="0", proximity = i.proximity,
                              group= o.collisionGroup
                              )
             if o.toolFunction == 'CARVE':
@@ -524,7 +539,7 @@ def exportInstrument(o, opt):
             mo.set('name', 'CM');
             child.append(mo)
             pm = ET.Element("PointModel", name = 'toolCollision', bothSide="0",
-                             contactStiffness="0.01", contactFriction="500.0", proximity = i.proximity,
+                             contactStiffness="0.5", contactFriction="500.0", proximity = i.proximity,
                              group= o.collisionGroup, moving="1", selfCollision="0", simulated="1"
                              )
             child.append(pm)
@@ -918,8 +933,8 @@ def exportHaptic(l, opt):
         isn.append(ET.Element("EulerImplicitSolver", rayleighMass="0.0", rayleighStiffness="0.0"))
         isn.append(ET.Element("CGLinearSolver",iterations="100", tolerance="1.0e-20", threshold="1.0e-20"))
         isn.append(ET.Element("MechanicalObject", name = "instrumentState", template="Rigid3d", position="0 0 0 0 0 0 1 0 0 0 0 0 0 1 0 0 0 0 0 0 1 0 0 0 0 0 0 1", free_position="0 0 0 0 0 0 1 0 0 0 0 0 0 1 0 0 0 0 0 0 1 0 0 0 0 0 0 1" ))
-        isn.append(ET.Element("UniformMass", template = "Rigid3d", name="mass", totalmass="0.5"))
-        isn.append(ET.Element("LCPForceFeedback", activate=hp.forceFeedback, tags=omniTag, forceCoef="1.0"))
+        isn.append(ET.Element("UniformMass", template = "Rigid3d", name="mass", totalmass="5.0"))
+        isn.append(ET.Element("LCPForceFeedback", activate=hp.forceFeedback, tags=omniTag, forceCoef="0.5"))
         isn.extend(instruments)
         isn.append(ET.Element("RestShapeSpringsForceField", template="Rigid",stiffness="1e12",angularStiffness="1e12", external_rest_shape="../RigidLayer/ToolRealPosition", points = "0"))
         isn.append(ET.Element("UncoupledConstraintCorrection"))

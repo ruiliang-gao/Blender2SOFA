@@ -152,7 +152,7 @@ class FattyTissue(bpy.types.Operator):
         
         # Set the default values for the fatty tissue
         O.template = 'VOLUMETRIC'
-        O.youngModulus = 9000
+        O.youngModulus = 3000
         O.rayleighStiffness = 0.1
         O.carvable = True
         # Attaches the fatty tissue to the organ
