@@ -34,6 +34,7 @@ def register_sofa_properties():
         ('GRASP', 'Grasp', 'A grasper instrument'),
         ('SUTURE','Suture', 'A grasper that can be used for suturing'),
         ('CARVE', 'Carve', 'An instrument that destroys tissue at contact'),
+        ('DISSECT','Dissect', 'An instrument that dissects tissue and veins at contact'),
         ('CLAMP', 'Clamp', 'Apply clips to vessels to close them')
         ])
     bpy.types.Object.instrumentPart = bpy.props.EnumProperty(name="Animated Part type",default='FIXED',items=[
