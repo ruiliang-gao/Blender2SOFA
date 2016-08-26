@@ -516,7 +516,7 @@ def exportInstrument(o, opt):
             child.append(mo)
             # the contactStiffness below used to be 0.01, I(Ruiliang) changed to 1.5 to soften the organs.
             pm = ET.Element("TPointModel", name = 'toolTip',
-                             contactStiffness="1.5", bothSide="0", proximity = i.proximity,
+                             contactStiffness="2.0", bothSide="0", proximity = i.proximity,
                              group= o.collisionGroup
                              )
             if o.toolFunction == 'CARVE':
@@ -870,7 +870,10 @@ def exportObject(opt, o):
 
 def addConnectionsBetween(t, o, q, opt):
     t.append(ET.Element("RequiredPlugin", name = "SurfLabConnectingTissue"))
-    t.append(ET.Element("ConnectingTissue", object1='@' + fixName(o.name), object2='@' + fixName(q.name),useConstraint="false", threshold=o.attachThreshold))
+    if o.attachStiffness < 3000:
+      t.append(ET.Element("ConnectingTissue", object1='@' + fixName(o.name), object2='@' + fixName(q.name),useConstraint="false", threshold=o.attachThreshold, connectingStiffness=o.attachStiffness))
+    else:
+      t.append(ET.Element("ConnectingTissue", object1='@' + fixName(o.name), object2='@' + fixName(q.name),useConstraint="false", threshold=o.attachThreshold))
 
 def addConnectionsToTissue(t, o, opt):
     if o.object1 in opt.scene.objects:
@@ -936,8 +939,8 @@ def exportHaptic(l, opt):
         isn.append(ET.Element("EulerImplicitSolver", rayleighMass="0.0", rayleighStiffness="0.0"))
         isn.append(ET.Element("CGLinearSolver",iterations="100", tolerance="1.0e-20", threshold="1.0e-20"))
         isn.append(ET.Element("MechanicalObject", name = "instrumentState", template="Rigid3d", position="0 0 0 0 0 0 1 0 0 0 0 0 0 1 0 0 0 0 0 0 1 0 0 0 0 0 0 1", free_position="0 0 0 0 0 0 1 0 0 0 0 0 0 1 0 0 0 0 0 0 1 0 0 0 0 0 0 1" ))
-        isn.append(ET.Element("UniformMass", template = "Rigid3d", name="mass", totalmass="3.0"))
-        isn.append(ET.Element("LCPForceFeedback", activate=hp.forceFeedback, tags=omniTag, forceCoef="0.25"))
+        isn.append(ET.Element("UniformMass", template = "Rigid3d", name="mass", totalmass="5.0"))
+        isn.append(ET.Element("LCPForceFeedback", activate=hp.forceFeedback, tags=omniTag, forceCoef="0.15"))
         isn.extend(instruments)
         isn.append(ET.Element("RestShapeSpringsForceField", template="Rigid",stiffness="1e12",angularStiffness="1e12", external_rest_shape="../RigidLayer/ToolRealPosition", points = "0"))
         isn.append(ET.Element("UncoupledConstraintCorrection"))
