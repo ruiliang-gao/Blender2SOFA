@@ -106,8 +106,12 @@ def createMechanicalObject(o):
     return t
 
 def addSolvers(t):
-    t.append(ET.Element("EulerImplicitSolver", rayleighMass="0.1", rayleighStiffness="0.05"))
-    t.append(ET.Element("CGLinearSolver",iterations="50", tolerance="1.0e-10", threshold="1.0e-6"))
+    if bpy.context.scene.precompution:
+      t.append(ET.Element("EulerImplicitSolver", rayleighMass="0.1", rayleighStiffness="0.1"))
+      t.append(ET.Element("CGLinearSolver",iterations="100", tolerance="1.0e-10", threshold="1.0e-6"))
+    else:
+      t.append(ET.Element("EulerImplicitSolver", rayleighMass="0.1", rayleighStiffness="0.05"))
+      t.append(ET.Element("CGLinearSolver",iterations="50", tolerance="1.0e-10", threshold="1.0e-6"))
 
 def exportTetrahedralTopology(o, opt, name):
     if o.type == 'MESH' and hasattr(o.data,'tetrahedra') and len(o.data.tetrahedra) > 0:
@@ -500,6 +504,7 @@ def exportInstrument(o, opt):
     t = ET.Element("Node", name = n, tags='instrument')
     t.set('author-parent' , 'Haptic-Instrument')
     t.set('author-order', 1)
+    scn = opt.scene
 
     # Collision parts of the instrument, the instrument tips
     # an instrument usually has one tip, but in case of clamp object it can have two tips
@@ -514,11 +519,17 @@ def exportInstrument(o, opt):
             mo = createMechanicalObject(i)
             mo.set('name', 'CM');
             child.append(mo)
-            # the contactStiffness below used to be 0.01, I(Ruiliang) changed to 1.5 to soften the organs.
-            pm = ET.Element("TPointModel", name = 'toolTip',
-                             contactStiffness="2.0", bothSide="0", proximity = i.proximity,
-                             group= o.collisionGroup
-                             )
+            # the contactStiffness below used to be 0.01, I(Ruiliang) changed to 2.0 to soften the organs.
+            if scn.precompution:
+              pm = ET.Element("TPointModel", name = 'toolTip',
+                               contactStiffness="0.000001", bothSide="0", proximity = i.proximity,
+                               group= o.collisionGroup
+                               )
+            else:
+              pm = ET.Element("TPointModel", name = 'toolTip',
+                                 contactStiffness="2.0", bothSide="0", proximity = i.proximity,
+                                 group= o.collisionGroup
+                                 )
             if o.toolFunction == 'CARVE':
               pm.set('tags', 'CarvingTool')
             elif o.toolFunction == 'DISSECT':
@@ -541,16 +552,22 @@ def exportInstrument(o, opt):
             mo = createMechanicalObject(i)
             mo.set('name', 'CM');
             child.append(mo)
-            pm = ET.Element("PointModel", name = 'toolCollision', bothSide="0",
-                             contactStiffness="0.5", contactFriction="500.0", proximity = i.proximity,
-                             group= o.collisionGroup, moving="1", selfCollision="0", simulated="1"
-                             )
+            if scn.precompution:
+              pm = ET.Element("PointModel", name = 'toolCollision', bothSide="0",
+                               contactStiffness="0.00001", contactFriction="5.0", proximity = i.proximity,
+                               group= o.collisionGroup, moving="1", selfCollision="0", simulated="1"
+                               )
+            else:
+              pm = ET.Element("PointModel", name = 'toolCollision', bothSide="0",
+                               contactStiffness="0.5", contactFriction="500.0", proximity = i.proximity,
+                               group= o.collisionGroup, moving="1", selfCollision="0", simulated="1"
+                               )
             child.append(pm)
             child.append(ET.Element("RigidMapping", input="@../../instrumentState",output="@CM",index= 0))
             t.append(child)
 
     hm = ET.Element("HapticManager", omniDriver = '@../../RigidLayer/driver',
-        graspStiffness = "1e3", attachStiffness="1e12", grasp_force_scale = "-1e-3", duration = "50")
+        graspStiffness = "1e3", attachStiffness="1e5", grasp_force_scale = "-1e-3", duration = "50")
 
     if len(tip_names) == 1:
         hm.set('toolModel', '@'+ tip_names[0] + '/toolTip')
@@ -630,6 +647,7 @@ def exportAttachConstraint(o, opt):
     amf1 = o.alwaysMatchForObject1
     amf2 = o.alwaysMatchForObject2
     stiffness = o.attachStiffness
+    ratio = o.naturalLength
     o1, o2 = opt.scene.objects[o.object1], opt.scene.objects[o.object2]
     m1, m2 = o1.to_mesh(opt.scene, True, 'PREVIEW'), o2.to_mesh(opt.scene, True, 'PREVIEW')
     v1, v2 = verticesInsideSphere(o1, m1, o), verticesInsideSphere(o2, m2, o)
@@ -653,7 +671,7 @@ def exportAttachConstraint(o, opt):
         mindist = 1E+38
         minindex = -1
         for j in v2:
-            dist = (o1.matrix_world*m1.vertices[i].co - o2.matrix_world*m2.vertices[j].co).length
+            dist = ratio * (o1.matrix_world*m1.vertices[i].co - o2.matrix_world*m2.vertices[j].co).length
             if dist < mindist :
                 minindex = j
                 mindist = dist
@@ -870,10 +888,10 @@ def exportObject(opt, o):
 
 def addConnectionsBetween(t, o, q, opt):
     t.append(ET.Element("RequiredPlugin", name = "SurfLabConnectingTissue"))
-    if o.attachStiffness < 3000:
-      t.append(ET.Element("ConnectingTissue", object1='@' + fixName(o.name), object2='@' + fixName(q.name),useConstraint="false", threshold=o.attachThreshold, connectingStiffness=o.attachStiffness))
+    if o.attachStiffness < 1000000:
+      t.append(ET.Element("ConnectingTissue", object1='@' + fixName(o.name), object2='@' + fixName(q.name),useConstraint="false", threshold=o.attachThreshold, connectingStiffness=o.attachStiffness, naturalLength=o.naturalLength))
     else:
-      t.append(ET.Element("ConnectingTissue", object1='@' + fixName(o.name), object2='@' + fixName(q.name),useConstraint="false", threshold=o.attachThreshold))
+      t.append(ET.Element("ConnectingTissue", object1='@' + fixName(o.name), object2='@' + fixName(q.name),useConstraint="false", threshold=o.attachThreshold, connectingStiffness=10000000000, naturalLength=o.naturalLength))
 
 def addConnectionsToTissue(t, o, opt):
     if o.object1 in opt.scene.objects:
@@ -921,12 +939,20 @@ def exportHaptic(l, opt):
 
         ## Omni driver wrapper
         rl = ET.Element("Node", name="RigidLayer")
-        rl.append(ET.Element("NewOmniDriver",
-                             name = 'driver',
-                             deviceName = hp.deviceName,
-                             tags= omniTag, scale = hp.scale * scaleBase , positionBase = positionBase, orientationBase = orientationBase, desirePosition = positionBase,
-                             permanent="true", listening="true", alignOmniWithCamera="false",
-                             forceScale = hp.forceScale));
+        if scene.precompution:
+          rl.append(ET.Element("NewOmniDriver",
+                               name = 'driver',
+                               deviceName = hp.deviceName,
+                               tags= omniTag, scale = hp.scale * scaleBase , positionBase = positionBase, orientationBase = orientationBase, desirePosition = positionBase,
+                               permanent="true", listening="true", alignOmniWithCamera="false",
+                               forceScale = 1));
+        else:
+          rl.append(ET.Element("NewOmniDriver",
+                                 name = 'driver',
+                                 deviceName = hp.deviceName,
+                                 tags= omniTag, scale = hp.scale * scaleBase , positionBase = positionBase, orientationBase = orientationBase, desirePosition = positionBase,
+                                 permanent="true", listening="true", alignOmniWithCamera="false",
+                                 forceScale = hp.forceScale));        
         rl.append(ET.Element("MechanicalObject", name="ToolRealPosition", tags=omniTag, template="Rigid", position="0 0 0 0 0 0 1",free_position="0 0 0 0 0 0 1"))
         nt = ET.Element("Node",name = "Tool");
         nt.append(ET.Element("MechanicalObject", template="Rigid", name="RealPosition"))
@@ -939,8 +965,12 @@ def exportHaptic(l, opt):
         isn.append(ET.Element("EulerImplicitSolver", rayleighMass="0.0", rayleighStiffness="0.0"))
         isn.append(ET.Element("CGLinearSolver",iterations="100", tolerance="1.0e-20", threshold="1.0e-20"))
         isn.append(ET.Element("MechanicalObject", name = "instrumentState", template="Rigid3d", position="0 0 0 0 0 0 1 0 0 0 0 0 0 1 0 0 0 0 0 0 1 0 0 0 0 0 0 1", free_position="0 0 0 0 0 0 1 0 0 0 0 0 0 1 0 0 0 0 0 0 1 0 0 0 0 0 0 1" ))
-        isn.append(ET.Element("UniformMass", template = "Rigid3d", name="mass", totalmass="5.0"))
-        isn.append(ET.Element("LCPForceFeedback", activate=hp.forceFeedback, tags=omniTag, forceCoef="0.15"))
+        if scene.precompution:
+          isn.append(ET.Element("UniformMass", template = "Rigid3d", name="mass", totalmass="0.3"))
+          isn.append(ET.Element("LCPForceFeedback", activate=hp.forceFeedback, tags=omniTag, forceCoef="0.02"))
+        else:
+          isn.append(ET.Element("UniformMass", template = "Rigid3d", name="mass", totalmass="6.0"))
+          isn.append(ET.Element("LCPForceFeedback", activate=hp.forceFeedback, tags=omniTag, forceCoef="0.15"))
         isn.extend(instruments)
         isn.append(ET.Element("RestShapeSpringsForceField", template="Rigid",stiffness="1e12",angularStiffness="1e12", external_rest_shape="../RigidLayer/ToolRealPosition", points = "0"))
         isn.append(ET.Element("UncoupledConstraintCorrection"))

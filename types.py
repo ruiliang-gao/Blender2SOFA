@@ -8,6 +8,7 @@ def register_sofa_properties():
     bpy.types.Scene.alarmDistance = bpy.props.FloatProperty(name="Alarm Distance",description="Collision detection check distance",default=0.1,soft_min=1e-4,soft_max=0.1,step=1e-5,precision=3)
     bpy.types.Scene.contactDistance = bpy.props.FloatProperty(name="Contact Distance",default=0.01,soft_min=1e-5,soft_max=0.1,step=1e-5,precision=6)
     bpy.types.Scene.showXYZFrame = bpy.props.BoolProperty(name="Show XYZ frame",description="Show a small XYZ frame in the lower right corner in SOFA simulation",default=False)
+    bpy.types.Scene.precompution = bpy.props.BoolProperty(name="Precompution",description="Check if there are any objects to be precomputed in the scene",default=False)
     bpy.types.Scene.hapticWorkspaceBox = bpy.props.StringProperty(name="Haptic Workspace Box",description="An empty object that defines the haptic workspace box")
 
     #"""SOFA properties and annotations for objects"""
@@ -60,6 +61,7 @@ def register_sofa_properties():
 
     # Attachments
     bpy.types.Object.attachStiffness = bpy.props.FloatProperty(name="Attach Stiffness",default=10000,min=1,max=1e+6,soft_min=10,step=100)
+    bpy.types.Object.naturalLength = bpy.props.FloatProperty(name="Spring Natural Length",default=0.5,min=0.1,max=10,step=0.1)
     bpy.types.Object.alwaysMatchForObject1 = bpy.props.BoolProperty(name='Always Match for First Object',default=False)
     bpy.types.Object.alwaysMatchForObject2 = bpy.props.BoolProperty(name='Always Match for Second Object',default=False)
     bpy.types.Object.object1 = bpy.props.StringProperty(name='First Object', description='Name of the first object in the attachment')
@@ -81,6 +83,7 @@ def unregister_sofa_properties():
     del bpy.types.Scene.alarmDistance
     del bpy.types.Scene.contactDistance
     del bpy.types.Scene.showXYZFrame
+    del bpy.types.Scene.precompution
     del bpy.types.Scene.hapticWorkspaceBox
 
     #"""SOFA properties and annotations for objects"""
@@ -105,6 +108,7 @@ def unregister_sofa_properties():
 
     # Attachments
     del bpy.types.Object.attachStiffness
+    del bpy.types.Object.naturalLength
     del bpy.types.Object.alwaysMatchForObject1
     del bpy.types.Object.alwaysMatchForObject2
     del bpy.types.Object.object1

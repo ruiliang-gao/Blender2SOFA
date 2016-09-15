@@ -71,6 +71,7 @@ class SofaObjectAnnotationPanel(bpy.types.Panel):
             c.prop_search(p, "object2", context.scene, "objects")
             c.prop(p, 'attachThreshold')
             c.prop(p, 'attachStiffness')
+            c.prop(p, 'naturalLength')
         elif t == 'CLOTH':
             c.prop(p, 'youngModulus')
             c.prop(p, 'bendingStiffness')
@@ -79,6 +80,7 @@ class SofaObjectAnnotationPanel(bpy.types.Panel):
         elif t == 'ATTACHCONSTRAINT'  :
             c.prop(p, 'attachStiffness')
             c.prop(p, 'attachThreshold')
+            c.prop(p, 'naturalLength')
             c.prop_search(p, 'object1', context.scene, "objects")
             c.prop(p, 'alwaysMatchForObject1')
             c.prop_search(p, 'object2', context.scene, "objects")
@@ -122,6 +124,7 @@ class SofaScenePropertyPanel(bpy.types.Panel):
         c.prop(s, "alarmDistance")
         c.prop(s, "contactDistance")
         c.prop(s, "showXYZFrame")
+        c.prop(s, "precompution")
         c.prop_search(s, "hapticWorkspaceBox", context.scene, "objects")
 
 
