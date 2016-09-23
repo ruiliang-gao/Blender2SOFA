@@ -1,5 +1,6 @@
 import bpy
 import numpy as np
+import random
 from .io_msh import recalc_outer_surface
 from mathutils import Vector
 
@@ -72,7 +73,9 @@ class FattyTissue(bpy.types.Operator):
         for x in range(L+1):
          for y in range(L+1):
           for z in range(L+1):
-            co = c.empty_draw_size * ( 2.0 * Vector((x,y,z)) / L - Vector((1,1,1)) )
+            dx, dy, dz = random.random(), random.random(), random.random()
+            #print(dx,dy,dz)
+            co = c.empty_draw_size * ( (2.0 * Vector((x,y,z)) + Vector((dx,dy,dz))) / L - Vector((1,1,1)) )
             v = oinv * c.matrix_world * co
             # version_string is a string composed of Blender version + "(sub 0)". E.g. "2.76 (sub 0)"
             # blenderVer stores the first 4 digits of the string, that is the version number.
