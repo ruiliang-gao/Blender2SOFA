@@ -559,7 +559,7 @@ def exportInstrument(o, opt):
                                )
             else:
               pm = ET.Element("PointModel", name = 'toolCollision', bothSide="0",
-                               contactStiffness="0.5", contactFriction="500.0", proximity = i.proximity,
+                               contactStiffness="0.7", contactFriction="500.0", proximity = i.proximity,
                                group= o.collisionGroup, moving="1", selfCollision="0", simulated="1"
                                )
             child.append(pm)
@@ -581,7 +581,7 @@ def exportInstrument(o, opt):
     # Visual parts of the instrument
     for i in o.children:
       if i.type == 'MESH':
-        INSTRUMENT_PART_MAP = { 'LEFTJAW': 1, 'RIGHTJAW': 2, 'FIXED': 3 }
+        INSTRUMENT_PART_MAP = { 'LEFTJAW': 1, 'RIGHTJAW': 2, 'FIXED': 3, 'LEFTCLIP': 4, 'RIGHTCLIP': 5 }
         idx = INSTRUMENT_PART_MAP[i.instrumentPart]
         name = fixName(i.name)
         child =  ET.Element("Node", name = fixName(i.name))
@@ -964,7 +964,7 @@ def exportHaptic(l, opt):
         isn = ET.Element("Node",name = "Instruments_of_"+n);
         isn.append(ET.Element("EulerImplicitSolver", rayleighMass="0.0", rayleighStiffness="0.0"))
         isn.append(ET.Element("CGLinearSolver",iterations="100", tolerance="1.0e-20", threshold="1.0e-20"))
-        isn.append(ET.Element("MechanicalObject", name = "instrumentState", template="Rigid3d", position="0 0 0 0 0 0 1 0 0 0 0 0 0 1 0 0 0 0 0 0 1 0 0 0 0 0 0 1", free_position="0 0 0 0 0 0 1 0 0 0 0 0 0 1 0 0 0 0 0 0 1 0 0 0 0 0 0 1" ))
+        isn.append(ET.Element("MechanicalObject", name = "instrumentState", template="Rigid3d", position="0 0 0 0 0 0 1 0 0 0 0 0 0 1 0 0 0 0 0 0 1 0 0 0 0 0 0 1 0 0 0 0 0 0 1 0 0 0 0 0 0 1", free_position="0 0 0 0 0 0 1 0 0 0 0 0 0 1 0 0 0 0 0 0 1 0 0 0 0 0 0 1 0 0 0 0 0 0 1 0 0 0 0 0 0 1" ))
         if scene.precompution:
           isn.append(ET.Element("UniformMass", template = "Rigid3d", name="mass", totalmass="0.3"))
           isn.append(ET.Element("LCPForceFeedback", activate=hp.forceFeedback, tags=omniTag, forceCoef="0.02"))

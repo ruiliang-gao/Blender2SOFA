@@ -41,7 +41,9 @@ def register_sofa_properties():
     bpy.types.Object.instrumentPart = bpy.props.EnumProperty(name="Animated Part type",default='FIXED',items=[
         ('LEFTJAW', 'Left Jaw', ''),
         ('RIGHTJAW', 'Right Jaw', ''),
-        ('FIXED', 'Fixed', 'Fixed part of the tool that moves with the handle')
+        ('FIXED', 'Fixed', 'Fixed part of the tool that moves with the handle'),
+        ('LEFTCLIP', 'Left clip', ''),
+        ('RIGHTCLIP', 'Right clip', '')
         ])
     bpy.types.Object.proximity = bpy.props.FloatProperty(name="Proximity",description="Proximity for collision detection",min=0,default=0,max=10,step=0.01)
 
