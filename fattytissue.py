@@ -16,7 +16,10 @@ class FattyTissue(bpy.types.Operator):
     cube = bpy.props.StringProperty(name = 'Sampling Cube', description = 'The cube used for sampling')
     organ = bpy.props.StringProperty(name = 'Organ', description = 'The organ on which the fat is wrapped around')
     thickness_from_surface = bpy.props.FloatProperty(name = 'Distance from Surface',description='Distance of fatty tissue from organ surface',default=0.5,min=0,step=0.01)
-    resolution = bpy.props.IntProperty(name = 'Resolution', description = 'Number of subdivisions along each edge of the cube. Determines the number of hexahedra generated',default=8,min=2,max=20)
+    # resolution = bpy.props.IntProperty(name = 'Resolution', description = 'Number of subdivisions along each edge of the cube. Determines the number of hexahedra generated',default=6,min=2,max=20)
+    resolutionX = bpy.props.IntProperty(name = 'ResolutionX', description = 'Number of subdivisions along X edge of the cube. Determines the number of hexahedra generated',default=6,min=2,max=20)
+    resolutionY = bpy.props.IntProperty(name = 'ResolutionY', description = 'Number of subdivisions along Y edge of the cube. Determines the number of hexahedra generated',default=6,min=2,max=20)
+    resolutionZ = bpy.props.IntProperty(name = 'ResolutionZ', description = 'Number of subdivisions along Z edge of the cube. Determines the number of hexahedra generated',default=6,min=2,max=20)
     smoothness = bpy.props.IntProperty(name = 'Smoothness', description = 'How smooth the fatty tissue should be. Ideal is 2.',default=2,min=0,max=3)
     project_to_surface = bpy.props.BoolProperty(name = 'Project points to surface',default=False,description='If set, the grid points are moved to the surface, may procedue some degenerate hexahedra')
     keep_the_cube = bpy.props.BoolProperty(name = 'Keep the Cube',default=False, description='If set, the input cube will not be removed after the mesh is generated')
@@ -40,7 +43,10 @@ class FattyTissue(bpy.types.Operator):
         l = self.layout
         l.prop_search(self, 'cube', context.scene, 'objects')
         l.prop_search(self, 'organ', context.scene, 'objects')
-        l.prop(self, 'resolution')
+        # l.prop(self, 'resolution')
+        l.prop(self, 'resolutionX')
+        l.prop(self, 'resolutionY')
+        l.prop(self, 'resolutionZ')
         l.prop(self, 'project_to_surface')
         if not self.project_to_surface:
           l.prop(self, 'thickness_from_surface')
@@ -48,7 +54,13 @@ class FattyTissue(bpy.types.Operator):
         l.prop(self, 'keep_the_cube')
 
     def execute(self, context):
-        L = self.resolution
+        # L = self.resolution
+        LX = self.resolutionX
+        LY = self.resolutionY
+        LZ = self.resolutionZ
+        meanL = (LX + LY + LZ)/3
+        listL = [LX, LY, LZ]
+        maxL = max(listL)
         o = bpy.data.objects[self.organ]
         c = bpy.data.objects[self.cube]
         project = self.project_to_surface
@@ -61,21 +73,21 @@ class FattyTissue(bpy.types.Operator):
         M = bpy.data.meshes.new(name = 'Fatty tissue around %s' % o.name)
 
         # Flags of which vertices on the grid are outside
-        isNearParentOrgan = np.zeros([L+1,L+1,L+1],dtype=bool)
+        isNearParentOrgan = np.zeros([LX+1,LY+1,LZ+1],dtype=bool)
         # The index of the grid vertex in the mesh
-        vertexIndex = np.zeros([L+1,L+1,L+1],dtype=int)
+        vertexIndex = np.zeros([LX+1,LY+1,LZ+1],dtype=int)
         # Generate vertices for the points, test each one against the
         # organ, if outside then flag them and add them to the vertex list
         oinv = o.matrix_world.inverted()
         cinv = c.matrix_world.inverted()
-        radius = c.empty_draw_size * (c.scale[0] + c.scale[1] + c.scale[2]) / 3 / L
+        radius = c.empty_draw_size * (c.scale[0] + c.scale[1] + c.scale[2]) / meanL
         #radius = c.empty_draw_size *  Vector(c.scale).length / L
-        for x in range(L+1):
-         for y in range(L+1):
-          for z in range(L+1):
+        for x in range(LX+1):
+         for y in range(LY+1):
+          for z in range(LZ+1):
             dx, dy, dz = random.random(), random.random(), random.random()
             #print(dx,dy,dz)
-            co = c.empty_draw_size * ( (2.0 * Vector((x,y,z)) + Vector((dx,dy,dz))) / L - Vector((1,1,1)) )
+            co = c.empty_draw_size * ( (2.0 * Vector(((x+dx)/LX,(y+dy)/LY,(z+dz)/LZ))) - Vector((1,1,1)) )
             v = oinv * c.matrix_world * co
             # version_string is a string composed of Blender version + "(sub 0)". E.g. "2.76 (sub 0)"
             # blenderVer stores the first 4 digits of the string, that is the version number.
@@ -105,9 +117,9 @@ class FattyTissue(bpy.types.Operator):
                     vertexIndex[x,y,z] = -1
                     isNearParentOrgan[x,y,z] = False
 
-        for x in range(L):
-         for y in range(L):
-          for z in range(L):
+        for x in range(LX):
+         for y in range(LY):
+          for z in range(LZ):
             # Check that all the vertices required for this hexa are available and outside
             # the surface
             verticesAvailable = all([ isNearParentOrgan[x+i,y+j,z+k] for i,j,k in HEX_VERTICES ])

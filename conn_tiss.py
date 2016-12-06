@@ -50,6 +50,7 @@ class ConnectingTissue(bpy.types.Operator):
             plane.modifiers.remove(sh)
             return M
 
+        #shm1, shm2 are the two wrap surfaces
         shm1 = shrinkwrapTo(o1)
         shm2 = shrinkwrapTo(o2)
 
@@ -58,7 +59,7 @@ class ConnectingTissue(bpy.types.Operator):
         N = len(shm1.vertices)
         M = bpy.data.meshes.new('Mesh Connecting %s and %s' % (o1.name,o2.name))
         M.vertices.add(N * (L+1))
-        for l in range(0, L+1):
+        for l in range(0, L+1):#L+1 replaced by 2 for testing peritonim generation, but failed <- some bugs unfixed 
             for i in range(0, N):
                 u = l / float(L)
                 M.vertices[l * N + i].co = (1-u) * shm1.vertices[i].co + u * shm2.vertices[i].co
