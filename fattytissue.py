@@ -17,9 +17,9 @@ class FattyTissue(bpy.types.Operator):
     organ = bpy.props.StringProperty(name = 'Organ', description = 'The organ on which the fat is wrapped around')
     thickness_from_surface = bpy.props.FloatProperty(name = 'Distance from Surface',description='Distance of fatty tissue from organ surface',default=0.5,min=0,step=0.01)
     # resolution = bpy.props.IntProperty(name = 'Resolution', description = 'Number of subdivisions along each edge of the cube. Determines the number of hexahedra generated',default=6,min=2,max=20)
-    resolutionX = bpy.props.IntProperty(name = 'ResolutionX', description = 'Number of subdivisions along X edge of the cube. Determines the number of hexahedra generated',default=6,min=2,max=20)
-    resolutionY = bpy.props.IntProperty(name = 'ResolutionY', description = 'Number of subdivisions along Y edge of the cube. Determines the number of hexahedra generated',default=6,min=2,max=20)
-    resolutionZ = bpy.props.IntProperty(name = 'ResolutionZ', description = 'Number of subdivisions along Z edge of the cube. Determines the number of hexahedra generated',default=6,min=2,max=20)
+    resolutionX = bpy.props.IntProperty(name = 'ResolutionX', description = 'Number of subdivisions along X edge of the cube. Determines the number of hexahedra generated',default=6,min=1,max=20)
+    resolutionY = bpy.props.IntProperty(name = 'ResolutionY', description = 'Number of subdivisions along Y edge of the cube. Determines the number of hexahedra generated',default=6,min=1,max=20)
+    resolutionZ = bpy.props.IntProperty(name = 'ResolutionZ', description = 'Number of subdivisions along Z edge of the cube. Determines the number of hexahedra generated',default=6,min=1,max=20)
     smoothness = bpy.props.IntProperty(name = 'Smoothness', description = 'How smooth the fatty tissue should be. Ideal is 2.',default=2,min=0,max=3)
     project_to_surface = bpy.props.BoolProperty(name = 'Project points to surface',default=False,description='If set, the grid points are moved to the surface, may procedue some degenerate hexahedra')
     keep_the_cube = bpy.props.BoolProperty(name = 'Keep the Cube',default=False, description='If set, the input cube will not be removed after the mesh is generated')
@@ -61,8 +61,8 @@ class FattyTissue(bpy.types.Operator):
         meanL = (LX + LY + LZ)/3
         listL = [LX, LY, LZ]
         maxL = max(listL)
-        o = bpy.data.objects[self.organ]
-        c = bpy.data.objects[self.cube]
+        organ = bpy.data.objects[self.organ]    # formerly o
+        cube = bpy.data.objects[self.cube]      # formerly c
         project = self.project_to_surface
         if project:
           D = 0
@@ -70,7 +70,7 @@ class FattyTissue(bpy.types.Operator):
           D = self.thickness_from_surface
 
         # Create a new mesh to be associated with the empty object
-        M = bpy.data.meshes.new(name = 'Fatty tissue around %s' % o.name)
+        M = bpy.data.meshes.new(name = 'Fatty tissue around %s' % organ.name)
 
         # Flags of which vertices on the grid are outside
         isNearParentOrgan = np.zeros([LX+1,LY+1,LZ+1],dtype=bool)
@@ -78,25 +78,25 @@ class FattyTissue(bpy.types.Operator):
         vertexIndex = np.zeros([LX+1,LY+1,LZ+1],dtype=int)
         # Generate vertices for the points, test each one against the
         # organ, if outside then flag them and add them to the vertex list
-        oinv = o.matrix_world.inverted()
-        cinv = c.matrix_world.inverted()
-        radius = c.empty_draw_size * (c.scale[0] + c.scale[1] + c.scale[2]) / meanL
+        organInv = organ.matrix_world.inverted()    # formerly oinv
+        cubeInv = cube.matrix_world.inverted()      # formerly cinv
+        radius = cube.empty_draw_size * (cube.scale[0] + cube.scale[1] + cube.scale[2]) / meanL
         #radius = c.empty_draw_size *  Vector(c.scale).length / L
         for x in range(LX+1):
          for y in range(LY+1):
           for z in range(LZ+1):
             dx, dy, dz = random.random(), random.random(), random.random()
             #print(dx,dy,dz)
-            co = c.empty_draw_size * ( (2.0 * Vector(((x+dx)/LX,(y+dy)/LY,(z+dz)/LZ))) - Vector((1,1,1)) )
-            v = oinv * c.matrix_world * co
+            co = cube.empty_draw_size * ( (2.0 * Vector(((x+dx)/LX,(y+dy)/LY,(z+dz)/LZ))) - Vector((1,1,1)) )
+            v = organInv * cube.matrix_world * co
             # version_string is a string composed of Blender version + "(sub 0)". E.g. "2.76 (sub 0)"
             # blenderVer stores the first 4 digits of the string, that is the version number.
             blenderVer = bpy.app.version_string[0:4]
             if (float(blenderVer) >= 2.77):
-                result,location,normal,_ = o.closest_point_on_mesh(v)
+                result,location,normal,_ = organ.closest_point_on_mesh(v)
             else:
-                location,normal,_ = o.closest_point_on_mesh(v)
-            d = (o.matrix_world*v - o.matrix_world*location).length
+                location,normal,_ = organ.closest_point_on_mesh(v)
+            d = (organ.matrix_world*v - organ.matrix_world*location).length
             
             if normal.dot(v - location) > 0:
                 if d < D: #or project and d < radius:
@@ -134,43 +134,43 @@ class FattyTissue(bpy.types.Operator):
         M.update()
 
         # Create the fatty tissue object that will contain the mesh
-        O = bpy.data.objects.new(name = 'Fatty tissue around %s' % o.name, object_data = M)
-        O.location = c.location
-        O.rotation_mode = c.rotation_mode
-        O.rotation_euler = c.rotation_euler
-        O.rotation_quaternion = c.rotation_quaternion
-        O.rotation_axis_angle = c.rotation_axis_angle
-        O.scale = c.scale
+        fatObj = bpy.data.objects.new(name = 'Fatty tissue around %s' % organ.name, object_data = M)
+        fatObj.location = cube.location
+        fatObj.rotation_mode = cube.rotation_mode
+        fatObj.rotation_euler = cube.rotation_euler
+        fatObj.rotation_quaternion = cube.rotation_quaternion
+        fatObj.rotation_axis_angle = cube.rotation_axis_angle
+        fatObj.scale = cube.scale
 
         # Add the object to the scene
-        context.scene.objects.link(O)
+        context.scene.objects.link(fatObj)
 
         # Deselect all objects (Note: Only c and o could  be selected at this time)
         #bpy.ops.object.select_all(action='DESELECT')
-        c.select = False
-        o.select = False
+        cube.select = False
+        organ.select = False
         #O.select = True
         
         # Remove the cube
         if not self.keep_the_cube:
-            context.scene.objects.unlink(c)
-            bpy.data.objects.remove(c)
+            context.scene.objects.unlink(cube)
+            bpy.data.objects.remove(cube)
             
         # Select the fatty tissue object and runs the smooth function the number of times specified by the user in Blender
         # The smooth function can only be executed in Edit Mode
-        O.select = True
-        bpy.context.scene.objects.active = O
+        fatObj.select = True
+        bpy.context.scene.objects.active = fatObj
         bpy.ops.object.mode_set(mode = 'EDIT')
         for i in range (0, self.smoothness):
           bpy.ops.mesh.vertices_smooth()
         bpy.ops.object.mode_set(mode = 'OBJECT')
         
         # Set the default values for the fatty tissue
-        O.template = 'VOLUMETRIC'
-        O.youngModulus = 3000
-        O.rayleighStiffness = 0.1
-        O.carvable = True
+        fatObj.template = 'VOLUMETRIC'
+        fatObj.youngModulus = 3000
+        fatObj.rayleighStiffness = 0.1
+        fatObj.carvable = True
         # Attaches the fatty tissue to the organ
-        O.object1 = o.name
+        fatObj.object1 = organ.name
 
         return { 'FINISHED' }
