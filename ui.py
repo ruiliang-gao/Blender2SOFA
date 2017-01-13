@@ -17,13 +17,17 @@ class SofaActionsPanel(bpy.types.Panel):
 
         layout.operator("scene.runsofa", icon='PLAY')
         layout.separator()
+        layout.operator("option.show_haptic_options", icon= 'OUTLINER_OB_META')
+        layout.separator()
         layout.label('Create')
         c = layout.column(align=True)
         c.operator("mesh.construct_connecting_tissue", icon='OUTLINER_OB_META', text='Connecting Tissue')
         c.operator("mesh.construct_fatty_tissue", icon='FACESEL_HLT', text = 'Fatty Tissue')
-        layout.separator()
+        # layout.separator()
         layout.operator("mesh.add_thick_curve", icon= 'ROOTCURVE')
         #layout.operator("mesh.add_hex_rod", icon= 'ROOTCURVE')
+
+        
         if ConvertFromCustomProperties.poll(context):
             layout.operator(ConvertFromCustomProperties.bl_idname)
 
