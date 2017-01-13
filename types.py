@@ -78,6 +78,7 @@ def register_sofa_properties():
     bpy.types.Object.texture3d = bpy.props.StringProperty(name='3D Texture',description='Filename of the 3D texture')
     bpy.types.Object.thickness = bpy.props.FloatProperty(name='Thickness',description='Thickness of the shell', default=0.1,min=0.001,max=1,step=0.01)
     bpy.types.Object.layerCount = bpy.props.IntProperty(name='Layer Count', description='Number of layers in the thick shell',default=1,min=1,max=10)
+    bpy.types.Object.useShader = bpy.props.BoolProperty(name='UseShader',description='Use our default shader for rendering this object',default=False)
 
 def unregister_sofa_properties():
     #"""SOFA properties associated with a scene"""
@@ -124,6 +125,7 @@ def unregister_sofa_properties():
     del bpy.types.Object.texture3d
     del bpy.types.Object.thickness
     del bpy.types.Object.layerCount
+    del bpy.types.Object.useShader
 
 class HapticProperties(bpy.types.PropertyGroup):
     scale = bpy.props.FloatProperty(name='Workspace Scale',description='Scaling applied to the workspace box of the haptic',default=300,min=1,max=10000,step=10)

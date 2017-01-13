@@ -418,6 +418,11 @@ def exportHexVolumetric(o, opt):
       qs.append(ET.Element("QuadSetTopologyModifier"))
       qs.append(ET.Element("QuadSetTopologyAlgorithms", template="Vec3d"))
       qs.append(ET.Element("Hexa2QuadTopologicalMapping", input='@../' + topotetra, output="@" + name + "-quadSurf"))
+      
+      if o.useShader:
+        oglshd = ET.Element("OglShader", fileVertexShader = "shaders/softShadows/VSM/blur_texture.vert", fileFragmentShader = "shaders/softShadows/VSM/blur_texture.frag", printLog="1");
+        qs.append(oglshd)
+        
       ogl = ET.Element("OglModel", name= name + '-visual');
       qs.append(ogl)
       addMaterial(o, ogl);

@@ -98,6 +98,7 @@ class SofaObjectAnnotationPanel(bpy.types.Panel):
 
 
         if t == 'VOLUMETRIC':
+            c.prop(p, 'useShader')
             if o.type != 'MESH' or len(o.data.hexahedra) + len(o.data.tetrahedra) == 0:
                 layout.label('This object does not contain a volumetric mesh', icon='ERROR')
 
