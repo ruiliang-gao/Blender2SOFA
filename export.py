@@ -422,7 +422,6 @@ def exportHexVolumetric(o, opt):
       if o.useShader:
         oglshd = ET.Element("OglShader", fileVertexShader = "shaders/softShadows/VSM/blur_texture.vert", fileFragmentShader = "shaders/softShadows/VSM/blur_texture.frag", printLog="1");
         qs.append(oglshd)
-        
       ogl = ET.Element("OglModel", name= name + '-visual');
       qs.append(ogl)
       addMaterial(o, ogl);
@@ -920,10 +919,14 @@ def exportHaptic(l, opt):
     nodes.append(ET.Element("RequiredPlugin", pluginName="SurfLabHaptic"))
     nodes.append(ET.Element("RequiredPlugin", pluginName="SaLua"))
     nodes.append(ET.Element("LuaController", source = "changeInstrumentController.lua", listening=1))
-
+    
     # Prepare the instruments, they are included in each haptic
-    for o in l:
-        if not o.hide_render and o.template == 'INSTRUMENT':
+    for o in l: 
+        if not o.hide_render and o.template == 'INSTRUMENT' and o.name == scene.defaultInstrument:
+                instruments.append(objectNode(opt, exportInstrument(o, opt)))
+    for o in l:    
+        if not o.hide_render and o.template == 'INSTRUMENT' and o.name != scene.defaultInstrument:
+            # print("found tool!")
             instruments.append(objectNode(opt, exportInstrument(o, opt)))
 
     if scene.hapticWorkspaceBox in scene.objects:

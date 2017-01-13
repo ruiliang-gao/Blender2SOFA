@@ -10,6 +10,7 @@ def register_sofa_properties():
     bpy.types.Scene.showXYZFrame = bpy.props.BoolProperty(name="Show XYZ frame",description="Show a small XYZ frame in the lower right corner in SOFA simulation",default=False)
     bpy.types.Scene.precompution = bpy.props.BoolProperty(name="Precompution",description="Check if there are any objects to be precomputed in the scene",default=False)
     bpy.types.Scene.hapticWorkspaceBox = bpy.props.StringProperty(name="Haptic Workspace Box",description="An empty object that defines the haptic workspace box")
+    bpy.types.Scene.defaultInstrument = bpy.props.StringProperty(name="Default instrument to use",description="A tool object that defines the default instrument")
 
     #"""SOFA properties and annotations for objects"""
     bpy.types.Object.template = bpy.props.EnumProperty(name="Template",default='VISUAL', items=[
@@ -88,6 +89,7 @@ def unregister_sofa_properties():
     del bpy.types.Scene.showXYZFrame
     del bpy.types.Scene.precompution
     del bpy.types.Scene.hapticWorkspaceBox
+    del bpy.types.Scene.defaultInstrument
 
     #"""SOFA properties and annotations for objects"""
     del bpy.types.Object.template
