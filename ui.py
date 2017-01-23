@@ -17,8 +17,8 @@ class SofaActionsPanel(bpy.types.Panel):
 
         layout.operator("scene.runsofa", icon='PLAY')
         layout.separator()
-        layout.operator("option.show_haptic_options", icon= 'OUTLINER_OB_META')
-        layout.separator()
+        layout.operator("option.show_haptic_options", icon= 'SETTINGS')
+        #layout.separator()
         layout.label('Create')
         c = layout.column(align=True)
         c.operator("mesh.construct_connecting_tissue", icon='OUTLINER_OB_META', text='Connecting Tissue')
@@ -103,6 +103,7 @@ class SofaObjectAnnotationPanel(bpy.types.Panel):
 
         if t == 'VOLUMETRIC':
             c.prop(p, 'useShader')
+            c.prop(p, 'shaderFile')
             if o.type != 'MESH' or len(o.data.hexahedra) + len(o.data.tetrahedra) == 0:
                 layout.label('This object does not contain a volumetric mesh', icon='ERROR')
 
@@ -147,6 +148,23 @@ def removeCustomProperty(o, k):
         del rna[k]
 
 
+class HapticOptions(bpy.types.Operator):
+    bl_idname = "option.show_haptic_options"
+    bl_label = "Show Haptic options"
+    bl_options = { 'UNDO' }
+    bl_description = 'Show Haptic options for configuration'
+
+    @classmethod
+    def poll(self, context):
+        return context.scene is not None
+
+    def execute(self, context):
+        bpy.context.user_preferences.active_section = 'ADDONS'
+        bpy.ops.screen.userpref_show('INVOKE_DEFAULT')
+        bpy.data.window_managers["WinMan"].addon_filter = 'User'
+
+        return { 'FINISHED' }
+        
 class ConvertFromCustomProperties(bpy.types.Operator):
     bl_idname = "scene.convert_from_custom_properties"
     bl_label = "Recover from Older version of Blender2SOFA"
