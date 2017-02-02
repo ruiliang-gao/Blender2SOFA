@@ -480,6 +480,8 @@ def addConstraints(o, t):
 def collisionModelParts(o, obstacle = False, group = None, bothSide = 0):
     if o.suture and o.template == 'THICKCURVE':
       sutureTag = 'HapticSurfaceVein'
+    elif o.suture and o.template == 'SAFETYSURFACE':
+      sutureTag = 'SafetySurface'
     elif o.suture:
       sutureTag = 'HapticSurface'
     else:
@@ -492,20 +494,7 @@ def collisionModelParts(o, obstacle = False, group = None, bothSide = 0):
         # ET.Element("PointModel",selfCollision=sc, contactFriction = o.contactFriction, contactStiffness = o.contactStiffness, group=group, moving = M, simulated = M, bothSide= bothSide ),
         ET.Element("LineModel",selfCollision=sc, contactFriction = o.contactFriction, contactStiffness = o.contactStiffness, group=group, moving = M, simulated = M, bothSide= bothSide ),
         ET.Element("TriangleModel", tags = sutureTag,selfCollision=sc, contactFriction = o.contactFriction, contactStiffness = o.contactStiffness, group=group, moving = M, simulated = M, bothSide= bothSide )
-    ]
-    
-# def fatCollisionModelParts(o, obstacle = False, group = None, bothSide = 0):
-    # if o.suture:
-      # sutureTag = 'HapticSurface'
-    # else:
-      # sutureTag = ''
-    # M = not obstacle
-    # sc = o.selfCollision
-    # if group == None:  group = o.collisionGroup
-    # return [
-        # ET.Element("LineModel",selfCollision=sc, contactFriction = o.contactFriction, contactStiffness = o.contactStiffness, group=group, moving = M, simulated = M, bothSide= bothSide ),
-        # ET.Element("TriangleModel", tags = sutureTag,selfCollision=sc, contactFriction = o.contactFriction, contactStiffness = o.contactStiffness, group=group, moving = M, simulated = M, bothSide= bothSide )
-    # ]   
+    ]  
 
 def exportInstrument(o, opt):
     n = fixName(o.name)
@@ -858,7 +847,8 @@ def exportObject(opt, o):
         annotated_type = o.template
         name = fixName(o.name)
         if o.type == 'MESH' or o.type == 'SURFACE' or o.type == 'CURVE':
-            if annotated_type == 'COLLISION':
+            if annotated_type == 'COLLISION' or annotated_type == 'SAFETYSURFACE':
+                #print(o.name + annotated_type)
                 t = exportObstacle(o, opt)
             elif annotated_type == 'CLOTH':
                 t = exportCloth(o, opt)
@@ -1113,7 +1103,7 @@ def exportScene(opt):
     for o in l:
         t = objectNode(opt, exportObject(opt, o))
         if t != None:
-            if o.template == 'COLLISION':
+            if o.template == 'COLLISION' or o.template == 'SAFETYSURFACE':
                 root.append(t)
             else:
                 solverNode.append(t)
