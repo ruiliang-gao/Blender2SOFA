@@ -41,11 +41,11 @@ def register_sofa_properties():
         ('CLAMP', 'Clamp', 'Apply clips to vessels to close them')
         ])
     bpy.types.Object.instrumentPart = bpy.props.EnumProperty(name="Animated Part type",default='FIXED',items=[
-        ('LEFTJAW', 'Left Jaw', ''),
-        ('RIGHTJAW', 'Right Jaw', ''),
+        ('LEFTJAW', 'Left Jaw', 'left jaw of an instrument that rotate around Y-axis'),
+        ('RIGHTJAW', 'Right Jaw', 'right jaw of an instrument that rotate around X-axis'),
         ('FIXED', 'Fixed', 'Fixed part of the tool that moves with the handle'),
-        ('LEFTCLIP', 'Left clip', ''),
-        ('RIGHTCLIP', 'Right clip', '')
+        ('LEFTCLIP', 'Left clip', 'left jaw of clip applier that rotate around X-axis'),
+        ('RIGHTCLIP', 'Right clip', 'right jaw of clip applier that rotate around X-axis')
         ])
     bpy.types.Object.proximity = bpy.props.FloatProperty(name="Proximity",description="Proximity for collision detection",min=0,default=0,max=10,step=0.01)
 
