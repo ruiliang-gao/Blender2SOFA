@@ -133,8 +133,8 @@ def unregister_sofa_properties():
     del bpy.types.Object.shaderFile
 
 class HapticProperties(bpy.types.PropertyGroup):
-    scale = bpy.props.FloatProperty(name='Workspace Scale',description='Scaling applied to the workspace box of the haptic',default=300,min=1,max=10000,step=10)
-    forceScale = bpy.props.FloatProperty(name='Force-feedback Scale',description='Scaling applied to force feedback',default=0.03,min=0,max=10000,soft_max=1)
+    scale = bpy.props.FloatProperty(name='Workspace Scale',description='Scaling applied to the workspace box of the haptic',default=25,min=1,max=10000,step=10)
+    forceScale = bpy.props.FloatProperty(name='Force-feedback Scale',description='Scaling applied to force feedback',default=0.001,min=0,max=10000,soft_max=1)
     forceFeedback = bpy.props.BoolProperty(name='Force-feedback enabled',description='Enable force-feedback for this haptic device',default=False)
     deviceName = bpy.props.StringProperty(name='Device Name',description='Name of the haptic device name as registered in the Geomagic Touch Setup application')
 

@@ -516,7 +516,7 @@ def exportInstrument(o, opt):
             mo = createMechanicalObject(i)
             mo.set('name', 'CM');
             child.append(mo)
-            # the contactStiffness below used to be 0.01, I(Ruiliang) changed to 2.0 to soften the organs.
+            # the contactStiffness below used to be 0.01, Ruiliang changed to 2.0 to soften the organs.
             if scn.precompution:
               pm = ET.Element("TPointModel", name = 'toolTip',
                                contactStiffness="0.000001", bothSide="0", proximity = i.proximity,
