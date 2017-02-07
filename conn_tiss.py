@@ -1,5 +1,5 @@
 import bpy
-from .io_msh import recalc_outer_surface
+from .io_msh import recalc_outer_surface, remove_degenerate_hexahedra
 
 class ConnectingTissue(bpy.types.Operator):
     bl_idname = "mesh.construct_connecting_tissue"
@@ -75,6 +75,9 @@ class ConnectingTissue(bpy.types.Operator):
         # Create the outer surface
         recalc_outer_surface(M)
 
+        # Remove degenerate hexahedra
+        remove_degenerate_hexahedra(M)
+
         # Convert the plane into our connective tissue and annotate it as volumetric
         m = plane.data
         ct = plane
@@ -86,6 +89,8 @@ class ConnectingTissue(bpy.types.Operator):
         ct.carvable = True
         ct.suture = True
         bpy.data.meshes.remove(m)
+
+
 
         # Select the newly created object
         o1.select = False
