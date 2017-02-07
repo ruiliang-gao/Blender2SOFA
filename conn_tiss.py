@@ -11,6 +11,7 @@ class ConnectingTissue(bpy.types.Operator):
     object1 = bpy.props.StringProperty(name = "Object 1", description = "Choose Object 1 here")
     object2 = bpy.props.StringProperty(name = "Object 2", description = "Choose Object 2 here")
     removeDegenerateHexahedra = bpy.props.BoolProperty(name = "Remove Degenerate Hexahedra", description = "Removes hexahedra with very small volume", default = True)
+    shrinkwrapMethod = bpy.props.EnumProperty(items = (('NEAREST_SURFACEPOINT', 'Nearest Surface Point', ''), ('PROJECT', 'Project', '')), name = "Shrinkwrap Method")
     layerCount = bpy.props.IntProperty(name = "Layer Count", description = "Number of planar layers between the two objects",default=2,min=1,max=100)
 
     def invoke(self, context, event):
@@ -27,6 +28,7 @@ class ConnectingTissue(bpy.types.Operator):
         col.prop_search(self, "object1", context.scene, "objects")
         col.prop_search(self, "object2", context.scene, "objects")
         col.prop(self, "removeDegenerateHexahedra")
+        col.prop(self, 'shrinkwrapMethod')
         col.prop(self,'layerCount')
 
     @classmethod
@@ -46,8 +48,9 @@ class ConnectingTissue(bpy.types.Operator):
         def shrinkwrapTo(o):
             sh = plane.modifiers.new('Shrinkwrap-' + o.name,'SHRINKWRAP')
             sh.use_keep_above_surface = True
-            sh.wrap_method = 'NEAREST_SURFACEPOINT'
+            sh.wrap_method = self.shrinkwrapMethod
             sh.target = o
+            sh.use_negative_direction = True
             M = plane.to_mesh(context.scene, True, 'PREVIEW')
             plane.modifiers.remove(sh)
             return M
