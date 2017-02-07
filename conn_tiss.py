@@ -10,6 +10,7 @@ class ConnectingTissue(bpy.types.Operator):
     plane   = bpy.props.StringProperty(name = "Dividing Grid", description= "The grid object that defines the area of connection")
     object1 = bpy.props.StringProperty(name = "Object 1", description = "Choose Object 1 here")
     object2 = bpy.props.StringProperty(name = "Object 2", description = "Choose Object 2 here")
+    removeDegenerateHexahedra = bpy.props.BoolProperty(name = "Remove Degenerate Hexahedra", description = "Removes hexahedra with very small volume", default = True)
     layerCount = bpy.props.IntProperty(name = "Layer Count", description = "Number of planar layers between the two objects",default=2,min=1,max=100)
 
     def invoke(self, context, event):
@@ -25,6 +26,7 @@ class ConnectingTissue(bpy.types.Operator):
         col.prop_search(self, "plane", context.scene, "objects")
         col.prop_search(self, "object1", context.scene, "objects")
         col.prop_search(self, "object2", context.scene, "objects")
+        col.prop(self, "removeDegenerateHexahedra")
         col.prop(self,'layerCount')
 
     @classmethod
@@ -76,7 +78,8 @@ class ConnectingTissue(bpy.types.Operator):
         recalc_outer_surface(M)
 
         # Remove degenerate hexahedra
-        remove_degenerate_hexahedra(M)
+        if(self.removeDegenerateHexahedra):
+            remove_degenerate_hexahedra(M)
 
         # Convert the plane into our connective tissue and annotate it as volumetric
         m = plane.data
