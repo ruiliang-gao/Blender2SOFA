@@ -44,10 +44,52 @@ class OBJECT_PT_ConnectingTissuePanel(bpy.types.Panel):
         col = layout.column()
         col.prop_search(scn, "map1", context.scene, "objects")
         col.prop_search(scn, "object1", context.scene, "objects")
+        col.operator("mesh.test_shrinkwrap").index = 1
         col.prop_search(scn, "map2", context.scene, "objects")
         col.prop_search(scn, "object2", context.scene, "objects")
+        col.operator("mesh.test_shrinkwrap").index = 2
         col.prop(scn, 'layerCount')
         col.operator("mesh.construct_connecting_tissue")
+
+#   SHRINKWRAP TEST
+
+class OBJECT_OT_ShrinkwrapTest(bpy.types.Operator):
+    bl_idname = "mesh.test_shrinkwrap"
+    bl_label = "Test the Projection"
+    bl_description = "Shrinkwrap a plane to an object to determine if it fits corectly"
+    index = IntProperty()
+    applied1 = BoolProperty(default = False)
+    applied2 = BoolProperty(default = False)
+    
+    def execute(self, context):
+        scn = context.scene
+
+        def wrap(applied, map, c):
+            if applied == False:
+                sh = map.modifiers.new('Shrinkwrap-' + c.name,'SHRINKWRAP')
+                sh.use_keep_above_surface = True
+                sh.wrap_method = 'PROJECT'
+                sh.target = c
+                sh.use_negative_direction = True
+                sh.use_positive_direction = True
+            elif applied == True:
+                map.modifiers.remove(map.modifiers.get('Shrinkwrap-' + c.name))
+
+        if self.index == 1:
+            map = bpy.data.objects[scn.map1]
+            c = bpy.data.objects[scn.object1]
+            wrap(self.applied1, map, c)
+            self.applied1 = not self.applied1
+        elif self.index == 2:
+            map = bpy.data.objects[scn.map2]
+            c = bpy.data.objects[scn.object2]
+            wrap(self.applied2, map, c)
+            self.applied2 = not self.applied2
+        else:
+            self.report({'ERROR_INVALID_INPUT'}, 'No object sent!')
+            return{'CANCELLED'}
+
+        return{"FINISHED"}
 
 #   CONNECTING TISSUE CONSTRUCTOR
 
@@ -71,9 +113,7 @@ class OBJECT_OT_ConnectingTissue(bpy.types.Operator):
         # Map objects
         m1 = bpy.data.objects[scn.map1]
         m2 = bpy.data.objects[scn.map2]
-        # Meshes of the map objects
-        shm1 = m1.data
-        shm2 = m2.data
+
         # object to world matricies
         mat1 = m1.matrix_world
         mat2 = m2.matrix_world
@@ -81,6 +121,22 @@ class OBJECT_OT_ConnectingTissue(bpy.types.Operator):
         # Connecting objects
         c1 = bpy.data.objects[scn.object1]
         c2 = bpy.data.objects[scn.object2]
+
+        def shrinkwrap(map, obj):
+            scn.objects.active = obj
+            sh = map.modifiers.new('Shrinkwrap-' + obj.name,'SHRINKWRAP')
+            sh.use_keep_above_surface = True
+            sh.wrap_method = 'PROJECT'
+            sh.target = obj
+            sh.use_negative_direction = True
+            sh.use_positive_direction = True
+            M = map.to_mesh(context.scene, True, 'PREVIEW')
+            return M
+
+        # Meshes of the map objects
+        shm1 = shrinkwrap(m1, c1)
+        shm2 = shrinkwrap(m2, c2)
+
 
         # Check that the mapping objects have the same number of vertices
         if len(shm1.vertices) != len(shm2.vertices):
@@ -105,8 +161,9 @@ class OBJECT_OT_ConnectingTissue(bpy.types.Operator):
                     h.vertices[0+j] = p.vertices[j] + (l+0)*N
                     h.vertices[4+j] = p.vertices[j] + (l+1)*N
 
-        # Create the outer surface
+        # Create the outer surface and remove degenerate hexahedra
         recalc_outer_surface(M)
+        remove_degenerate_hexahedra(M)
 
         # Convert the plane into our connective tissue and annotate it as volumetric
         tissue = bpy.data.meshes.new('connectingtissue')
@@ -120,8 +177,13 @@ class OBJECT_OT_ConnectingTissue(bpy.types.Operator):
         ct.carvable = True
         ct.suture = True
 
+        # Delete the mapping objects
+        bpy.ops.object.select_all(action='DESELECT')
+        m1.select = True
+        m2.select = True
+        bpy.ops.object.delete()
+
         # Select the newly created object
-        m1.select = False
         m2.select = False
         c1.select = False
         c2.select = False
