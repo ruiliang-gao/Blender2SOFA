@@ -21,7 +21,8 @@ class SofaActionsPanel(bpy.types.Panel):
         #layout.separator()
         layout.label('Create')
         c = layout.column(align=True)
-        c.operator("mesh.construct_connecting_tissue", icon='OUTLINER_OB_META', text='Connecting Tissue')
+        #c.operator("mesh.construct_connecting_tissue", icon='OUTLINER_OB_META', text='Connecting Tissue')
+        layout.separator()
         c.operator("mesh.construct_fatty_tissue", icon='FACESEL_HLT', text = 'Fatty Tissue')
         # layout.separator()
         layout.operator("mesh.add_thick_curve", icon= 'ROOTCURVE')
@@ -30,6 +31,7 @@ class SofaActionsPanel(bpy.types.Panel):
         
         if ConvertFromCustomProperties.poll(context):
             layout.operator(ConvertFromCustomProperties.bl_idname)
+    
 
 class SofaObjectAnnotationPanel(bpy.types.Panel):
     """A panel to adjust object properties"""

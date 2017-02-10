@@ -13,7 +13,7 @@ bl_info = {
 
 import bpy
 
-from . import io_msh, io_zip, ui, conn_tiss, fattytissue, export, runsofa, thick_curve, preferences, types
+from . import io_msh, io_zip, ui, conn_tiss, fattytissue, export, runsofa, thick_curve, preferences, types, conn_tiss
 from .types import *
 
 
