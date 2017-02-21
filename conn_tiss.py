@@ -78,11 +78,15 @@ class OBJECT_OT_ShrinkwrapTest(bpy.types.Operator):
         if self.index == 1:
             map = bpy.data.objects[scn.map1]
             c = bpy.data.objects[scn.object1]
+            if map.modifiers.get('Shrinkwrap-' + c.name) is None:
+                self.applied1 = False
             wrap(self.applied1, map, c)
             self.applied1 = not self.applied1
         elif self.index == 2:
             map = bpy.data.objects[scn.map2]
             c = bpy.data.objects[scn.object2]
+            if map.modifiers.get('Shrinkwrap-' + c.name) is None:
+                self.applied2 = False
             wrap(self.applied2, map, c)
             self.applied2 = not self.applied2
         else:
