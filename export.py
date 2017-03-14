@@ -421,12 +421,18 @@ def exportHexVolumetric(o, opt):
       
       if o.useShader:
         if not o.shaderFile:
-          oglshd = ET.Element("OglShader", fileVertexShader = "shaders/softShadows/VSM/blur_texture.vert", fileFragmentShader = "shaders/softShadows/VSM/blur_texture.frag", printLog="1");
+          oglshd = ET.Element("OglShader", fileVertexShader = "shaders/TIPSShaders/texture3d.glsl", fileFragmentShader = "shaders/TIPSShaders/texture3d.glsl", printLog="1");
           qs.append(oglshd)
+          ogl = ET.Element("OglModel", name= name + '-visual');
         else:
-          oglshd = ET.Element("OglShader", fileVertexShader = o.shaderFile, fileFragmentShader = o.shaderFile, printLog="1");
+          oglshd = ET.Element("OglShader", fileVertexShader = o.shaderFile, fileTessellationControlShader = o.shaderFile,
+				   fileTessellationEvaluationShader = o.shaderFile, fileFragmentShader = o.shaderFile, printLog="1");
+          ogltesslvl = ET.Element("OglFloatVariable", name="TessellationLevel", value = "8")
           qs.append(oglshd)
-      ogl = ET.Element("OglModel", name= name + '-visual');
+          qs.append(ogltesslvl)
+          ogl = ET.Element("OglModel", primitiveType = "PATCHES", name= name + '-visual');
+      else:
+        ogl = ET.Element("OglModel", name= name + '-visual');
       qs.append(ogl)
       addMaterial(o, ogl);
       qs.append(ET.Element('IdentityMapping', input="@../MO", output="@" + name + '-visual'))
