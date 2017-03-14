@@ -421,7 +421,7 @@ def exportHexVolumetric(o, opt):
       
       if o.useShader:
         if not o.shaderFile:
-          oglshd = ET.Element("OglShader", fileVertexShader = "shaders/TIPSShaders/texture3d.glsl", fileFragmentShader = "shaders/TIPSShaders/texture3d.glsl", printLog="1");
+          oglshd = ET.Element("OglShader", fileVertexShader = "['shaders/TIPSShaders/texture3d.glsl']", fileFragmentShader = "['shaders/TIPSShaders/texture3d.glsl']", printLog="1");
           qs.append(oglshd)
           ogl = ET.Element("OglModel", name= name + '-visual');
         else:
@@ -588,6 +588,8 @@ def exportInstrument(o, opt):
         idx = INSTRUMENT_PART_MAP[i.instrumentPart]
         name = fixName(i.name)
         child =  ET.Element("Node", name = fixName(i.name))
+        OglShd = ET.Element("OglShader", fileVertexShader = "['shaders/TIPSShaders/instrument.glsl']" , fileFragmentShader = "['shaders/TIPSShaders/instrument.glsl']", printLog="1");
+        child.append(OglShd)
         child.append(exportVisual(i, opt, name = name + '-visual', with_transform = True))
         child.append(ET.Element("RigidMapping", input="@../../instrumentState", output="@"+name+"-visual", index= idx))
         t.append(child)
