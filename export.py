@@ -421,12 +421,12 @@ def exportHexVolumetric(o, opt):
       
       if o.useShader:
         if not o.shaderFile:
-          oglshd = ET.Element("OglShader", fileVertexShader = "['shaders/TIPSShaders/texture3d.glsl']", fileFragmentShader = "['shaders/TIPSShaders/texture3d.glsl']", printLog="1");
+          oglshd = ET.Element("OglShader", fileVertexShaders = "['shaders/TIPSShaders/texture3d.glsl']", fileFragmentShaders = "['shaders/TIPSShaders/texture3d.glsl']", printLog="1");
           qs.append(oglshd)
           ogl = ET.Element("OglModel", name= name + '-visual');
         else:
-          oglshd = ET.Element("OglShader", fileVertexShader = o.shaderFile, fileTessellationControlShader = o.shaderFile,
-				   fileTessellationEvaluationShader = o.shaderFile, fileFragmentShader = o.shaderFile, printLog="1");
+          oglshd = ET.Element("OglShader", fileVertexShaders = o.shaderFile, fileTessellationControlShaders = o.shaderFile,
+				   fileTessellationEvaluationShaders = o.shaderFile, fileFragmentShaders = o.shaderFile, printLog="1");
           ogltesslvl = ET.Element("OglFloatVariable", name="TessellationLevel", value = "8")
           qs.append(oglshd)
           qs.append(ogltesslvl)
@@ -541,6 +541,8 @@ def exportInstrument(o, opt):
               pm.set('tags', 'SuturingTool')
             elif o.toolFunction == 'CLAMP':
               pm.set('tags', 'ClampingTool')
+            elif o.toolFunction == 'CONTAIN':
+              pm.set('tags', 'ContainerTool')  
             else:
               pm.set('tags', 'GraspingTool')
 
@@ -588,7 +590,7 @@ def exportInstrument(o, opt):
         idx = INSTRUMENT_PART_MAP[i.instrumentPart]
         name = fixName(i.name)
         child =  ET.Element("Node", name = fixName(i.name))
-        OglShd = ET.Element("OglShader", fileVertexShader = "['shaders/TIPSShaders/instrument.glsl']" , fileFragmentShader = "['shaders/TIPSShaders/instrument.glsl']", printLog="1");
+        OglShd = ET.Element("OglShader", fileVertexShaders = "['shaders/TIPSShaders/instrument.glsl']" , fileFragmentShaders = "['shaders/TIPSShaders/instrument.glsl']", printLog="1");
         child.append(OglShd)
         child.append(exportVisual(i, opt, name = name + '-visual', with_transform = True))
         child.append(ET.Element("RigidMapping", input="@../../instrumentState", output="@"+name+"-visual", index= idx))
