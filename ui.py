@@ -27,6 +27,7 @@ class SofaActionsPanel(bpy.types.Panel):
         # layout.separator()
         layout.operator("mesh.add_thick_curve", icon= 'ROOTCURVE')
         #layout.operator("mesh.add_hex_rod", icon= 'ROOTCURVE')
+        
 
         
         if ConvertFromCustomProperties.poll(context):
@@ -135,6 +136,7 @@ class SofaScenePropertyPanel(bpy.types.Panel):
         c.prop(s, "precompution")
         c.prop_search(s, "hapticWorkspaceBox", context.scene, "objects")
         c.prop_search(s, "defaultInstrument", context.scene, "objects")
+        c.prop(s, "veinForceThreshold")
 
 
 PROPERTY_NAME_MAP = { 'topObject': 'object1', 'botObject': 'object2', 'stretchDamping' : 'damping',

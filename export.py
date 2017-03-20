@@ -572,7 +572,7 @@ def exportInstrument(o, opt):
             t.append(child)
 
     hm = ET.Element("HapticManager", omniDriver = '@../../RigidLayer/driver',
-        graspStiffness = "1e3", attachStiffness="1e5", grasp_force_scale = "-1e-3", duration = "50")
+        graspStiffness = "1e3", attachStiffness="1e5", grasp_force_scale = "-1e-3", duration = "50", veinForceThreshold = opt.scene.veinForceThreshold)
 
     if len(tip_names) == 1:
         hm.set('toolModel', '@'+ tip_names[0] + '/toolTip')
@@ -590,8 +590,9 @@ def exportInstrument(o, opt):
         idx = INSTRUMENT_PART_MAP[i.instrumentPart]
         name = fixName(i.name)
         child =  ET.Element("Node", name = fixName(i.name))
-        OglShd = ET.Element("OglShader", fileVertexShaders = "['shaders/TIPSShaders/instrument.glsl']" , fileFragmentShaders = "['shaders/TIPSShaders/instrument.glsl']", printLog="1");
-        child.append(OglShd)
+        if i.template == 'INSTRUMENTPART' and o.toolFunction == 'CARVE':
+          OglShd = ET.Element("OglShader", fileVertexShaders = "['shaders/TIPSShaders/instrument.glsl']" , fileFragmentShaders = "['shaders/TIPSShaders/instrument.glsl']", printLog="1");
+          child.append(OglShd)
         child.append(exportVisual(i, opt, name = name + '-visual', with_transform = True))
         child.append(ET.Element("RigidMapping", input="@../../instrumentState", output="@"+name+"-visual", index= idx))
         t.append(child)

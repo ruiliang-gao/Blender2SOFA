@@ -11,6 +11,7 @@ def register_sofa_properties():
     bpy.types.Scene.precompution = bpy.props.BoolProperty(name="Precompution",description="Check if there are any objects to be precomputed in the scene",default=False)
     bpy.types.Scene.hapticWorkspaceBox = bpy.props.StringProperty(name="Haptic Workspace Box",description="An empty object that defines the haptic workspace box")
     bpy.types.Scene.defaultInstrument = bpy.props.StringProperty(name="Default instrument to use",description="A tool object that defines the default instrument")
+    bpy.types.Scene.veinForceThreshold = bpy.props.FloatProperty(name="Vein Force Threshold", description="Maximum force a vein can withstand without injury during surgery", default=0.5)
 
     #"""SOFA properties and annotations for objects"""
     bpy.types.Object.template = bpy.props.EnumProperty(name="Template",default='VISUAL', items=[
