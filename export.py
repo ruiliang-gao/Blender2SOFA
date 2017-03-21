@@ -485,7 +485,10 @@ def addConstraints(o, t):
 
 def collisionModelParts(o, obstacle = False, group = None, bothSide = 0):
     if o.suture and o.template == 'THICKCURVE':
-      sutureTag = 'HapticSurfaceVein'
+      if any(c in o.name for c in ("vein", "Vein", "artery", "Artery")):
+        sutureTag = 'HapticSurfaceVein'
+      else:
+        sutureTag = 'HapticSurfaceCurve'
     elif o.suture and o.template == 'SAFETYSURFACE':
       sutureTag = 'SafetySurface'
     elif o.suture:

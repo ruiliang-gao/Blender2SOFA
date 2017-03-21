@@ -67,7 +67,7 @@ class SofaObjectAnnotationPanel(bpy.types.Panel):
             if t == 'THICKSHELL':
                 c.prop(p, 'thickness')
                 c.prop(p, 'layerCount')
-            if t == 'THICKCURVE':
+            if t == 'THICKCURVE' and p.type != 'MESH':
                 c.prop(o.data, 'bevel_depth', text = 'Thickness')
             c.prop(p, 'texture3d')
             c.prop(p, 'precomputeConstraints')
