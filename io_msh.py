@@ -309,7 +309,7 @@ class ImportMSH(bpy.types.Operator, bpy_extras.io_utils.ImportHelper):
           idx, count, _, _, _, a, b, c, d = line.split()
           # TODO: what about triangle elements count=3
           # TODO: what about hexahedral elements count=8
-          if count == 4:
+          if count == '4':   
               i = int(idx)
               t = M.tetrahedra.add()
               if i != len(M.tetrahedra):
@@ -318,7 +318,7 @@ class ImportMSH(bpy.types.Operator, bpy_extras.io_utils.ImportHelper):
               t.vertices[0] = int(a) - 1
               t.vertices[1] = int(b) - 1
               t.vertices[2] = int(c) - 1
-              t.vertices[3] = int(d) - 1
+              t.vertices[3] = int(d) - 1  
         elif line == '$ENDELM':
           mode = ''
         else:
