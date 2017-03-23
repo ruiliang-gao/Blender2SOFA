@@ -384,6 +384,16 @@ def exportVolumetric(o, opt):
         t.append(n)
 
         v = ET.Element('Node', name="Visual")
+        if o.useShader:
+          if not o.shaderFile:
+            print("no default shader for tetrahedra exists!")
+          else:
+            oglshd = ET.Element("OglShader", fileVertexShaders = o.shaderFile, fileTessellationControlShaders = o.shaderFile,
+             fileTessellationEvaluationShaders = o.shaderFile, fileFragmentShaders = o.shaderFile, printLog="1");
+            ogltesslvl = ET.Element("OglFloatVariable", name="TessellationLevel", value = "8")
+            v.append(oglshd)
+            v.append(ogltesslvl)
+            # ogl = ET.Element("OglModel", primitiveType = "PATCHES", name= name + '-visual');
         v.append(exportVisual(o, opt, name = name + "-visual"))
         v.append(ET.Element("BarycentricMapping",template="Vec3d,ExtVec3f",object1="../MO",object2=name + "-visual"))
         t.append(v)
@@ -820,7 +830,10 @@ def addMaterial(o, t):
 def exportVisual(o, opt, name = None,with_transform = True):
 
     m = o.to_mesh(opt.scene, True, 'RENDER')
-    t = ET.Element("OglModel",name=name or fixName(o.name))
+    if o.useShader: #assumed using PNTriangle
+      t = ET.Element("OglModel",name=name or fixName(o.name), primitiveType = "PATCHES" )
+    else:
+      t = ET.Element("OglModel",name=name or fixName(o.name))
 
     if with_transform :
         t.set("translation", (o.location))
