@@ -255,7 +255,7 @@ class ExportMSHOperator(bpy.types.Operator, bpy_extras.io_utils.ExportHelper):
       return { 'ERROR' }
 
 class ImportMSH(bpy.types.Operator, bpy_extras.io_utils.ImportHelper):
-  """Load a tetrahedral mesh from GMSH file"""
+  """Load a tetrahedral mesh from GMSH file, make sure to reverse the normals of the mesh if necessary"""
   bl_idname = "import_mesh.msh"
   bl_label = "Import MSH"
   bl_options = {'UNDO'}
