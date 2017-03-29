@@ -84,6 +84,8 @@ def register_sofa_properties():
     bpy.types.Object.layerCount = bpy.props.IntProperty(name='Layer Count', description='Number of layers in the thick shell',default=1,min=1,max=10)
     bpy.types.Object.useShader = bpy.props.BoolProperty(name='UseShader',description='Use our default shader for rendering this object',default=False)
     bpy.types.Object.shaderFile = bpy.props.StringProperty(name='shader location',description='Sader file location')
+    bpy.types.Object.useTessellation = bpy.props.BoolProperty(name='useTessellation',description='Use the Tessellation shader for rendering this object',default=False)
+    
 
 def unregister_sofa_properties():
     #"""SOFA properties associated with a scene"""
@@ -132,6 +134,7 @@ def unregister_sofa_properties():
     del bpy.types.Object.thickness
     del bpy.types.Object.layerCount
     del bpy.types.Object.useShader
+    del bpy.types.Object.useTessellation
     del bpy.types.Object.shaderFile
 
 class HapticProperties(bpy.types.PropertyGroup):

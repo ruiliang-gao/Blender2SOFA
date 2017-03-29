@@ -242,7 +242,18 @@ def exportThickCurve(o, opt):
       qs.append(ET.Element("QuadSetTopologyModifier"))
       qs.append(ET.Element("QuadSetTopologyAlgorithms", template="Vec3d"))
       qs.append(ET.Element("Hexa2QuadTopologicalMapping", input='@../' + topo, output="@" + name + "-quadSurf"))
-      ogl = ET.Element("OglModel", name= name + '-visual');
+      if o.useShader:
+        if not o.shaderFile:
+          print("no default shader for thick curve exists!")
+        else:
+          oglshd = ET.Element("OglShader", fileVertexShaders = o.shaderFile, fileTessellationControlShaders = o.shaderFile,
+           fileTessellationEvaluationShaders = o.shaderFile, fileFragmentShaders = o.shaderFile, printLog="1");
+          ogltesslvl = ET.Element("OglFloatVariable", name="TessellationLevel", value = "6")
+          qs.append(oglshd)
+          qs.append(ogltesslvl)
+          ogl = ET.Element("OglModel", name= name + '-visual', primitiveType = "PATCHES");
+      else:
+        ogl = ET.Element("OglModel", name= name + '-visual');
       qs.append(ogl)
       addMaterial(o, ogl);
       qs.append(ET.Element('IdentityMapping', input="@../MO", output="@" + name + '-visual'))
@@ -327,9 +338,20 @@ def exportThickQuadShell(o, opt):
         b3 = ET.Element('BiCubicSplineSurface');
         addMaterialToBicubic(o, b3);
         v.append(b3);
+    elif o.useShader:
+      if not o.shaderFile:
+        print("no default shader for thick shell exists!")
+      else:
+        oglshd = ET.Element("OglShader", fileVertexShaders = o.shaderFile, fileTessellationControlShaders = o.shaderFile,
+         fileTessellationEvaluationShaders = o.shaderFile, fileFragmentShaders = o.shaderFile, printLog="1");
+        ogltesslvl = ET.Element("OglFloatVariable", name="TessellationLevel", value = "6")
+        v.append(oglshd)
+        v.append(ogltesslvl)
+        v.append(exportVisual(o, opt, name = name + "-visual"))
+    
     else:
         v.append(exportVisual(o, opt, name = name + "-visual"))
-        v.append(ET.Element("BarycentricMapping",template="Vec3d,ExtVec3f",input="@../MO",output='@' + name + "-visual"))
+    v.append(ET.Element("BarycentricMapping",template="Vec3d,ExtVec3f",input="@../MO",output='@' + name + "-visual"))
     t.append(v)
 
 
@@ -510,7 +532,7 @@ def collisionModelParts(o, obstacle = False, group = None, bothSide = 0):
     if group == None:  group = o.collisionGroup
     return [
         # ET.Element("PointModel",selfCollision=sc, contactFriction = o.contactFriction, contactStiffness = o.contactStiffness, group=group, moving = M, simulated = M, bothSide= bothSide ),    
-        # ET.Element("PointModel",selfCollision=sc, contactFriction = o.contactFriction, contactStiffness = o.contactStiffness, group=group, moving = M, simulated = M, bothSide= bothSide ),
+        ET.Element("PointModel",selfCollision=sc, contactFriction = o.contactFriction, active = "0", contactStiffness = o.contactStiffness, group=group, moving = M, simulated = M, bothSide= bothSide ),
         ET.Element("LineModel",selfCollision=sc, contactFriction = o.contactFriction, contactStiffness = o.contactStiffness, group=group, moving = M, simulated = M, bothSide= bothSide ),
         ET.Element("TriangleModel", tags = sutureTag,selfCollision=sc, contactFriction = o.contactFriction, contactStiffness = o.contactStiffness, group=group, moving = M, simulated = M, bothSide= bothSide )
     ]  
@@ -749,6 +771,18 @@ def exportObstacle(o, opt):
     t = ET.Element("Node",name=name)
     t.set('author-parent', 'root')
     t.set('author-order', 1)
+    if o.useShader:
+      if not o.shaderFile:
+        print("no default shader for obstacle exists!")
+      elif not o.useTessellation:
+        oglshd = ET.Element("OglShader", fileVertexShaders = o.shaderFile, fileFragmentShaders = o.shaderFile, printLog="1");
+        t.append(oglshd);
+      else:
+        oglshd = ET.Element("OglShader", fileVertexShaders = o.shaderFile, fileTessellationControlShaders = o.shaderFile,
+         fileTessellationEvaluationShaders = o.shaderFile, fileFragmentShaders = o.shaderFile, printLog="1");
+        ogltesslvl = ET.Element("OglFloatVariable", name="TessellationLevel", value = "1")
+        t.append(oglshd)
+        t.append(ogltesslvl)
     t.append(exportVisual(o, opt, name = name+'-visual', with_transform = True))
     t.append(exportTriangularTopologyContainer(o,opt))
     t.append(createMechanicalObject(o))
@@ -830,7 +864,7 @@ def addMaterial(o, t):
 def exportVisual(o, opt, name = None,with_transform = True):
 
     m = o.to_mesh(opt.scene, True, 'RENDER')
-    if o.useShader: #assumed using PNTriangle
+    if o.useShader and o.useTessellation:
       t = ET.Element("OglModel",name=name or fixName(o.name), primitiveType = "PATCHES" )
     else:
       t = ET.Element("OglModel",name=name or fixName(o.name))
@@ -891,6 +925,10 @@ def exportObject(opt, o):
             elif annotated_type == 'THICKCURVE':
                 t = exportThickCurve(o, opt)
             elif annotated_type == 'VISUAL':
+                # if(o.useShader and o.shaderFile)
+                # oglshd = ET.Element("OglShader", fileVertexShaders = o.shaderFile, fileTessellationControlShaders = o.shaderFile,
+                # fileTessellationEvaluationShaders = o.shaderFile, fileFragmentShaders = o.shaderFile, printLog="1");
+                # ogltesslvl = ET.Element("OglFloatVariable", name="TessellationLevel", value = "8")  
                 t = exportVisual(o, opt)
             elif annotated_type == 'RIGID':
                 t = exportRigid(o, opt)

@@ -103,10 +103,14 @@ class SofaObjectAnnotationPanel(bpy.types.Panel):
             c.prop(p, 'carvable')
             c.prop(p, 'suture')
 
-
-        if t == 'VOLUMETRIC':
+        if t in [ 'VOLUMETRIC', 'THICKSHELL', 'THICKCURVE', 'COLLISION', 'SAFETYSURFACE', 'VISUAL' ]:
             c.prop(p, 'useShader')
             c.prop(p, 'shaderFile')
+            c.prop(p, 'useTessellation')
+        
+        
+
+        if t == 'VOLUMETRIC':
             if o.type != 'MESH' or len(o.data.hexahedra) + len(o.data.tetrahedra) == 0:
                 layout.label('This object does not contain a volumetric mesh', icon='ERROR')
 
