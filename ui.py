@@ -138,6 +138,7 @@ class SofaScenePropertyPanel(bpy.types.Panel):
         c.prop(s, "contactDistance")
         c.prop(s, "showXYZFrame")
         c.prop(s, "precompution")
+        c.prop(s, "useSpeechRecognition")
         c.prop_search(s, "hapticWorkspaceBox", context.scene, "objects")
         c.prop_search(s, "defaultInstrument", context.scene, "objects")
         c.prop(s, "veinForceThreshold")

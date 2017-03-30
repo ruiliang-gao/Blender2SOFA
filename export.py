@@ -1156,6 +1156,9 @@ def exportScene(opt):
     root.append(ET.Element("LightManager"))
     if scene.showXYZFrame:
       root.append(ET.Element("OglSceneFrame"))
+    if scene.useSpeechRecognition:
+      root.append(ET.Element('RequiredPlugin', name='SurfLabSpeechRecognition'));
+      root.append(ET.Element('SpeechToText'));
 
     if selection:
         l = list(bpy.context.selected_objects)
