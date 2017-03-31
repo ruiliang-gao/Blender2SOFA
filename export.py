@@ -348,7 +348,7 @@ def exportThickQuadShell(o, opt):
         v.append(oglshd)
         v.append(ogltesslvl)
         v.append(exportVisual(o, opt, name = name + "-visual"))
-    
+
     else:
         v.append(exportVisual(o, opt, name = name + "-visual"))
     v.append(ET.Element("BarycentricMapping",template="Vec3d,ExtVec3f",input="@../MO",output='@' + name + "-visual"))
@@ -450,7 +450,7 @@ def exportHexVolumetric(o, opt):
       qs.append(ET.Element("QuadSetTopologyModifier"))
       qs.append(ET.Element("QuadSetTopologyAlgorithms", template="Vec3d"))
       qs.append(ET.Element("Hexa2QuadTopologicalMapping", input='@../' + topotetra, output="@" + name + "-quadSurf"))
-      
+
       if o.useShader:
         if not o.shaderFile:
           oglshd = ET.Element("OglShader", fileVertexShaders = "['shaders/TIPSShaders/texture3d.glsl']", fileFragmentShaders = "['shaders/TIPSShaders/texture3d.glsl']", printLog="1");
@@ -531,11 +531,11 @@ def collisionModelParts(o, obstacle = False, group = None, bothSide = 0):
     sc = o.selfCollision
     if group == None:  group = o.collisionGroup
     return [
-        # ET.Element("PointModel",selfCollision=sc, contactFriction = o.contactFriction, contactStiffness = o.contactStiffness, group=group, moving = M, simulated = M, bothSide= bothSide ),    
+        # ET.Element("PointModel",selfCollision=sc, contactFriction = o.contactFriction, contactStiffness = o.contactStiffness, group=group, moving = M, simulated = M, bothSide= bothSide ),
         ET.Element("PointModel",selfCollision=sc, contactFriction = o.contactFriction, active = "0", contactStiffness = o.contactStiffness, group=group, moving = M, simulated = M, bothSide= bothSide ),
         ET.Element("LineModel",selfCollision=sc, contactFriction = o.contactFriction, contactStiffness = o.contactStiffness, group=group, moving = M, simulated = M, bothSide= bothSide ),
         ET.Element("TriangleModel", tags = sutureTag,selfCollision=sc, contactFriction = o.contactFriction, contactStiffness = o.contactStiffness, group=group, moving = M, simulated = M, bothSide= bothSide )
-    ]  
+    ]
 
 def exportInstrument(o, opt):
     n = fixName(o.name)
@@ -577,7 +577,7 @@ def exportInstrument(o, opt):
             elif o.toolFunction == 'CLAMP':
               pm.set('tags', 'ClampingTool')
             elif o.toolFunction == 'CONTAIN':
-              pm.set('tags', 'ContainerTool')  
+              pm.set('tags', 'ContainerTool')
             else:
               pm.set('tags', 'GraspingTool')
 
@@ -842,7 +842,7 @@ def addMaterial(o, t):
 
         d = vector_to_string(mat.diffuse_color*mat.diffuse_intensity)
         a = vector_to_string(mat.diffuse_color*mat.ambient)
-        
+
         s = vector_to_string(mat.specular_color*mat.specular_intensity)
         e = vector_to_string(mat.diffuse_color*mat.emit)
         tr = mat.alpha
@@ -928,7 +928,7 @@ def exportObject(opt, o):
                 # if(o.useShader and o.shaderFile)
                 # oglshd = ET.Element("OglShader", fileVertexShaders = o.shaderFile, fileTessellationControlShaders = o.shaderFile,
                 # fileTessellationEvaluationShaders = o.shaderFile, fileFragmentShaders = o.shaderFile, printLog="1");
-                # ogltesslvl = ET.Element("OglFloatVariable", name="TessellationLevel", value = "8")  
+                # ogltesslvl = ET.Element("OglFloatVariable", name="TessellationLevel", value = "8")
                 t = exportVisual(o, opt)
             elif annotated_type == 'RIGID':
                 t = exportRigid(o, opt)
@@ -978,12 +978,12 @@ def exportHaptic(l, opt):
     nodes.append(ET.Element("RequiredPlugin", pluginName="SurfLabHaptic"))
     nodes.append(ET.Element("RequiredPlugin", pluginName="SaLua"))
     nodes.append(ET.Element("LuaController", source = "changeInstrumentController.lua", listening=1))
-    
+
     # Prepare the instruments, they are included in each haptic
-    for o in l: 
+    for o in l:
         if not o.hide_render and o.template == 'INSTRUMENT' and o.name == scene.defaultInstrument:
                 instruments.append(objectNode(opt, exportInstrument(o, opt)))
-    for o in l:    
+    for o in l:
         if not o.hide_render and o.template == 'INSTRUMENT' and o.name != scene.defaultInstrument:
             # print("found tool!")
             instruments.append(objectNode(opt, exportInstrument(o, opt)))
@@ -1019,7 +1019,7 @@ def exportHaptic(l, opt):
                                  deviceName = hp.deviceName,
                                  tags= omniTag, scale = hp.scale * scaleBase , positionBase = positionBase, orientationBase = orientationBase, desirePosition = positionBase,
                                  permanent="true", listening="true", alignOmniWithCamera="false",
-                                 forceScale = hp.forceScale));        
+                                 forceScale = hp.forceScale));
         rl.append(ET.Element("MechanicalObject", name="ToolRealPosition", tags=omniTag, template="Rigid", position="0 0 0 0 0 0 1",free_position="0 0 0 0 0 0 1"))
         nt = ET.Element("Node",name = "Tool");
         nt.append(ET.Element("MechanicalObject", template="Rigid", name="RealPosition"))
@@ -1087,41 +1087,51 @@ def remove_others(objs):    # remove objects not contained in objs
             except RuntimeError: # non-zero users
                 pass
     scene.update()
-   
-def prepare_name(opt, name):  
+
+def prepare_name(opt, name):
     chars_to_replace = [ '.','/',':','*','?','"','<','>','|' ]
     for c in chars_to_replace:
         name = name.replace(c, '_')
     return  os.path.join(opt.directory, name + ".blend")
-    
-def export2Blend(opt, l):
 
+def export2Blend(opt, l):
     names = [ o.name for o in l ]   # object names in scene as obj pointers are to be nullified in remove_others
-    print(names)
     for name in names:
         obj = bpy.data.objects[name]
-        print(obj)
         if not obj.hide_render:
             bpy.ops.ed.undo_push(message="Delete others")           # set a restore point
-            
             objs = get_obj_family(obj)                              # get object and its children
             remove_others(objs)                                     # remove other objects
             path = prepare_name(opt, name)                          # get file name
             opt.filepath_list.append(path)							# add this blend file path to the list of exported files
             bpy.ops.wm.save_as_mainfile(filepath=path, copy=True,)  # save .blend file
-
             bpy.ops.ed.undo()                                       # restore deleted objects
-    		 
-                
-        
-def zipExportedFiles(opt):
-    if opt.export_to_zip:
-        archive = zipfile.ZipFile(opt.directory+"\\"+os.path.splitext(basename(opt.filepath))[0]+".zip", mode='w')
-        for file in opt.filepath_list:
-                archive.write(file, basename(file))
-                os.remove(file)
 
-   
+def zipExportedFiles(opt):
+    os.chdir(opt.directory)
+    top_archive = zipfile.ZipFile(os.path.splitext(basename(opt.filepath))[0]+".zip", mode='w')
+
+    uniq_path_prfx = list(set([os.path.splitext(fp)[0] for fp in opt.filepath_list]))
+    filepath_list_nested = [ [ fp for fp in opt.filepath_list if fp.startswith(upp) ] for upp in uniq_path_prfx ]
+
+    for i, prfx in enumerate(uniq_path_prfx):   # put all related files into one zip
+        if len(filepath_list_nested[i]) > 1:
+            sub_archive = zipfile.ZipFile(prfx + ".zip", mode='w')
+            for fname in filepath_list_nested[i]:
+                sub_archive.write(fname,basename(fname))
+                os.remove(fname)
+            sub_archive.close()
+
+    for i, fpl in enumerate(filepath_list_nested):  # put all isolated files and zips (from above) into a top-level zip
+        if len(fpl) == 1:   # isolated file
+            top_archive.write(fpl[0],basename(fpl[0]))
+            os.remove(fpl[0])
+        else:   # newly generated zip
+            fpath = uniq_path_prfx[i]+".zip"
+            top_archive.write(fpath,basename(fpath))
+            os.remove(fpath)
+    top_archive.close()
+
 def exportScene(opt):
     scene = opt.scene
     selection = opt.selection_only
@@ -1167,7 +1177,7 @@ def exportScene(opt):
     l.reverse()
 
     root.extend(exportHaptic(l, opt))
-    
+
     for o in l:
         t = objectNode(opt, exportObject(opt, o))
         if t != None:
@@ -1182,9 +1192,6 @@ def exportScene(opt):
         if not o.hide_render and o.template == 'ATTACHCONSTRAINT':
             solverNode.append( objectNode(opt, exportAttachConstraint(o, opt)) )
     root.append(solverNode)
-    if opt.separate:
-        export2Blend(opt, l)    
-    
 
     return root
 
@@ -1231,11 +1238,11 @@ class ExportToSofa(Operator, ExportHelper):
             default=False,
             )
     export_to_zip = BoolProperty(
-            name="Export the isolated objects into a zip file",
-            description="Export Isolated Objects into Separate Files Inside A *.zip File",
+            name="Prepare a TIPS-author bundle (.zip)",
+            description="Export Isolated Objects into *.zip File",
             default=False,
             )
-			
+
     @classmethod
     def poll(cls, context):
         return context.scene is not None
@@ -1247,7 +1254,7 @@ class ExportToSofa(Operator, ExportHelper):
             opt.isolate_geometry = self.isolate_geometry
             opt.export_to_zip = self.export_to_zip
             opt.scene = context.scene
-            opt.separate = self.export_separate
+            opt.separate = True if opt.export_to_zip else self.export_separate
             opt.selection_only = self.use_selection
             opt.directory = os.path.dirname(self.filepath)
             opt.filepath = self.filepath
@@ -1257,13 +1264,19 @@ class ExportToSofa(Operator, ExportHelper):
             opt.file_format = self.filename_ext
             opt.pref = context.user_preferences.addons[__package__].preferences
             root = exportScene(opt)
-            writeNodesToFile(root, self.filepath, opt)
-			
-			# export objects in separate .blend files ATTN: opt.scene might be affected after this code is ran.
 
-            if(opt.export_to_zip):
+            writeNodesToFile(root, self.filepath, opt)
+
+			# export objects in separate .blend files ATTN: opt.scene might be affected after this code is ran.
+            if opt.separate:
+                if opt.selection_only: l = list(bpy.context.selected_objects)
+                else:                  l = list(opt.scene.objects)
+                l.reverse()
+                export2Blend(opt, l)
+
+            if opt.export_to_zip:
                 zipExportedFiles(opt)
-			
+
             return {'FINISHED'}
         except ExportException as et:
             self.report({'ERROR'}, "Export failed: %s" % et.message)
