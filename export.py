@@ -387,8 +387,19 @@ def exportVolumetric(o, opt):
         n.append(ET.Element("TriangleSetGeometryAlgorithms", template="Vec3d"))
 
         n.append(ET.Element('Tetra2TriangleTopologicalMapping', input="@../"+topotetra, output="@topotri", flipNormals='true'))
-
-        ogl = ET.Element("OglModel", name="Visual");
+        if o.useShader and o.useTessellation:
+          ogl = ET.Element("OglModel", name="Visual", primitiveType="PATCHES");
+        else:
+          ogl = ET.Element("OglModel", name="Visual");
+        if o.useShader:
+          if not o.shaderFile:
+            print("no default shader for tetrahedra exists!")
+          else:
+            oglshd = ET.Element("OglShader", fileVertexShaders = o.shaderFile, fileTessellationControlShaders = o.shaderFile,
+             fileTessellationEvaluationShaders = o.shaderFile, fileFragmentShaders = o.shaderFile, printLog="1");
+            ogltesslvl = ET.Element("OglFloatVariable", name="TessellationLevel", value = "8")
+            n.append(oglshd)
+            n.append(ogltesslvl)
         addMaterial(o, ogl);
         n.append(ogl)
         n.append(ET.Element("IdentityMapping",input="@../MO",output="@Visual"))
@@ -415,7 +426,7 @@ def exportVolumetric(o, opt):
             ogltesslvl = ET.Element("OglFloatVariable", name="TessellationLevel", value = "8")
             v.append(oglshd)
             v.append(ogltesslvl)
-            # ogl = ET.Element("OglModel", primitiveType = "PATCHES", name= name + '-visual');
+            
         v.append(exportVisual(o, opt, name = name + "-visual"))
         v.append(ET.Element("BarycentricMapping",template="Vec3d,ExtVec3f",object1="../MO",object2=name + "-visual"))
         t.append(v)
