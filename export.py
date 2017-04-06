@@ -857,8 +857,10 @@ def addMaterial(o, t):
             if tex.type == 'IMAGE' :
                 t.set("texturename", bpy.path.abspath(tex.image.filepath))
                 t.set("material","")
+    if o.texture2d != '':
+        t.set("texturename", "textures/"+o.texture2d)
     if o.texture3d != '':
-        t.set("texturename", o.texture3d)
+        t.set("texturename", "textures/"+o.texture3d)
         t.set("genTex3d", '1')
 
 def exportVisual(o, opt, name = None,with_transform = True):

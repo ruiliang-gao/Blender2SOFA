@@ -53,6 +53,7 @@ class SofaObjectAnnotationPanel(bpy.types.Panel):
 
         t = p.template
         c = layout.column(align=True)
+        c.prop(p, 'texture2d')
         if t == 'INSTRUMENT':
             c.prop(p, 'toolFunction')
         elif t == 'INSTRUMENTPART':
