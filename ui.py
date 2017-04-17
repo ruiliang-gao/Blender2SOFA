@@ -27,12 +27,12 @@ class SofaActionsPanel(bpy.types.Panel):
         # layout.separator()
         layout.operator("mesh.add_thick_curve", icon= 'ROOTCURVE')
         #layout.operator("mesh.add_hex_rod", icon= 'ROOTCURVE')
-        
 
-        
+
+
         if ConvertFromCustomProperties.poll(context):
             layout.operator(ConvertFromCustomProperties.bl_idname)
-    
+
 
 class SofaObjectAnnotationPanel(bpy.types.Panel):
     """A panel to adjust object properties"""
@@ -70,6 +70,7 @@ class SofaObjectAnnotationPanel(bpy.types.Panel):
                 c.prop(p, 'layerCount')
             if t == 'THICKCURVE' and p.type != 'MESH':
                 c.prop(o.data, 'bevel_depth', text = 'Thickness')
+                c.prop(p, "safetyForceThreshold")
             c.prop(p, 'texture3d')
             c.prop(p, 'precomputeConstraints')
 
@@ -108,8 +109,8 @@ class SofaObjectAnnotationPanel(bpy.types.Panel):
             c.prop(p, 'useShader')
             c.prop(p, 'shaderFile')
             c.prop(p, 'useTessellation')
-        
-        
+
+
 
         if t == 'VOLUMETRIC':
             if o.type != 'MESH' or len(o.data.hexahedra) + len(o.data.tetrahedra) == 0:
@@ -142,8 +143,6 @@ class SofaScenePropertyPanel(bpy.types.Panel):
         c.prop(s, "useSpeechRecognition")
         c.prop_search(s, "hapticWorkspaceBox", context.scene, "objects")
         c.prop_search(s, "defaultInstrument", context.scene, "objects")
-        c.prop(s, "veinForceThreshold")
-
 
 PROPERTY_NAME_MAP = { 'topObject': 'object1', 'botObject': 'object2', 'stretchDamping' : 'damping',
     'attach_stiffness': 'attachStiffness', '3dtexture':'texture3d' }
@@ -176,7 +175,7 @@ class HapticOptions(bpy.types.Operator):
         bpy.data.window_managers["WinMan"].addon_filter = 'User'
 
         return { 'FINISHED' }
-        
+
 class ConvertFromCustomProperties(bpy.types.Operator):
     bl_idname = "scene.convert_from_custom_properties"
     bl_label = "Recover from Older version of Blender2SOFA"

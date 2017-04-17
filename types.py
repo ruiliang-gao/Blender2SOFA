@@ -11,9 +11,8 @@ def register_sofa_properties():
     bpy.types.Scene.precompution = bpy.props.BoolProperty(name="Precompution",description="Check if there are any objects to be precomputed in the scene",default=False)
     bpy.types.Scene.hapticWorkspaceBox = bpy.props.StringProperty(name="Haptic Workspace Box",description="An empty object that defines the haptic workspace box")
     bpy.types.Scene.defaultInstrument = bpy.props.StringProperty(name="Default instrument",description="A tool object that defines the default instrument")
-    bpy.types.Scene.veinForceThreshold = bpy.props.FloatProperty(name="Vein Force Threshold", description="Maximum force a vein can withstand without injury during surgery", default=0.5)
     bpy.types.Scene.useSpeechRecognition = bpy.props.BoolProperty(name="SpeechRecognition", description="check this if you want to use SpeechRecognition plugin", default=False)
-    
+
     #"""SOFA properties and annotations for objects"""
     bpy.types.Object.template = bpy.props.EnumProperty(name="Template",default='VISUAL', items=[
         ('VISUAL', 'Visual', 'A decorative visual object that does not participate in simulation', 'SCENE', 1),
@@ -74,7 +73,7 @@ def register_sofa_properties():
     bpy.types.Object.object1 = bpy.props.StringProperty(name='First Object', description='Name of the first object in the attachment')
     bpy.types.Object.object2 = bpy.props.StringProperty(name='Second Object', description='Name of the second object in the attachment')
     bpy.types.Object.attachThreshold = bpy.props.FloatProperty(name="Attach Threshold",default=0.02,min=0.001,max=1.0,step=0.01,description='Maximum distance between connected vertices of two objects as a percentage of the size of object')
-    
+
     # Interactive features
     bpy.types.Object.carvable = bpy.props.BoolProperty(name='Carvable',description='Allow the object be interactively carved by mouse or a carving tool',default=False)
     bpy.types.Object.suture = bpy.props.BoolProperty(name='Interactive',description='Allow the object to be interactively manipulated by the haptic tools',default=True)
@@ -87,7 +86,7 @@ def register_sofa_properties():
     bpy.types.Object.useShader = bpy.props.BoolProperty(name='UseShader',description='Use our default shader for rendering this object',default=False)
     bpy.types.Object.shaderFile = bpy.props.StringProperty(name='shader location',description='Sader file location')
     bpy.types.Object.useTessellation = bpy.props.BoolProperty(name='useTessellation',description='Use the Tessellation shader for rendering this object',default=False)
-    
+    bpy.types.Object.safetyForceThreshold = bpy.props.FloatProperty(name='Safety Force Threshold', description='Maximum force a vein can withstand without sustaining injury', default=1.5)
 
 def unregister_sofa_properties():
     #"""SOFA properties associated with a scene"""
@@ -140,10 +139,10 @@ def unregister_sofa_properties():
     del bpy.types.Object.useShader
     del bpy.types.Object.useTessellation
     del bpy.types.Object.shaderFile
+    del bpy.types.Object.safetyForceThreshold
 
 class HapticProperties(bpy.types.PropertyGroup):
     scale = bpy.props.FloatProperty(name='Workspace Scale',description='Scaling applied to the workspace box of the haptic',default=25,min=1,max=10000,step=10)
     forceScale = bpy.props.FloatProperty(name='Force-feedback Scale',description='Scaling applied to force feedback',default=0.001,min=0,max=10000,soft_max=1)
     forceFeedback = bpy.props.BoolProperty(name='Force-feedback enabled',description='Enable force-feedback for this haptic device',default=False)
     deviceName = bpy.props.StringProperty(name='Device Name',description='Name of the haptic device name as registered in the Geomagic Touch Setup application')
-

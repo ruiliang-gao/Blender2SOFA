@@ -426,7 +426,7 @@ def exportVolumetric(o, opt):
             ogltesslvl = ET.Element("OglFloatVariable", name="TessellationLevel", value = "8")
             v.append(oglshd)
             v.append(ogltesslvl)
-            
+
         v.append(exportVisual(o, opt, name = name + "-visual"))
         v.append(ET.Element("BarycentricMapping",template="Vec3d,ExtVec3f",object1="../MO",object2=name + "-visual"))
         t.append(v)
@@ -529,7 +529,7 @@ def addConstraints(o, t):
 def collisionModelParts(o, obstacle = False, group = None, bothSide = 0):
     if o.suture and o.template == 'THICKCURVE':
       if any(c in o.name for c in ("vein", "Vein", "artery", "Artery")):
-        sutureTag = 'HapticSurfaceVein'
+        sutureTag = 'HapticSurfaceVein SafetyForceThreshold_' + str(o.safetyForceThreshold)
       else:
         sutureTag = 'HapticSurfaceCurve'
     elif o.suture and o.template == 'SAFETYSURFACE':
@@ -618,7 +618,7 @@ def exportInstrument(o, opt):
             t.append(child)
 
     hm = ET.Element("HapticManager", omniDriver = '@../../RigidLayer/driver',
-        graspStiffness = "1e3", attachStiffness="1e5", grasp_force_scale = "-1e-3", duration = "50", veinForceThreshold = opt.scene.veinForceThreshold)
+        graspStiffness = "1e3", attachStiffness="1e5", grasp_force_scale = "-1e-3", duration = "50")
 
     if len(tip_names) == 1:
         hm.set('toolModel', '@'+ tip_names[0] + '/toolTip')
