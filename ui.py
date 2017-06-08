@@ -65,6 +65,7 @@ class SofaObjectAnnotationPanel(bpy.types.Panel):
             c.prop(p, 'poissonRatio')
             c.prop(p, 'damping')
             c.prop(p, 'rayleighStiffness')
+            c.prop(p, 'totalMass')
             if t == 'THICKSHELL':
                 c.prop(p, 'thickness')
                 c.prop(p, 'layerCount')

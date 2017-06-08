@@ -64,7 +64,8 @@ def register_sofa_properties():
     bpy.types.Object.bendingStiffness = bpy.props.FloatProperty(name="Bending Stiffness",default=3000,min=1,max=1e+6,step=100)
     bpy.types.Object.damping = bpy.props.FloatProperty(name="Damping",default=0.1,min=0,max=1000,step=0.1)
     bpy.types.Object.precomputeConstraints = bpy.props.BoolProperty(name='Accurate Constraints',description='Better and more accurate constraints but requires lengthy precomputation',default=False)
-
+    bpy.types.Object.totalMass = bpy.props.FloatProperty(name="total Mass",default=1,min=0.01,max=100,step=0.1)
+    
     # Attachments
     bpy.types.Object.attachStiffness = bpy.props.FloatProperty(name="Attach Stiffness",default=10000,min=1,max=1e+6,soft_min=10,step=100)
     bpy.types.Object.naturalLength = bpy.props.FloatProperty(name="Spring Natural Length",default=0.5,min=0.1,max=10,step=0.1)
@@ -78,7 +79,7 @@ def register_sofa_properties():
     bpy.types.Object.carvable = bpy.props.BoolProperty(name='Carvable',description='Allow the object be interactively carved by mouse or a carving tool',default=False)
     bpy.types.Object.suture = bpy.props.BoolProperty(name='Interactive',description='Allow the object to be interactively manipulated by the haptic tools',default=True)
 
-    #
+    #Rendering
     bpy.types.Object.texture3d = bpy.props.StringProperty(name='3D Texture',description='Filename of the 3D texture')
     bpy.types.Object.texture2d = bpy.props.StringProperty(name='2D Texture',description='Filename of the 2D texture')
     bpy.types.Object.thickness = bpy.props.FloatProperty(name='Thickness',description='Thickness of the shell', default=0.1,min=0.001,max=1,step=0.01)
@@ -86,7 +87,9 @@ def register_sofa_properties():
     bpy.types.Object.useShader = bpy.props.BoolProperty(name='UseShader',description='Use our default shader for rendering this object',default=False)
     bpy.types.Object.shaderFile = bpy.props.StringProperty(name='shader location',description='Sader file location')
     bpy.types.Object.useTessellation = bpy.props.BoolProperty(name='useTessellation',description='Use the Tessellation shader for rendering this object',default=False)
-    bpy.types.Object.safetyForceThreshold = bpy.props.FloatProperty(name='Safety Force Threshold', description='Maximum force a vein can withstand without sustaining injury', default=1.5)
+    
+    #Safety
+    bpy.types.Object.safetyForceThreshold = bpy.props.FloatProperty(name='Safety Force Threshold', description='Maximum force a vein can withstand without sustaining injury', default=2.0)
 
 def unregister_sofa_properties():
     #"""SOFA properties associated with a scene"""
@@ -118,6 +121,7 @@ def unregister_sofa_properties():
     del bpy.types.Object.bendingStiffness
     del bpy.types.Object.damping
     del bpy.types.Object.precomputeConstraints
+    del bpy.types.Object.totalMass
 
     # Attachments
     del bpy.types.Object.attachStiffness
@@ -131,7 +135,7 @@ def unregister_sofa_properties():
     del bpy.types.Object.carvable
     del bpy.types.Object.suture
 
-    #
+    #Rendering and safety
     del bpy.types.Object.texture3d
     del bpy.types.Object.texture2d
     del bpy.types.Object.thickness
