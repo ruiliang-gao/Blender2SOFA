@@ -30,7 +30,7 @@ bpy.types.Scene.layerCount = IntProperty(
 #   GUI PANEL OBJECT
 
 class OBJECT_PT_ConnectingTissuePanel(bpy.types.Panel):
-    bl_label = "Connecting Tissue"
+    bl_label = "Create Connecting Tissue"
     bl_space_type = "VIEW_3D"
     bl_region_type = "TOOLS"
 

@@ -58,13 +58,13 @@ def register_sofa_properties():
     bpy.types.Object.contactStiffness = bpy.props.FloatProperty(name="Contact Stiffness",default=500,min=0,max=1e+5,step=100)
 
     # Elasticity
-    bpy.types.Object.youngModulus = bpy.props.FloatProperty(name="Stiffness (Young Modulus)",default=3000,min=1,max=1e+6,soft_min=10,step=100)
-    bpy.types.Object.poissonRatio = bpy.props.FloatProperty(name="Compressibility",default=0.45,min=0.0,max=0.49,step=0.01)
-    bpy.types.Object.rayleighStiffness = bpy.props.FloatProperty(name="Rayleigh Stiffness",default=0.0,min=0.0,max=0.49,step=0.01)
-    bpy.types.Object.bendingStiffness = bpy.props.FloatProperty(name="Bending Stiffness",default=3000,min=1,max=1e+6,step=100)
+    bpy.types.Object.youngModulus = bpy.props.FloatProperty(name="Stiffness (Young Modulus)",description=' Modulus of elasticity which represents how easy it is to deform (stretch a material)',default=3000,min=1,max=1e+6,soft_min=10,step=100)
+    bpy.types.Object.poissonRatio = bpy.props.FloatProperty(name="Compressibility (PoissonRatio)",description = 'Measures how much will the material expand in directions perpendicular to the direction of compression',default=0.45,min=0.0,max=0.49,step=0.01)
+    bpy.types.Object.rayleighStiffness = bpy.props.FloatProperty(name="Rayleigh Stiffness",description = 'Rayleigh damping is viscous damping that is proportional to a linear combination of mass and stiffness',default=0.0,min=0.0,max=0.49,step=0.01)
+    bpy.types.Object.bendingStiffness = bpy.props.FloatProperty(name="Bending Stiffness", description = 'the resistance of a member against bending deformation.', default=3000,min=1,max=1e+6,step=100)
     bpy.types.Object.damping = bpy.props.FloatProperty(name="Damping",default=0.1,min=0,max=1000,step=0.1)
-    bpy.types.Object.precomputeConstraints = bpy.props.BoolProperty(name='Accurate Constraints',description='Better and more accurate constraints but requires lengthy precomputation',default=False)
-    bpy.types.Object.totalMass = bpy.props.FloatProperty(name="total Mass",default=1,min=0.01,max=100,step=0.1)
+    bpy.types.Object.precomputeConstraints = bpy.props.BoolProperty(name='Accurate Constraints',description='(Currently unstable)Better and more accurate constraints but requires lengthy precomputation',default=False)
+    bpy.types.Object.totalMass = bpy.props.FloatProperty(name="total Mass",default=0.5,min=0.01,max=100,step=0.1)
     
     # Attachments
     bpy.types.Object.attachStiffness = bpy.props.FloatProperty(name="Attach Stiffness",default=10000,min=1,max=1e+6,soft_min=10,step=100)
