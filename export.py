@@ -110,7 +110,7 @@ def addSolvers(t):
       t.append(ET.Element("EulerImplicitSolver", rayleighMass="0.1", rayleighStiffness="0.1"))
       t.append(ET.Element("CGLinearSolver",iterations="100", tolerance="1.0e-10", threshold="1.0e-6"))
     else:
-      t.append(ET.Element("EulerImplicitSolver", rayleighMass="0.1", rayleighStiffness="0.05"))
+      t.append(ET.Element("EulerImplicitSolver", rayleighMass="0.05", rayleighStiffness="0.0"))
       t.append(ET.Element("CGLinearSolver",iterations="50", tolerance="1.0e-10", threshold="1.0e-6"))
 
 def exportTetrahedralTopology(o, opt, name):
@@ -992,14 +992,16 @@ def exportHaptic(l, opt):
     nodes.append(ET.Element("RequiredPlugin", pluginName="SaLua"))
     nodes.append(ET.Element("LuaController", source = "changeInstrumentController.lua", listening=1))
 
-    # Prepare the instruments, they are included in each haptic
-    for o in l:
-        if not o.hide_render and o.template == 'INSTRUMENT' and o.name == scene.defaultInstrument:
+    # Prepare the instruments in the order of layers, they are included in each haptic
+    for layer in range(10): # check layers 0 ~ 8
+        objs = [o for o in l if o.layers[layer]]
+        layer = layer+1
+        for o in objs:
+            if not o.hide_render and o.template == 'INSTRUMENT':
                 instruments.append(objectNode(opt, exportInstrument(o, opt)))
-    for o in l:
-        if not o.hide_render and o.template == 'INSTRUMENT' and o.name != scene.defaultInstrument:
-            # print("found tool!")
-            instruments.append(objectNode(opt, exportInstrument(o, opt)))
+    # for o in l:
+        # if not o.hide_render and o.template == 'INSTRUMENT' and o.name != scene.defaultInstrument:
+            # instruments.append(objectNode(opt, exportInstrument(o, opt)))
 
     if scene.hapticWorkspaceBox in scene.objects:
         b = scene.objects[scene.hapticWorkspaceBox]
