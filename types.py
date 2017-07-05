@@ -12,6 +12,8 @@ def register_sofa_properties():
     bpy.types.Scene.hapticWorkspaceBox = bpy.props.StringProperty(name="Haptic Workspace Box",description="An empty object that defines the haptic workspace box")
     bpy.types.Scene.defaultInstrument = bpy.props.StringProperty(name="Default instrument",description="A tool object that defines the default instrument")
     bpy.types.Scene.useSpeechRecognition = bpy.props.BoolProperty(name="SpeechRecognition", description="check this if you want to use SpeechRecognition plugin", default=False)
+    bpy.types.Scene.targetOrgan = bpy.props.StringProperty(name="Target Organ",description="The major target organ in the surgery")
+    
 
     #"""SOFA properties and annotations for objects"""
     bpy.types.Object.template = bpy.props.EnumProperty(name="Template",default='VISUAL', items=[
@@ -102,6 +104,7 @@ def unregister_sofa_properties():
     del bpy.types.Scene.hapticWorkspaceBox
     del bpy.types.Scene.defaultInstrument
     del bpy.types.Scene.useSpeechRecognition
+    del bpy.types.Scene.targetOrgan
 
     #"""SOFA properties and annotations for objects"""
     del bpy.types.Object.template
