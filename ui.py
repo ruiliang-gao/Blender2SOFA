@@ -98,15 +98,17 @@ class SofaObjectAnnotationPanel(bpy.types.Panel):
 
         if t in [ 'VOLUMETRIC', 'CLOTH', 'THICKSHELL', 'THICKCURVE' ]:
             c = layout.column(align=True)
-            c.label('Collision Parameters')
-            c.prop(p, 'collisionGroup')
-            c.prop(p, 'contactFriction')
-            c.prop(p, 'contactStiffness')
+            c.label('Collision Parameters')                   
             c.prop(p, 'selfCollision')
             c.prop(p, 'carvable')
             c.prop(p, 'suture')
 
-        if t in [ 'VOLUMETRIC', 'THICKSHELL', 'THICKCURVE', 'COLLISION', 'SAFETYSURFACE', 'VISUAL' ]:
+        if t in [ 'VOLUMETRIC','CLOTH', 'THICKSHELL', 'THICKCURVE', 'COLLISION', 'SAFETYSURFACE', 'VISUAL' ]:
+            if t != 'VISUAL':
+                c.prop(p, 'collisionGroup')
+                c.prop(p, 'contactStiffness')
+                c.prop(p, 'contactFriction')
+            c.label('Rendering Parameters') 
             c.prop(p, 'useShader')
             c.prop(p, 'shaderFile')
             c.prop(p, 'useTessellation')
@@ -143,7 +145,7 @@ class SofaScenePropertyPanel(bpy.types.Panel):
         c.prop(s, "precompution")
         c.prop(s, "useSpeechRecognition")
         c.prop_search(s, "hapticWorkspaceBox", context.scene, "objects")
-        c.prop_search(s, "defaultInstrument", context.scene, "objects")
+        # c.prop_search(s, "defaultInstrument", context.scene, "objects")
 
 PROPERTY_NAME_MAP = { 'topObject': 'object1', 'botObject': 'object2', 'stretchDamping' : 'damping',
     'attach_stiffness': 'attachStiffness', '3dtexture':'texture3d' }

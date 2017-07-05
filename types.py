@@ -47,7 +47,8 @@ def register_sofa_properties():
         ('RIGHTJAW', 'Right Jaw', 'right jaw of an instrument that rotate around X-axis'),
         ('FIXED', 'Fixed', 'Fixed part of the tool that moves with the handle'),
         ('LEFTCLIP', 'Left clip', 'left jaw of clip applier that rotate around X-axis'),
-        ('RIGHTCLIP', 'Right clip', 'right jaw of clip applier that rotate around X-axis')
+        ('RIGHTCLIP', 'Right clip', 'right jaw of clip applier that rotate around X-axis'),
+        ('TOOLSHAFT', 'Tool shaft', 'shaft of the tool')
         ])
     bpy.types.Object.proximity = bpy.props.FloatProperty(name="Proximity",description="Proximity for collision detection",min=0,default=0,max=10,step=0.01)
 
@@ -147,6 +148,6 @@ def unregister_sofa_properties():
 
 class HapticProperties(bpy.types.PropertyGroup):
     scale = bpy.props.FloatProperty(name='Workspace Scale',description='Scaling applied to the workspace box of the haptic',default=25,min=1,max=10000,step=10)
-    forceScale = bpy.props.FloatProperty(name='Force-feedback Scale',description='Scaling applied to force feedback',default=0.001,min=0,max=10000,soft_max=1)
+    forceScale = bpy.props.FloatProperty(name='Force-feedback Scale',description='Scaling applied to force feedback',default=0.0005,min=0,max=10000,soft_max=1)
     forceFeedback = bpy.props.BoolProperty(name='Force-feedback enabled',description='Enable force-feedback for this haptic device',default=False)
     deviceName = bpy.props.StringProperty(name='Device Name',description='Name of the haptic device name as registered in the Geomagic Touch Setup application')
