@@ -578,12 +578,21 @@ def collisionModelParts(o, opt, obstacle = False, group = None, bothSide = 0):
     M = not obstacle
     sc = o.selfCollision
     if group == None:  group = o.collisionGroup
-    return [
-        # ET.Element("PointModel",selfCollision=sc, contactFriction = o.contactFriction, contactStiffness = o.contactStiffness, group=group, moving = M, simulated = M, bothSide= bothSide ),
-        ET.Element("PointModel",selfCollision=sc, contactFriction = o.contactFriction, active = "0", contactStiffness = o.contactStiffness, group=group, moving = M, simulated = M, bothSide= bothSide ),
-        ET.Element("LineModel",selfCollision=sc, contactFriction = o.contactFriction, contactStiffness = o.contactStiffness, group=group, moving = M, simulated = M, bothSide= bothSide ),
-        ET.Element("TriangleModel", tags = sutureTag,selfCollision=sc, contactFriction = o.contactFriction, contactStiffness = o.contactStiffness, group=group, moving = M, simulated = M, bothSide= bothSide )
-    ]
+    if o.template in ('THICKCURVE', 'VOLUMETRIC'):
+        return [
+            # ET.Element("PointModel",selfCollision=sc, contactFriction = o.contactFriction, contactStiffness = o.contactStiffness, group=group, moving = M, simulated = M, bothSide= bothSide ),
+            #ET.Element("PointModel",selfCollision=sc, contactFriction = o.contactFriction, active = "0", contactStiffness = o.contactStiffness, group=group, moving = M, simulated = M, bothSide= bothSide ),
+            ET.Element("LineModel",selfCollision=sc, contactFriction = o.contactFriction, contactStiffness = o.contactStiffness, group=group, moving = M, simulated = M, bothSide= bothSide ),
+            ET.Element("TriangleModel", tags = sutureTag,selfCollision=sc, contactFriction = o.contactFriction, contactStiffness = o.contactStiffness, group=group, moving = M, simulated = M, bothSide= bothSide )
+        ]
+    else:
+        return [
+            # ET.Element("PointModel",selfCollision=sc, contactFriction = o.contactFriction, contactStiffness = o.contactStiffness, group=group, moving = M, simulated = M, bothSide= bothSide ),
+            ET.Element("PointModel",selfCollision=sc, contactFriction = o.contactFriction, active = "0", contactStiffness = o.contactStiffness, group=group, moving = M, simulated = M, bothSide= bothSide ),
+            ET.Element("LineModel",selfCollision=sc, contactFriction = o.contactFriction, contactStiffness = o.contactStiffness, group=group, moving = M, simulated = M, bothSide= bothSide ),
+            ET.Element("TriangleModel", tags = sutureTag,selfCollision=sc, contactFriction = o.contactFriction, contactStiffness = o.contactStiffness, group=group, moving = M, simulated = M, bothSide= bothSide )
+        ]
+    
 
 def exportInstrument(o, opt):
     n = fixName(o.name)
@@ -673,7 +682,7 @@ def exportInstrument(o, opt):
         idx = INSTRUMENT_PART_MAP[i.instrumentPart]
         name = fixName(i.name)
         child =  ET.Element("Node", name = fixName(i.name))
-        if i.template == 'INSTRUMENTPART'and i.instrumentPart != 'TOOLSHAFT' and o.toolFunction != 'CLAMP':
+        if i.template == 'INSTRUMENTPART'and i.instrumentPart != 'TOOLSHAFT' and o.toolFunction not in ['GRASP', 'CLAMP']:
           OglShd = ET.Element("OglShader", fileVertexShaders = "['shaders/TIPSShaders/instrument.glsl']" , fileFragmentShaders = "['shaders/TIPSShaders/instrument.glsl']", printLog="1");
           child.append(OglShd)
         child.append(exportVisual(i, opt, name = name + '-visual', with_transform = True))
@@ -1166,7 +1175,7 @@ def zipExportedFiles(opt):
 
     uniq_path_prfx = list(set([os.path.splitext(fp)[0] for fp in opt.filepath_list]))
     filepath_list_nested = [ [ fp for fp in opt.filepath_list if fp.startswith(upp) ] for upp in uniq_path_prfx ]
-
+            
     for i, prfx in enumerate(uniq_path_prfx):   # put all related files into one zip
         if len(filepath_list_nested[i]) > 1:
             sub_archive = zipfile.ZipFile(prfx + ".zip", mode='w')
