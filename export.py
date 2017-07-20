@@ -622,7 +622,7 @@ def exportInstrument(o, opt):
                                )
             else:
               pm = ET.Element("TPointModel", name = 'toolTip',
-                                 contactStiffness="2.0", bothSide="0", proximity = i.proximity,
+                                 contactStiffness="20.0", bothSide="0", proximity = i.proximity,
                                  group= o.collisionGroup
                                  )
             if o.toolFunction == 'CARVE':
@@ -635,6 +635,8 @@ def exportInstrument(o, opt):
               pm.set('tags', 'ClampingTool')
             elif o.toolFunction == 'CONTAIN':
               pm.set('tags', 'ContainerTool')
+            elif o.toolFunction == 'CUT':
+              pm.set('tags', 'CuttingTool')
             else:
               pm.set('tags', 'GraspingTool')
 

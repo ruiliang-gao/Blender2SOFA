@@ -39,8 +39,9 @@ def register_sofa_properties():
     bpy.types.Object.toolFunction = bpy.props.EnumProperty(name="Function",description="Interactive function of an instrument", default='GRASP',items=[
         ('GRASP', 'Grasp', 'A grasper instrument'),
         ('SUTURE','Suture', 'A grasper that can be used for suturing'),
-        ('CARVE', 'Carve', 'An instrument that destroys tissue at contact'),
-        ('DISSECT','Dissect', 'An instrument that dissects tissue and veins at contact'),
+        ('CARVE', 'Carve', 'An instrument that destroys tissue at contact, may destroy veins'),
+        ('DISSECT','Dissect', 'An instrument that dissects both tissue and veins at contact'),
+        ('CUT','Cut', 'An instrument that dissects tissue but does nothing on the veins'),
         ('CLAMP', 'Clamp', 'Apply clips to vessels to close them'),
         ('CONTAIN', 'Contain', 'Container of the orgrans')
         ])
@@ -151,6 +152,6 @@ def unregister_sofa_properties():
 
 class HapticProperties(bpy.types.PropertyGroup):
     scale = bpy.props.FloatProperty(name='Workspace Scale',description='Scaling applied to the workspace box of the haptic',default=25,min=1,max=10000,step=10)
-    forceScale = bpy.props.FloatProperty(name='Force-feedback Scale',description='Scaling applied to force feedback',default=0.0005,min=0,max=10000,soft_max=1)
+    forceScale = bpy.props.FloatProperty(name='Force-feedback Scale',description='Scaling applied to force feedback',default=0.0008,min=0,max=10000,soft_max=1)
     forceFeedback = bpy.props.BoolProperty(name='Force-feedback enabled',description='Enable force-feedback for this haptic device',default=False)
     deviceName = bpy.props.StringProperty(name='Device Name',description='Name of the haptic device name as registered in the Geomagic Touch Setup application')
