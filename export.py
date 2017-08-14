@@ -110,6 +110,8 @@ def addSolvers(t):
       t.append(ET.Element("EulerImplicitSolver", rayleighMass="0.1", rayleighStiffness="0.1"))
       t.append(ET.Element("CGLinearSolver",iterations="100", tolerance="1.0e-10", threshold="1.0e-6"))
     else:
+      if bpy.context.scene.use_gravity :
+        t.append(ET.Element("Gravity", gravity=bpy.context.scene.gravity))
       t.append(ET.Element("EulerImplicitSolver", rayleighMass="0.05", rayleighStiffness="0.0"))
       t.append(ET.Element("CGLinearSolver",iterations="50", tolerance="1.0e-10", threshold="1.0e-6"))
 
@@ -1093,6 +1095,7 @@ def exportHaptic(l, opt):
 
         # State of the tool
         isn = ET.Element("Node",name = "Instruments_of_"+n);
+        isn.append(ET.Element("Gravity", gravity="0 0 0"))
         isn.append(ET.Element("EulerImplicitSolver", rayleighMass="0.0", rayleighStiffness="0.0"))
         isn.append(ET.Element("CGLinearSolver",iterations="100", tolerance="1.0e-20", threshold="1.0e-20"))
         isn.append(ET.Element("MechanicalObject", name = "instrumentState", template="Rigid3d", position="0 0 0 0 0 0 1 0 0 0 0 0 0 1 0 0 0 0 0 0 1 0 0 0 0 0 0 1 0 0 0 0 0 0 1 0 0 0 0 0 0 1", free_position="0 0 0 0 0 0 1 0 0 0 0 0 0 1 0 0 0 0 0 0 1 0 0 0 0 0 0 1 0 0 0 0 0 0 1 0 0 0 0 0 0 1" ))
@@ -1204,10 +1207,11 @@ def exportScene(opt):
 
     root= ET.Element("Node")
     root.set("name", "root")
-    if scene.use_gravity :
-        root.set("gravity",scene.gravity)
-    else:
-        root.set("gravity",[0,0,0])
+    root.set("gravity",[0,0,0])
+    # if scene.use_gravity :
+        # root.set("gravity",scene.gravity)
+    # else:
+        # root.set("gravity",[0,0,0])
     root.set("dt",0.01)
 
     if scene.camera is not None:
