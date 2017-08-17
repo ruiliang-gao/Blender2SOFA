@@ -1,5 +1,5 @@
 import bpy
-
+import bmesh
 from .types import *
 
 
@@ -18,7 +18,8 @@ class SofaActionsPanel(bpy.types.Panel):
         layout.operator("scene.runsofa", icon='PLAY')
         layout.separator()
         layout.operator("option.show_haptic_options", icon= 'SETTINGS')
-        #layout.separator()
+        layout.separator()
+        layout.operator("option.generate_fixed_indices", icon= 'CONSTRAINT')
         layout.label('SOFA Create')
         c = layout.column(align=True)
         #c.operator("mesh.construct_connecting_tissue", icon='OUTLINER_OB_META', text='Connecting Tissue')
@@ -102,6 +103,7 @@ class SofaObjectAnnotationPanel(bpy.types.Panel):
             c.prop(p, 'selfCollision')
             c.prop(p, 'carvable')
             c.prop(p, 'suture')
+            c.prop(p, 'fixed_indices')
 
         if t in [ 'VOLUMETRIC','CLOTH', 'THICKSHELL', 'THICKCURVE', 'COLLISION', 'SAFETYSURFACE', 'VISUAL' ]:
             if t != 'VISUAL':
@@ -177,6 +179,30 @@ class HapticOptions(bpy.types.Operator):
         bpy.context.user_preferences.active_section = 'ADDONS'
         bpy.ops.screen.userpref_show('INVOKE_DEFAULT')
         bpy.data.window_managers["WinMan"].addon_filter = 'User'
+
+        return { 'FINISHED' }
+        
+class GenerateFixedConstraints(bpy.types.Operator):
+    bl_idname = "option.generate_fixed_indices"
+    bl_label = "Generate Fixed Indiceds"
+    bl_options = { 'UNDO' }
+    bl_description = 'Generate fixed indices for fixed constraints. Enter edit model and select the vertices first, then run this function.'
+
+    @classmethod
+    def poll(self, context):
+        return context.scene is not None
+
+    def execute(self, context):
+        o=bpy.context.selected_objects[0]
+        if o.mode == 'EDIT':
+            bm=bmesh.from_edit_mesh(o.data)
+            o.fixed_indices = ''
+            for v in bm.verts:
+                if v.select:
+                    o.fixed_indices += str(v.index) + ' '
+            bpy.ops.object.mode_set(mode = 'OBJECT')
+        else:
+            print("Object is not in edit mode.")
 
         return { 'FINISHED' }
 

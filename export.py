@@ -546,20 +546,23 @@ def cwisemul(a, b):
   return Vector([ a.x * b.x, a.y * b.y, a.z * b.z ])
 
 def addConstraints(o, t):
-    for q in o.children:
-      if not q.hide_render:
-        n = fixName(q.name)
-        if q.name.startswith('BoxConstraint') or q.template == 'BOXCONSTRAINT':
-            tl = q.matrix_world * Vector(q.bound_box[0])
-            br = q.matrix_world * Vector(q.bound_box[6])
-            b = array('d')
-            b.extend(tl)
-            b.extend(br)
-            t.append(ET.Element("BoxROI",name=n,box=b))
-            t.append(ET.Element("FixedConstraint", indices="@%s.indices" % n))
-        elif q.name.startswith('SphereConstraint') or q.template == 'SPHERECONSTRAINT':
-            t.append(ET.Element("SphereROI",name=n,centers=(q.matrix_world.translation),radii=(max(cwisemul(q.parent.scale, q.scale)))))
-            t.append(ET.Element("FixedConstraint", indices="@%s.indices" % n))
+    if o.fixed_indices:
+        t.append(ET.Element("FixedConstraint", indices=o.fixed_indices))
+    else:  
+        for q in o.children:
+          if not q.hide_render:
+            n = fixName(q.name)
+            if q.name.startswith('BoxConstraint') or q.template == 'BOXCONSTRAINT':
+                tl = q.matrix_world * Vector(q.bound_box[0])
+                br = q.matrix_world * Vector(q.bound_box[6])
+                b = array('d')
+                b.extend(tl)
+                b.extend(br)
+                t.append(ET.Element("BoxROI",name=n,box=b))
+                t.append(ET.Element("FixedConstraint", indices="@%s.indices" % n))
+            elif q.name.startswith('SphereConstraint') or q.template == 'SPHERECONSTRAINT':
+                t.append(ET.Element("SphereROI",name=n,centers=(q.matrix_world.translation),radii=(max(cwisemul(q.parent.scale, q.scale)))))
+                t.append(ET.Element("FixedConstraint", indices="@%s.indices" % n))
 
 def collisionModelParts(o, opt, obstacle = False, group = None, bothSide = 0):
     if o.suture and o.template == 'THICKCURVE':

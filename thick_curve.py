@@ -74,19 +74,19 @@ class AddThickCurve(bpy.types.Operator):
 
         return { 'FINISHED' }
         
-class HapticOptions(bpy.types.Operator):
-    bl_idname = "option.show_haptic_options"
-    bl_label = "Show Haptic options"
-    bl_options = { 'UNDO' }
-    bl_description = 'Show Haptic options for configuration'
+# class HapticOptions(bpy.types.Operator):
+    # bl_idname = "option.show_haptic_options"
+    # bl_label = "Show Haptic options"
+    # bl_options = { 'UNDO' }
+    # bl_description = 'Show Haptic options for configuration'
 
-    @classmethod
-    def poll(self, context):
-        return context.scene is not None
+    # @classmethod
+    # def poll(self, context):
+        # return context.scene is not None
 
-    def execute(self, context):
-        bpy.context.user_preferences.active_section = 'ADDONS'
-        bpy.ops.screen.userpref_show('INVOKE_DEFAULT')
-        bpy.data.window_managers["WinMan"].addon_filter = 'User'
+    # def execute(self, context):
+        # bpy.context.user_preferences.active_section = 'ADDONS'
+        # bpy.ops.screen.userpref_show('INVOKE_DEFAULT')
+        # bpy.data.window_managers["WinMan"].addon_filter = 'User'
 
-        return { 'FINISHED' }
+        # return { 'FINISHED' }
