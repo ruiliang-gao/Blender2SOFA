@@ -249,7 +249,7 @@ def exportThickCurve(o, opt):
     t.append(ET.Element('HexahedronSetGeometryAlgorithms',template="Vec3d"))
 
     # set massDensity later
-    t.append(ET.Element("DiagonalMass", totalmass = o.totalMass))
+    t.append(ET.Element("UniformMass", mass = o.totalMass))
 
     #h = ET.Element("HexahedronFEMForceField",template="Vec3d", method="large")
     h = ET.Element("HexahedronFEMForceField", method="large")
@@ -326,7 +326,7 @@ def exportThickQuadShell(o, opt):
     t.append(ET.Element('HexahedronSetGeometryAlgorithms'))
 
     # TODO: set massDensity later
-    t.append(ET.Element("DiagonalMass", totalmass = o.totalMass))
+    t.append(ET.Element("UniformMass", mass = o.totalMass))
     h = ET.Element("HexahedronFEMForceField", method="large")
     addElasticityParameters(o,h)
     t.append(h)
@@ -407,7 +407,7 @@ def exportVolumetric(o, opt):
     t.append(ET.Element('TetrahedronSetGeometryAlgorithms', template = 'Vec3d'))
 
     # set massDensity later
-    t.append(ET.Element("DiagonalMass", totalmass = o.totalMass))
+    t.append(ET.Element("UniformlMass", mass = o.totalMass))
     f = ET.Element('TetrahedralCorotationalFEMForceField')
     addElasticityParameters(o,f)
     t.append(f)
@@ -482,7 +482,7 @@ def exportHexVolumetric(o, opt):
     t.append(ET.Element('HexahedronSetGeometryAlgorithms', template = 'Vec3d'))
 
     # set massDensity later
-    t.append(ET.Element("DiagonalMass", totalmass = o.totalMass))
+    t.append(ET.Element("UniformMass", mass = o.totalMass))
     h = ET.Element("HexahedronFEMForceField",method="large")
     addElasticityParameters(o,h)
     t.append(h)
