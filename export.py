@@ -255,6 +255,8 @@ def exportThickCurve(o, opt):
     h = ET.Element("HexahedronFEMForceField", method="large")
     addElasticityParameters(o,h)
     t.append(h)
+    dmp = ET.Element("DiagonalVelocityDampingForceField", template="Vec3d",  dampingCoefficient="0.05 0.05 0.05 0.05 0.05 0.05")
+    t.append(dmp)
     addConstraintCorrection(o, t)
     addConstraints(o, t)
 
@@ -587,7 +589,7 @@ def collisionModelParts(o, opt, obstacle = False, group = None, bothSide = 0):
         return [
             # ET.Element("PointModel",selfCollision=sc, contactFriction = o.contactFriction, contactStiffness = o.contactStiffness, group=group, moving = M, simulated = M, bothSide= bothSide ),
             #ET.Element("PointModel",selfCollision=sc, contactFriction = o.contactFriction, active = "0", contactStiffness = o.contactStiffness, group=group, moving = M, simulated = M, bothSide= bothSide ),
-            ET.Element("LineModel",selfCollision=sc, contactFriction = o.contactFriction, contactStiffness = o.contactStiffness, group=group, moving = M, simulated = M, bothSide= bothSide ),
+            #ET.Element("LineModel",selfCollision=sc, contactFriction = o.contactFriction, contactStiffness = o.contactStiffness, group=group, moving = M, simulated = M, bothSide= bothSide ),
             ET.Element("TriangleModel", tags = sutureTag,selfCollision=sc, contactFriction = o.contactFriction, contactStiffness = o.contactStiffness, group=group, moving = M, simulated = M, bothSide= bothSide )
         ]
     else:
@@ -663,7 +665,7 @@ def exportInstrument(o, opt):
                                )
             else:
               pm = ET.Element("PointModel", name = 'toolCollision', bothSide="0",
-                               contactStiffness="0.7", contactFriction="500.0", proximity = i.proximity,
+                               contactStiffness="4.7", contactFriction="500.0", proximity = i.proximity,
                                group= o.collisionGroup, moving="1", selfCollision="0", simulated="1"
                                )
             child.append(pm)

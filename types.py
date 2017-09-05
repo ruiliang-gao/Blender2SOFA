@@ -68,7 +68,7 @@ def register_sofa_properties():
     bpy.types.Object.bendingStiffness = bpy.props.FloatProperty(name="Bending Stiffness", description = 'the resistance of a member against bending deformation.', default=3000,min=1,max=1e+6,step=100)
     bpy.types.Object.damping = bpy.props.FloatProperty(name="Damping",default=0.1,min=0,max=1000,step=0.1)
     bpy.types.Object.precomputeConstraints = bpy.props.BoolProperty(name='Accurate Constraints',description='(Currently unstable)Better and more accurate constraints but requires lengthy precomputation',default=False)
-    bpy.types.Object.totalMass = bpy.props.FloatProperty(name="Uniform Mass Density",default=0.5,min=0.01,max=100,step=0.1)
+    bpy.types.Object.totalMass = bpy.props.FloatProperty(name="Uniform Mass Density",default=0.01,min=0.001,max=100,step=0.01)
     
     # Attachments
     bpy.types.Object.attachStiffness = bpy.props.FloatProperty(name="Attach Stiffness",default=10000,min=1,max=1e+6,soft_min=10,step=100)
