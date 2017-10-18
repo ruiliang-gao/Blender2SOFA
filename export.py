@@ -255,8 +255,9 @@ def exportThickCurve(o, opt):
     h = ET.Element("HexahedronFEMForceField", method="large")
     addElasticityParameters(o,h)
     t.append(h)
-    dmp = ET.Element("DiagonalVelocityDampingForceField", template="Vec3d",  dampingCoefficient="0.05 0.05 0.05 0.05 0.05 0.05")
-    t.append(dmp)
+    if o.damping > 0:
+        dmp = ET.Element("DiagonalVelocityDampingForceField", template="Vec3d",  dampingCoefficient="0.05 0.05 0.05 0.05 0.05 0.05")
+        t.append(dmp)
     addConstraintCorrection(o, t)
     addConstraints(o, t)
 
@@ -332,6 +333,9 @@ def exportThickQuadShell(o, opt):
     h = ET.Element("HexahedronFEMForceField", method="large")
     addElasticityParameters(o,h)
     t.append(h)
+    if o.damping > 0:
+        dmp = ET.Element("DiagonalVelocityDampingForceField", template="Vec3d",  dampingCoefficient="0.05 0.05 0.05 0.05 0.05 0.05")
+        t.append(dmp)
     addConstraintCorrection(o, t)
     addConstraints(o, t)
 
@@ -413,6 +417,9 @@ def exportVolumetric(o, opt):
     f = ET.Element('TetrahedralCorotationalFEMForceField')
     addElasticityParameters(o,f)
     t.append(f)
+    if o.damping > 0:
+        dmp = ET.Element("DiagonalVelocityDampingForceField", template="Vec3d",  dampingCoefficient="0.05 0.05 0.05 0.05 0.05 0.05")
+        t.append(dmp)
     addConstraintCorrection(o, t)
     addConstraints(o, t)
 
@@ -488,6 +495,9 @@ def exportHexVolumetric(o, opt):
     h = ET.Element("HexahedronFEMForceField",method="large")
     addElasticityParameters(o,h)
     t.append(h)
+    if o.damping > 0:
+        dmp = ET.Element("DiagonalVelocityDampingForceField", template="Vec3d",  dampingCoefficient="0.05 0.05 0.05 0.05 0.05 0.05")
+        t.append(dmp)
     addConstraintCorrection(o, t)
     addConstraints(o, t)
 
@@ -576,6 +586,8 @@ def collisionModelParts(o, opt, obstacle = False, group = None, bothSide = 0):
         sutureTag = 'HapticSurfaceCurve'
     elif o.suture and o.template == 'SAFETYSURFACE':
       sutureTag = 'SafetySurface'
+    elif o.suture and o.template == 'VOLUMETRIC':
+      sutureTag = 'HapticSurface HapticSurfaceVolume'
     elif o.suture and o.name == opt.scene.targetOrgan:
         sutureTag = 'HapticSurface TargetOrgan'
     elif o.suture:
