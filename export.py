@@ -363,12 +363,9 @@ def exportThickQuadShell(o, opt):
     v.append(ET.Element("QuadSetTopologyAlgorithms", template="Vec3d"))
     v.append(ET.Element("Hexa2QuadTopologicalMapping", input='@../' + topo, output="@" + name + "-quadSurf"))
     smoothSurface = False
-    vt = ET.Element('Node', name="Visual-tri")
-    vt.append(ET.Element("TriangleSetTopologyContainer", name= name + "-triSurf"))
-    vt.append(ET.Element("TriangleSetTopologyModifier"))
+    
     # vt.append(ET.Element("TriangleSetTopologyAlgorithms", template="Vec3d"))
     # vt.append(ET.Element("TriangleSetGeometryAlgorithms", template="Vec3d"))
-    vt.append(ET.Element("Quad2TriangleTopologicalMapping", input='@../' + name + "-quadSurf", output="@" + name + "-triSurf"))
     # smoothSurface = True
     if smoothSurface:
         v.append(ET.Element('RequiredPlugin', name='SurfLabSplineSurface'));
@@ -376,25 +373,28 @@ def exportThickQuadShell(o, opt):
         addMaterialToBicubic(o, b3);
         v.append(b3);
     elif o.useShader:
-      if not o.shaderFile:
-        print("no default shader for thick shell exists!")
-      else:
-        oglshd = ET.Element("OglShader", fileVertexShaders = o.shaderFile, fileTessellationControlShaders = o.shaderFile,
-         fileTessellationEvaluationShaders = o.shaderFile, fileFragmentShaders = o.shaderFile, printLog="1");
-        ogltesslvl = ET.Element("OglFloatVariable", name="TessellationLevel", value = "6")
-        vt.append(oglshd)
-        vt.append(ogltesslvl)
-        #manully add ogl
-        ogl = ET.Element("OglModel", primitiveType = "PATCHES", name= name + '-triSurf-visual');
-        addMaterial(o, ogl);
-        vt.append(ogl)
+        if not o.shaderFile:
+            print("no default shader for thick shell exists!")
+        else:#assuming using tessellation shader here
+            vt = ET.Element('Node', name="Visual-tri")
+            vt.append(ET.Element("TriangleSetTopologyContainer", name= name + "-triSurf"))
+            vt.append(ET.Element("TriangleSetTopologyModifier"))
+            vt.append(ET.Element("Quad2TriangleTopologicalMapping", input='@../' + name + "-quadSurf", output="@" + name + "-triSurf"))
+            oglshd = ET.Element("OglShader", fileVertexShaders = o.shaderFile, fileTessellationControlShaders = o.shaderFile,
+             fileTessellationEvaluationShaders = o.shaderFile, fileFragmentShaders = o.shaderFile, printLog="1");
+            ogltesslvl = ET.Element("OglFloatVariable", name="TessellationLevel", value = "6")
+            vt.append(oglshd)
+            vt.append(ogltesslvl)
+            #manully add ogl
+            ogl = ET.Element("OglModel", primitiveType = "PATCHES", name= name + '-triSurf-visual');
+            addMaterial(o, ogl);
+            vt.append(ogl)
+            vt.append(ET.Element("IdentityMapping",input="@../../MO",output='@' + name + "-triSurf-visual"))
+            v.append(vt)
         #vt.append(exportVisual(o, opt, name = name + "-triSurf-visual"))
-
     else:
-        vt.append(exportVisual(o, opt, name = name + "-visual"))
-    vt.append(ET.Element("IdentityMapping",input="@../../MO",output='@' + name + "-triSurf-visual"))
-    v.append(vt)
-    # v.append(ET.Element("BarycentricMapping",template="Vec3d,ExtVec3f",input="@../MO",output='@' + name + "-visual"))
+        v.append(exportVisual(o, opt, name = name + "-visual"))
+        v.append(ET.Element("BarycentricMapping",template="Vec3d,ExtVec3f",input="@../MO",output='@' + name + "-visual"))
     t.append(v)
     return t
 
