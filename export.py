@@ -858,7 +858,7 @@ def exportObstacle(o, opt):
       else:
         oglshd = ET.Element("OglShader", fileVertexShaders = o.shaderFile, fileTessellationControlShaders = o.shaderFile,
          fileTessellationEvaluationShaders = o.shaderFile, fileFragmentShaders = o.shaderFile, printLog="1");
-        ogltesslvl = ET.Element("OglFloatVariable", name="TessellationLevel", value = "1")
+        ogltesslvl = ET.Element("OglFloatVariable", name="TessellationLevel", value = "4")
         t.append(oglshd)
         t.append(ogltesslvl)
     t.append(exportVisual(o, opt, name = name+'-visual', with_transform = True))
@@ -1089,7 +1089,7 @@ def exportHaptic(l, opt):
 
         ## Omni driver wrapper
         rl = ET.Element("Node", name="RigidLayer")
-        if scene.precompution:
+        if scene.precompution: # precompute is unstable now
           rl.append(ET.Element("NewOmniDriver",
                                name = 'driver',
                                deviceName = hp.deviceName,

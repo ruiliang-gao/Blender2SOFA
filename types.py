@@ -77,7 +77,7 @@ def register_sofa_properties():
     bpy.types.Object.alwaysMatchForObject2 = bpy.props.BoolProperty(name='Always Match for Second Object',default=False)
     bpy.types.Object.object1 = bpy.props.StringProperty(name='First Object', description='Name of the first object in the attachment')
     bpy.types.Object.object2 = bpy.props.StringProperty(name='Second Object', description='Name of the second object in the attachment')
-    bpy.types.Object.attachThreshold = bpy.props.FloatProperty(name="Attach Threshold",default=0.02,min=0.001,max=1.0,step=0.01,description='Maximum distance between connected vertices of two objects as a percentage of the size of object')
+    bpy.types.Object.attachThreshold = bpy.props.FloatProperty(name="Attach Threshold",default=0.02,min=0.001,max=1.0,step=0.001,precision=3,description='Maximum distance between connected vertices of two objects as a percentage of the size of object')
 
     # Interactive features
     bpy.types.Object.carvable = bpy.props.BoolProperty(name='Carvable',description='Allow the object be interactively carved by mouse or a carving tool',default=False)
@@ -154,6 +154,6 @@ def unregister_sofa_properties():
 
 class HapticProperties(bpy.types.PropertyGroup):
     scale = bpy.props.FloatProperty(name='Workspace Scale',description='Scaling applied to the workspace box of the haptic',default=25,min=1,max=10000,step=10)
-    forceScale = bpy.props.FloatProperty(name='Force-feedback Scale',description='Scaling applied to force feedback',default=0.0008,min=0,max=10000,soft_max=1)
+    forceScale = bpy.props.FloatProperty(name='Force-feedback Scale',description='Scaling applied to force feedback',default=0.0008,min=0,precision=5,max=10000,soft_max=1)
     forceFeedback = bpy.props.BoolProperty(name='Force-feedback enabled',description='Enable force-feedback for this haptic device',default=False)
     deviceName = bpy.props.StringProperty(name='Device Name',description='Name of the haptic device name as registered in the Geomagic Touch Setup application')
