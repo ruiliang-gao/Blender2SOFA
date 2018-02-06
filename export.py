@@ -413,7 +413,7 @@ def exportVolumetric(o, opt):
     t.append(ET.Element('TetrahedronSetGeometryAlgorithms', template = 'Vec3d'))
 
     # set massDensity later
-    t.append(ET.Element("UniformlMass", mass = o.totalMass))
+    t.append(ET.Element("UniformMass", mass = o.totalMass))
     f = ET.Element('TetrahedralCorotationalFEMForceField')
     addElasticityParameters(o,f)
     t.append(f)
