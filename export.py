@@ -239,7 +239,8 @@ def exportThickCurve(o, opt):
     t = ET.Element("Node", name = name)
     #t.set('authorparent', 'SolverNode')
     #t.set('authororder', 1)
-
+    if o.local_gravity:
+        t.append(ET.Element('Gravity', gravity = o.local_gravity))
     topo = name + '-topology'
     t.append(exportThickCurveTopology(o, opt, topo))
 
@@ -317,7 +318,8 @@ def exportThickQuadShell(o, opt):
     t = ET.Element("Node", name = name)
     t.set('author-parent' , 'SolverNode')
     t.set('author-order', 1)
-
+    if o.local_gravity:
+        t.append(ET.Element('Gravity', gravity = o.local_gravity))
     topo = name + '-hexahedral-topology'
     c, oshell, ishell = exportThickShellTopologies(o, opt, topo)
     t.append(c)
@@ -404,7 +406,8 @@ def exportVolumetric(o, opt):
     t = ET.Element("Node", name = name)
     t.set('author-parent' , 'SolverNode')
     t.set('author-order', 1)
-
+    if o.local_gravity:
+        t.append(ET.Element('Gravity', gravity = o.local_gravity))
     topotetra = name + '-topology'
     t.append(exportTetrahedralTopology(o, opt, topotetra))
     t.append(createMechanicalObject(o))
@@ -481,7 +484,8 @@ def exportVolumetric(o, opt):
 def exportHexVolumetric(o, opt):
     name = fixName(o.name)
     t = ET.Element("Node", name = name)
-
+    if o.local_gravity:
+        t.append(ET.Element('Gravity', gravity = o.local_gravity))
     topotetra = name + '-topology'
     t.append(exportHexahedralTopology(o, opt, topotetra))
 

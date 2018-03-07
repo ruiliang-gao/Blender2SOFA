@@ -82,9 +82,12 @@ def register_sofa_properties():
     # Interactive features
     bpy.types.Object.carvable = bpy.props.BoolProperty(name='Carvable',description='Allow the object be interactively carved by mouse or a carving tool',default=False)
     bpy.types.Object.suture = bpy.props.BoolProperty(name='Interactive',description='Allow the object to be interactively manipulated by the haptic tools',default=True)
+    
+    #Some Constraints
     bpy.types.Object.fixed_indices = bpy.props.StringProperty(name='Fixed_Indices',description='Vertex indices used for fixed constraints')
-
-    #Rendering
+    bpy.types.Object.local_gravity = bpy.props.StringProperty(name='Local Gravity',description='A Local force vector that will be applied on the object, like gravity. Input three numbers for XYZ, like "0 0 -9.8"')
+    
+	#Rendering
     bpy.types.Object.texture3d = bpy.props.StringProperty(name='3D Texture',description='Filename of the 3D texture')
     bpy.types.Object.texture2d = bpy.props.StringProperty(name='2D Texture',description='Filename of the 2D texture')
     bpy.types.Object.thickness = bpy.props.FloatProperty(name='Thickness',description='Thickness of the shell', default=0.1,min=0.001,max=1,step=0.01)
@@ -141,6 +144,7 @@ def unregister_sofa_properties():
     del bpy.types.Object.carvable
     del bpy.types.Object.suture
     del bpy.types.Object.fixed_indices
+    del bpy.types.Object.local_gravity
 
     #Rendering and safety
     del bpy.types.Object.texture3d
