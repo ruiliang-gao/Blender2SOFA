@@ -590,8 +590,11 @@ def collisionModelParts(o, opt, obstacle = False, group = None, bothSide = 0):
         sutureTag = 'HapticSurfaceCurve'
     elif o.suture and o.template == 'SAFETYSURFACE':
       sutureTag = 'SafetySurface'
-    elif o.suture and o.template == 'VOLUMETRIC':
-      sutureTag = 'HapticSurface HapticSurfaceVolume'
+    elif o.suture and o.template in ('VOLUMETRIC', 'DEFORMABLE'):
+      if o.name == opt.scene.targetOrgan:
+        sutureTag = 'HapticSurface HapticSurfaceVolume TargetOrgan'
+      else:
+        sutureTag = 'HapticSurface HapticSurfaceVolume'
     elif o.suture and o.name == opt.scene.targetOrgan:
         sutureTag = 'HapticSurface TargetOrgan'
     elif o.suture:
@@ -603,10 +606,10 @@ def collisionModelParts(o, opt, obstacle = False, group = None, bothSide = 0):
     if group == None:  group = o.collisionGroup
     if o.template in ('THICKCURVE', 'VOLUMETRIC'):
         return [
-            # ET.Element("PointModel",selfCollision=sc, contactFriction = o.contactFriction, contactStiffness = o.contactStiffness, group=group, moving = M, simulated = M, bothSide= bothSide ),
+            #ET.Element("PointModel",selfCollision=sc, contactFriction = o.contactFriction, contactStiffness = o.contactStiffness, group=group, moving = M, simulated = M, bothSide= bothSide ),
             #ET.Element("PointModel",selfCollision=sc, contactFriction = o.contactFriction, active = "0", contactStiffness = o.contactStiffness, group=group, moving = M, simulated = M, bothSide= bothSide ),
             #ET.Element("LineModel",selfCollision=sc, contactFriction = o.contactFriction, contactStiffness = o.contactStiffness, group=group, moving = M, simulated = M, bothSide= bothSide ),
-            ET.Element("TriangleModel", tags = sutureTag,selfCollision=sc, contactFriction = o.contactFriction, contactStiffness = o.contactStiffness, group=group, moving = M, simulated = M, bothSide= bothSide )
+            ET.Element("TriangleModel", tags = sutureTag, selfCollision=sc, contactFriction = o.contactFriction, contactStiffness = o.contactStiffness, group=group, moving = M, simulated = M, bothSide= bothSide )
         ]
     else:
         return [
@@ -716,7 +719,58 @@ def exportInstrument(o, opt):
 
     return t
 
+def exportDeformableGrid(o,opt):
+    name = fixName(o.name)
+    name_obj = name + ".obj"
+    t = ET.Element("Node", name = name)
+    if o.local_gravity:
+        t.append(ET.Element('Gravity', gravity = o.local_gravity))
+    topotetra = name + '-topology'
+    t.append(ET.Element('SparseGridRamification', n = o.grid_dimension, name= name+"-grid", fileTopology="mesh/TIPS/"+name_obj, nbVirtualFinerLevels = "3", finestConnectivity="0"))
+    t.append(ET.Element('MechanicalObject', name= name+"-dofs", scale="1", dy="0", position='@' + name + '-grid.position', tags="NoPicking"))
+    t.append(ET.Element("UniformMass", mass = o.totalMass))
+    h = ET.Element("HexahedronFEMForceField",method="large",updateStiffnessMatrix="false")
+    addElasticityParameters(o,h)
+    t.append(h)
+    if o.damping > 0:
+        dmp = ET.Element("DiagonalVelocityDampingForceField", template="Vec3d",  dampingCoefficient="0.05 0.05 0.05 0.05 0.05 0.05")
+        t.append(dmp)
+    addConstraintCorrection(o, t)
+    addConstraints(o, t)
+    
+    n = ET.Element('Node', name="Collision")
+    n.append(ET.Element('MeshObjLoader', filename = 'mesh/TIPS/' + name_obj, name="loader"))
+    n.append(ET.Element('MechanicalObject', src = '@loader', name="CollisModel"))
+    n.append(ET.Element('TriangleSetTopologyContainer', src = '@loader'))
+    n.extend(collisionModelParts(o, opt))
+    n.append(ET.Element("BarycentricMapping", input="@..", output="@."))
+    t.append(n)
+    v = ET.Element('Node', name="Visual")
+    if o.useShader:
+        if not o.shaderFile:
+          oglshd = ET.Element("OglShader", fileVertexShaders = "['shaders/TIPSShaders/organShader.glsl']", fileFragmentShaders = "['shaders/TIPSShaders/organShader.glsl']", printLog="1");
+          v.append(oglshd)
+          v.append(ET.Element("OglModel", name="Visual", fileMesh="mesh/TIPS/"+name_obj))
+        elif o.useTessellation:
+          oglshd = ET.Element("OglShader", fileVertexShaders = o.shaderFile, fileTessellationControlShaders = o.shaderFile,
+				   fileTessellationEvaluationShaders = o.shaderFile, fileFragmentShaders = o.shaderFile, printLog="1");
+          ogltesslvl = ET.Element("OglFloatVariable", name="TessellationLevel", value = "6")
+          v.append(oglshd)
+          v.append(ogltesslvl)
+          v.append(ET.Element("OglModel", name="Visual", fileMesh="mesh/TIPS/"+name_obj, primitiveType = "PATCHES"))
+        elif not o.useTessellation:
+          oglshd = ET.Element("OglShader", fileVertexShaders = o.shaderFile, fileFragmentShaders = o.shaderFile, printLog="1");
+          v.append(oglshd)
+          v.append(ET.Element("OglModel", name="Visual", fileMesh="mesh/TIPS/"+name_obj))
+    else:
+        v.append(ET.Element("OglModel", name="Visual", fileMesh="mesh/TIPS/"+name_obj))
+    v.append(ET.Element("BarycentricMapping", input="@..", output="@Visual"))
+    t.append(v)
+    return t
 
+ 
+    
+ 
 def exportCloth(o, opt):
     name=fixName(o.name)
     t = ET.Element("Node",name=name)
@@ -1004,6 +1058,8 @@ def exportObject(opt, o):
                     t = exportHexVolumetric(o, opt)
                 else:
                     raise ExportException("Volumetric mesh expected: '%s'" % o.name)
+            elif annotated_type == 'DEFORMABLE':
+                t = exportDeformableGrid(o, opt)
             elif annotated_type == 'THICKSHELL':
                 t = exportThickQuadShell(o, opt)
             elif annotated_type == 'THICKCURVE':

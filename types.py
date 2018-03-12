@@ -13,6 +13,8 @@ def register_sofa_properties():
     bpy.types.Scene.defaultInstrument = bpy.props.StringProperty(name="Default instrument",description="A tool object that defines the default instrument")
     bpy.types.Scene.useSpeechRecognition = bpy.props.BoolProperty(name="SpeechRecognition", description="check this if you want to use SpeechRecognition plugin", default=False)
     bpy.types.Scene.targetOrgan = bpy.props.StringProperty(name="Target Organ",description="The major target organ in the surgery")
+    bpy.types.Scene.sharePath = bpy.props.StringProperty(name="SOFA mesh filepath",description="Specify SOFA's mesh filepath here")
+  
     
 
     #"""SOFA properties and annotations for objects"""
@@ -30,7 +32,8 @@ def register_sofa_properties():
         ('INSTRUMENTPART', 'Intrument part', 'An animated part of the instrument', 'OOPS', 11),
         ('INSTRUMENTTIP','Tip of Instrument','Active part of the instrument that performs actions', 'OOPS', 12),
         ('INSTRUMENTCOLLISION','Collision part of Instrument' ,'Collision part of the instrument along the shaft', 'OOPS', 13),
-        ('SAFETYSURFACE', 'Safety surface','An surface object that used for safety detection', 'SOLID', 14)
+        ('SAFETYSURFACE', 'Safety surface','An surface object that used for safety detection', 'MOD_SUBSURF', 14),
+        ('DEFORMABLE', 'Defomable Grid ','An deformable surface object that is embeded in a grid structure', 'LATTICE_DATA', 15)
         # Rigid does not work as expected. It is hidden until it is fixed
         # ('RIGID', 'Rigid', '', 'SOLID', 13),
         ])
@@ -90,11 +93,14 @@ def register_sofa_properties():
 	#Rendering
     bpy.types.Object.texture3d = bpy.props.StringProperty(name='3D Texture',description='Filename of the 3D texture')
     bpy.types.Object.texture2d = bpy.props.StringProperty(name='2D Texture',description='Filename of the 2D texture')
-    bpy.types.Object.thickness = bpy.props.FloatProperty(name='Thickness',description='Thickness of the shell', default=0.1,min=0.001,max=1,step=0.01)
-    bpy.types.Object.layerCount = bpy.props.IntProperty(name='Layer Count', description='Number of layers in the thick shell',default=1,min=1,max=10)
     bpy.types.Object.useShader = bpy.props.BoolProperty(name='UseShader',description='Use our default shader for rendering this object',default=False)
     bpy.types.Object.shaderFile = bpy.props.StringProperty(name='shader location',description='Sader file location')
     bpy.types.Object.useTessellation = bpy.props.BoolProperty(name='useTessellation',description='Use the Tessellation shader for rendering this object',default=False)
+    
+    #Geometry
+    bpy.types.Object.grid_dimension = bpy.props.StringProperty(name='Grid Dimensions',description='Specify the dimensions of the grid stucture that embeds the obj. Input three numbers for XYZ, like "4 3 2"')
+    bpy.types.Object.thickness = bpy.props.FloatProperty(name='Thickness',description='Thickness of the shell', default=0.1,min=0.001,max=1,step=0.01)
+    bpy.types.Object.layerCount = bpy.props.IntProperty(name='Layer Count', description='Number of layers in the thick shell',default=1,min=1,max=10)
     
     #Safety
     bpy.types.Object.safetyForceThreshold = bpy.props.FloatProperty(name='Safety Force Threshold', description='Maximum force a vein can withstand without sustaining injury', default=2.0)
@@ -110,6 +116,7 @@ def unregister_sofa_properties():
     del bpy.types.Scene.defaultInstrument
     del bpy.types.Scene.useSpeechRecognition
     del bpy.types.Scene.targetOrgan
+    del bpy.types.Scene.sharePath
 
     #"""SOFA properties and annotations for objects"""
     del bpy.types.Object.template

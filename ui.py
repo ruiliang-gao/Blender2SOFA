@@ -1,5 +1,6 @@
 import bpy
 import bmesh
+import os
 from .types import *
 
 
@@ -20,16 +21,15 @@ class SofaActionsPanel(bpy.types.Panel):
         layout.operator("option.show_haptic_options", icon= 'SETTINGS')
         layout.separator()
         layout.operator("option.generate_fixed_indices", icon= 'CONSTRAINT')
+        layout.separator()
+        layout.operator("option.export_obj", icon='EXPORT')
         layout.label('SOFA Create')
         c = layout.column(align=True)
         #c.operator("mesh.construct_connecting_tissue", icon='OUTLINER_OB_META', text='Connecting Tissue')
         #layout.separator()
         c.operator("mesh.construct_fatty_tissue", icon='FACESEL_HLT', text = 'Create Fatty Tissue')
-        # layout.separator()
         layout.operator("mesh.add_thick_curve", icon= 'ROOTCURVE')
         #layout.operator("mesh.add_hex_rod", icon= 'ROOTCURVE')
-
-
 
         if ConvertFromCustomProperties.poll(context):
             layout.operator(ConvertFromCustomProperties.bl_idname)
@@ -51,7 +51,6 @@ class SofaObjectAnnotationPanel(bpy.types.Panel):
         p = o
         layout = self.layout
         layout.prop(p, 'template', text='')
-
         t = p.template
         c = layout.column(align=True)
         c.prop(p, 'texture2d')
@@ -61,13 +60,15 @@ class SofaObjectAnnotationPanel(bpy.types.Panel):
             c.prop(p, 'instrumentPart')
         elif t in ['INSTRUMENTTIP', 'INSTRUMENTCOLLISION']:
             c.prop(p, 'proximity')
-        elif t in [ 'VOLUMETRIC', 'THICKSHELL', 'THICKCURVE' ]:
+        elif t in [ 'VOLUMETRIC', 'THICKSHELL', 'THICKCURVE', 'DEFORMABLE']:
             c.prop(p, 'youngModulus')
             c.prop(p, 'poissonRatio')
             c.prop(p, 'damping')
             c.prop(p, 'rayleighStiffness')
             c.prop(p, 'totalMass')
             c.prop(p,'local_gravity')
+            if t == 'DEFORMABLE':
+                c.prop(p, 'grid_dimension')
             if t == 'THICKSHELL':
                 c.prop(p, 'thickness')
                 c.prop(p, 'layerCount')
@@ -98,7 +99,7 @@ class SofaObjectAnnotationPanel(bpy.types.Panel):
             c.prop_search(p, 'object2', context.scene, "objects")
             c.prop(p, 'alwaysMatchForObject2')
 
-        if t in [ 'VOLUMETRIC', 'CLOTH', 'THICKSHELL', 'THICKCURVE' ]:
+        if t in [ 'VOLUMETRIC', 'CLOTH', 'THICKSHELL', 'THICKCURVE', 'DEFORMABLE' ]:
             c = layout.column(align=True)
             c.label('Collision Parameters')                   
             c.prop(p, 'selfCollision')
@@ -106,7 +107,7 @@ class SofaObjectAnnotationPanel(bpy.types.Panel):
             c.prop(p, 'suture')
             c.prop(p, 'fixed_indices')
 
-        if t in [ 'VOLUMETRIC','CLOTH', 'THICKSHELL', 'THICKCURVE', 'COLLISION', 'SAFETYSURFACE', 'VISUAL' ]:
+        if t in [ 'VOLUMETRIC','CLOTH', 'THICKSHELL', 'THICKCURVE', 'COLLISION', 'SAFETYSURFACE', 'VISUAL', 'DEFORMABLE' ]:
             if t != 'VISUAL':
                 c.prop(p, 'collisionGroup')
                 c.prop(p, 'contactStiffness')
@@ -149,7 +150,7 @@ class SofaScenePropertyPanel(bpy.types.Panel):
         c.prop(s, "useSpeechRecognition")
         c.prop_search(s, "hapticWorkspaceBox", context.scene, "objects")
         c.prop_search(s, "targetOrgan", context.scene, "objects")
-        # c.prop_search(s, "defaultInstrument", context.scene, "objects")
+        c.prop(s, "sharePath")
 
 PROPERTY_NAME_MAP = { 'topObject': 'object1', 'botObject': 'object2', 'stretchDamping' : 'damping',
     'attach_stiffness': 'attachStiffness', '3dtexture':'texture3d' }
@@ -157,7 +158,7 @@ TEMPLATE_MAP = { 'CONNECTIVETISSUE': 'VOLUMETRIC',
     # the rest are identity mappings
     'THICKSHELL': 'THICKSHELL', 'CLOTH': 'CLOTH','COLLISION':'COLLISION','ATTACHCONSTRAINT':'ATTACHCONSTRAINT','SPHERECONSTRAINT':'SPHERECONSTRAINT',
     'VOLUMETRIC':'VOLUMETRIC','INSTRUMENT':'INSTRUMENT','INSTRUMENTPART':'INSTRUMENTPART','INSTRUMENTTIP':'INSTRUMENTTIP','THICKCURVE':'THICKCURVE',
-    'INSTRUMENTCOLLISION':'INSTRUMENTCOLLISION', 'SAFETYSURFACE':'SAFETYSURFACE'}
+    'INSTRUMENTCOLLISION':'INSTRUMENTCOLLISION', 'SAFETYSURFACE':'SAFETYSURFACE', 'DEFORMABLE':'DEFORMABLE'}
 
 def removeCustomProperty(o, k):
     del o[k]
@@ -205,6 +206,29 @@ class GenerateFixedConstraints(bpy.types.Operator):
         else:
             print("Object is not in edit mode.")
 
+        return { 'FINISHED' }
+        
+class ExportObjToSofa(bpy.types.Operator):
+    bl_idname = "option.export_obj"
+    bl_label = "Export Selected Object to SOFA"
+    bl_options = { 'UNDO' }
+    bl_description = 'Select the object first, and click to export .obj and .mtl files to SOFA/share/mesh'
+
+    @classmethod
+    def poll(self, context):
+        return context.scene is not None
+
+    def execute(self, context):
+        o=bpy.context.selected_objects[0]
+        objname = o.name + '.obj'
+        if bpy.context.scene.sharePath:
+            p = bpy.context.scene.sharePath
+            if not p.endswith('\\'):
+                p = p + '\\'
+            target_path = os.path.join(p, objname)
+            bpy.ops.export_scene.obj(filepath=target_path, check_existing=True, axis_forward='Y', axis_up='Z', filter_glob="*.obj;*.mtl", use_selection=True, use_animation=False, use_mesh_modifiers=False, use_edges=False, use_smooth_groups=False, use_smooth_groups_bitflags=False, use_normals=True, use_uvs=True, use_materials=True, use_triangles=True, use_nurbs=False, use_vertex_groups=False, use_blen_objects=True, group_by_object=False, group_by_material=False, keep_vertex_order=False, global_scale=1, path_mode='AUTO')
+        else:
+            print("Please specify the SOFA meshpath first.")
         return { 'FINISHED' }
 
 class ConvertFromCustomProperties(bpy.types.Operator):
