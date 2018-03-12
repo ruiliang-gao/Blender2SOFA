@@ -726,6 +726,8 @@ def exportDeformableGrid(o,opt):
     if o.local_gravity:
         t.append(ET.Element('Gravity', gravity = o.local_gravity))
     topotetra = name + '-topology'
+    if not o.grid_dimension:
+        o.grid_dimension = "1 1 1"
     t.append(ET.Element('SparseGridRamification', n = o.grid_dimension, name= name+"-grid", fileTopology="mesh/TIPS/"+name_obj, nbVirtualFinerLevels = "3", finestConnectivity="0"))
     t.append(ET.Element('MechanicalObject', name= name+"-dofs", scale="1", dy="0", position='@' + name + '-grid.position', tags="NoPicking"))
     t.append(ET.Element("UniformMass", mass = o.totalMass))
