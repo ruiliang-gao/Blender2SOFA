@@ -593,6 +593,8 @@ def collisionModelParts(o, opt, obstacle = False, group = None, bothSide = 0):
     elif o.suture and o.template in ('VOLUMETRIC', 'DEFORMABLE'):
       if o.name == opt.scene.targetOrgan:
         sutureTag = 'HapticSurface HapticSurfaceVolume TargetOrgan'
+      elif o.safetyConcern: 
+        sutureTag = 'HapticSurface HapticSurfaceVolume SafetySurface'
       else:
         sutureTag = 'HapticSurface HapticSurfaceVolume'
     elif o.suture and o.name == opt.scene.targetOrgan:

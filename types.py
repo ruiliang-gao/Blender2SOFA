@@ -104,7 +104,8 @@ def register_sofa_properties():
     
     #Safety
     bpy.types.Object.safetyForceThreshold = bpy.props.FloatProperty(name='Safety Force Threshold', description='Maximum force a vein can withstand without sustaining injury', default=2.0)
-
+    bpy.types.Object.safetyConcern = bpy.props.BoolProperty(name='Safety Organ', description='is a safety organ?',default=False)
+    
 def unregister_sofa_properties():
     #"""SOFA properties associated with a scene"""
     del bpy.types.Scene.mu
@@ -162,7 +163,8 @@ def unregister_sofa_properties():
     del bpy.types.Object.useTessellation
     del bpy.types.Object.shaderFile
     del bpy.types.Object.safetyForceThreshold
-
+    del bpy.types.Object.safetyConcern
+    
 class HapticProperties(bpy.types.PropertyGroup):
     scale = bpy.props.FloatProperty(name='Workspace Scale',description='Scaling applied to the workspace box of the haptic',default=25,min=1,max=10000,step=10)
     forceScale = bpy.props.FloatProperty(name='Force-feedback Scale',description='Scaling applied to force feedback',default=0.0008,min=0,precision=5,max=10000,soft_max=1)
