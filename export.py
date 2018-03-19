@@ -750,24 +750,28 @@ def exportDeformableGrid(o,opt):
     n.append(ET.Element("BarycentricMapping", input="@..", output="@."))
     t.append(n)
     v = ET.Element('Node', name="Visual")
+    if o.texture2d != '':
+        tex = "textures/"+o.texture2d
+    else:
+        tex = "textures/board.png"
     if o.useShader:
         if not o.shaderFile:
           oglshd = ET.Element("OglShader", fileVertexShaders = "['shaders/TIPSShaders/organShader.glsl']", fileFragmentShaders = "['shaders/TIPSShaders/organShader.glsl']", printLog="1");
           v.append(oglshd)
-          v.append(ET.Element("OglModel", name="Visual", fileMesh="mesh/TIPS/"+name_obj))
+          v.append(ET.Element("OglModel", name="Visual", texturename = tex, fileMesh="mesh/TIPS/"+name_obj))
         elif o.useTessellation:
           oglshd = ET.Element("OglShader", fileVertexShaders = o.shaderFile, fileTessellationControlShaders = o.shaderFile,
 				   fileTessellationEvaluationShaders = o.shaderFile, fileFragmentShaders = o.shaderFile, printLog="1");
           ogltesslvl = ET.Element("OglFloatVariable", name="TessellationLevel", value = "6")
           v.append(oglshd)
           v.append(ogltesslvl)
-          v.append(ET.Element("OglModel", name="Visual", fileMesh="mesh/TIPS/"+name_obj, primitiveType = "PATCHES"))
+          v.append(ET.Element("OglModel", name="Visual", texturename = tex, fileMesh="mesh/TIPS/"+name_obj, primitiveType = "PATCHES"))
         elif not o.useTessellation:
           oglshd = ET.Element("OglShader", fileVertexShaders = o.shaderFile, fileFragmentShaders = o.shaderFile, printLog="1");
           v.append(oglshd)
-          v.append(ET.Element("OglModel", name="Visual", fileMesh="mesh/TIPS/"+name_obj))
+          v.append(ET.Element("OglModel", name="Visual", texturename = tex, fileMesh="mesh/TIPS/"+name_obj))
     else:
-        v.append(ET.Element("OglModel", name="Visual", fileMesh="mesh/TIPS/"+name_obj))
+        v.append(ET.Element("OglModel", texturename = tex, name="Visual", fileMesh="mesh/TIPS/"+name_obj))
     v.append(ET.Element("BarycentricMapping", input="@..", output="@Visual"))
     t.append(v)
     return t
