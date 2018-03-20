@@ -23,7 +23,9 @@ class FattyTissue(bpy.types.Operator):
     smoothness = bpy.props.IntProperty(name = 'Smoothness', description = 'How smooth the fatty tissue should be. Ideal is 2.',default=2,min=0,max=3)
     project_to_surface = bpy.props.BoolProperty(name = 'Project points to surface',default=False,description='If set, the grid points are moved to the surface, may procedue some degenerate hexahedra')
     keep_the_cube = bpy.props.BoolProperty(name = 'Keep the Cube',default=False, description='If set, the input cube will not be removed after the mesh is generated')
-
+    add_perturbations = bpy.props.BoolProperty(name = 'Add perturbations',default=False, description='The output hex mesh will have random perturbations on its vertices')
+    preserve_interior = bpy.props.BoolProperty(name = 'Preserve interior volume',default=True, description='The output hex mesh will preserve the volume that are inside the organ')
+    map_to_boundary = bpy.props.BoolProperty(name = 'Map to boundary',default=False, description='Map to ')
     @classmethod
     def poll(self, context):
         return context.object is not None and context.object.type == 'EMPTY' and context.object.empty_draw_type == 'CUBE' and len(context.selected_objects) == 2
@@ -50,7 +52,10 @@ class FattyTissue(bpy.types.Operator):
         l.prop(self, 'project_to_surface')
         if not self.project_to_surface:
           l.prop(self, 'thickness_from_surface')
+        l.prop(self,'add_perturbations')
+        l.prop(self,'preserve_interior')
         l.prop(self, 'smoothness')
+        l.prop(self, 'map_to_boundary')
         l.prop(self, 'keep_the_cube')
 
     def execute(self, context):
@@ -80,14 +85,17 @@ class FattyTissue(bpy.types.Operator):
         # organ, if outside then flag them and add them to the vertex list
         organInv = organ.matrix_world.inverted()    # formerly oinv
         cubeInv = cube.matrix_world.inverted()      # formerly cinv
-        radius = cube.empty_draw_size * (cube.scale[0] + cube.scale[1] + cube.scale[2]) / meanL
+        radius = cube.empty_draw_size * (cube.scale[0] + cube.scale[1] + cube.scale[2]) / meanL / 2.0
+        print("radius = ", radius)
         #radius = c.empty_draw_size *  Vector(c.scale).length / L
         for x in range(LX+1):
          for y in range(LY+1):
           for z in range(LZ+1):
-            dx, dy, dz = random.random(), random.random(), random.random()
-            #print(dx,dy,dz)
-            co = cube.empty_draw_size * ( (2.0 * Vector(((x+dx)/LX,(y+dy)/LY,(z+dz)/LZ))) - Vector((1,1,1)) )
+            if self.add_perturbations:# dx,dy,dz are perturbations
+                dx, dy, dz = random.random()/3.0, random.random()/3.0, random.random()/3.0 # random floating point number in range [0.0, 1.0).
+                co = cube.empty_draw_size * ( (2.0 * Vector(((x+dx)/LX,(y+dy)/LY,(z+dz)/LZ))) - Vector((1,1,1)) )
+            else:
+                co = cube.empty_draw_size * ( (2.0 * Vector((x/LX,y/LY,z/LZ))) - Vector((1,1,1)) ) # coord that been centered at the origin
             v = organInv * cube.matrix_world * co
             # version_string is a string composed of Blender version + "(sub 0)". E.g. "2.76 (sub 0)"
             # blenderVer stores the first 4 digits of the string, that is the version number.
@@ -96,19 +104,26 @@ class FattyTissue(bpy.types.Operator):
                 result,location,normal,_ = organ.closest_point_on_mesh(v)
             else:
                 location,normal,_ = organ.closest_point_on_mesh(v)
-            d = (organ.matrix_world*v - organ.matrix_world*location).length
-            
-            if normal.dot(v - location) > 0:
-                if d < D: #or project and d < radius:
+            d = (organ.matrix_world*v - organ.matrix_world*location).length #distance of v to the nearest vertex on organ
+            if normal.dot(v - location) > 0: # v is outside
+                if d < D or d < radius: #or project and d < radius:
                     isNearParentOrgan[x,y,z] = True
                     vertexIndex[x,y,z] = len(M.vertices) 
                     M.vertices.add(1)
+                    if self.map_to_boundary:
+                        #co = co + (organ.matrix_world*location - organ.matrix_world*v) * 0.5
+                        co = co - normal / normal.length / 2.0 * d  
                     M.vertices[-1].co = co
                 else:
                     vertexIndex[x,y,z] = -1
                     isNearParentOrgan[x,y,z] = False
-            else:
-                if d < 1.5 * D: #Make sure all inside vertices of a hex are in the M list
+            else: # v is inside
+                if self.preserve_interior: #Make sure all inside vertices of a hex are in the M list
+                    isNearParentOrgan[x,y,z] = True
+                    vertexIndex[x,y,z] = len(M.vertices) 
+                    M.vertices.add(1)
+                    M.vertices[-1].co = co
+                elif d < 1.5 * D or d < radius: 
                     isNearParentOrgan[x,y,z] = True
                     vertexIndex[x,y,z] = len(M.vertices) 
                     M.vertices.add(1)
