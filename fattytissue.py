@@ -25,7 +25,9 @@ class FattyTissue(bpy.types.Operator):
     keep_the_cube = bpy.props.BoolProperty(name = 'Keep the Cube',default=False, description='If set, the input cube will not be removed after the mesh is generated')
     add_perturbations = bpy.props.BoolProperty(name = 'Add perturbations',default=False, description='The output hex mesh will have random perturbations on its vertices')
     preserve_interior = bpy.props.BoolProperty(name = 'Preserve interior volume',default=True, description='The output hex mesh will preserve the volume that are inside the organ')
-    map_to_boundary = bpy.props.BoolProperty(name = 'Map to boundary',default=False, description='Map to ')
+    map_to_boundary = bpy.props.BoolProperty(name = 'Map to boundary',default=False, description='Try to approximate the boundary surface of the organ ')
+    step_length_to_boundary = bpy.props.FloatProperty(name='Step Length', default=0.2, description='step length (0.0~0.5) for shifting the boudary vertices to approximate the organ surface mesh')
+    
     @classmethod
     def poll(self, context):
         return context.object is not None and context.object.type == 'EMPTY' and context.object.empty_draw_type == 'CUBE' and len(context.selected_objects) == 2
@@ -56,6 +58,8 @@ class FattyTissue(bpy.types.Operator):
         l.prop(self,'preserve_interior')
         l.prop(self, 'smoothness')
         l.prop(self, 'map_to_boundary')
+        if self.map_to_boundary:   
+          l.prop(self,'step_length_to_boundary')  
         l.prop(self, 'keep_the_cube')
 
     def execute(self, context):
@@ -86,6 +90,7 @@ class FattyTissue(bpy.types.Operator):
         organInv = organ.matrix_world.inverted()    # formerly oinv
         cubeInv = cube.matrix_world.inverted()      # formerly cinv
         radius = cube.empty_draw_size * (cube.scale[0] + cube.scale[1] + cube.scale[2]) / meanL / 2.0
+        min_radius = cube.empty_draw_size * (cube.scale[0] + cube.scale[1] + cube.scale[2]) / MaxL / 2.0
         print("radius = ", radius)
         #radius = c.empty_draw_size *  Vector(c.scale).length / L
         for x in range(LX+1):
@@ -101,19 +106,26 @@ class FattyTissue(bpy.types.Operator):
             # blenderVer stores the first 4 digits of the string, that is the version number.
             blenderVer = bpy.app.version_string[0:4]
             if (float(blenderVer) >= 2.77):
-                result,location,normal,_ = organ.closest_point_on_mesh(v)
+                result,location,normal,index = organ.closest_point_on_mesh(v)
+                #print("location,normal,index = ",location, normal, index)
             else:
                 location,normal,_ = organ.closest_point_on_mesh(v)
             d = (organ.matrix_world*v - organ.matrix_world*location).length #distance of v to the nearest vertex on organ
-            if normal.dot(v - location) > 0: # v is outside
-                if d < D or d < radius: #or project and d < radius:
+            if normal.dot(v - location) > 0: # if v is outside
+                if d < D or d < radius/2: #or project and d < radius:
                     isNearParentOrgan[x,y,z] = True
                     vertexIndex[x,y,z] = len(M.vertices) 
                     M.vertices.add(1)
                     if self.map_to_boundary:
-                        #co = co + (organ.matrix_world*location - organ.matrix_world*v) * 0.5
-                        co = co - normal / normal.length / 2.0 * d  
-                    M.vertices[-1].co = co
+                        if not self.step_length_to_boundary:
+                            stepLength = 0.2
+                        else:
+                            stepLength = self.step_length_to_boundary
+                        # if d > radius/2:
+                            # print("d > radius/2")
+                        co = co + (organ.matrix_world*location - organ.matrix_world*v) * stepLength
+                        #co = co - normal / normal.length / 2.0 * d  
+                    M.vertices[-1].co = co #idx '-1' means the last one
                 else:
                     vertexIndex[x,y,z] = -1
                     isNearParentOrgan[x,y,z] = False
