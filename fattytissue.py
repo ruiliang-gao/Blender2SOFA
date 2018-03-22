@@ -72,6 +72,9 @@ class FattyTissue(bpy.types.Operator):
         maxL = max(listL)
         organ = bpy.data.objects[self.organ]    # formerly o
         cube = bpy.data.objects[self.cube]      # formerly c
+        listEdgeLenth = [cube.scale[0]/LX , cube.scale[1]/LY , cube.scale[2]/LZ]
+        minEdgeLength = min(listEdgeLenth) * cube.empty_draw_size #in cube's coord
+        print("minEdgeLength",minEdgeLength)
         project = self.project_to_surface
         if project:
           D = 0
@@ -89,10 +92,13 @@ class FattyTissue(bpy.types.Operator):
         # organ, if outside then flag them and add them to the vertex list
         organInv = organ.matrix_world.inverted()    # formerly oinv
         cubeInv = cube.matrix_world.inverted()      # formerly cinv
-        radius = cube.empty_draw_size * (cube.scale[0] + cube.scale[1] + cube.scale[2]) / meanL / 2.0
-        min_radius = cube.empty_draw_size * (cube.scale[0] + cube.scale[1] + cube.scale[2]) / MaxL / 2.0
-        print("radius = ", radius)
-        #radius = c.empty_draw_size *  Vector(c.scale).length / L
+        #radius = cube.empty_draw_size * (cube.scale[0] + cube.scale[1] + cube.scale[2]) / meanL / 2.0
+        radius = cube.empty_draw_size * np.power((cube.scale[0] * cube.scale[1] * cube.scale[2]),1/3) / 2.0
+        #minEdgeLength = cube.empty_draw_size * (cube.scale[0] + cube.scale[1] + cube.scale[2]) / MaxL / 2.0
+        if not self.step_length_to_boundary:
+            stepLength = 0.2
+        else:
+            stepLength = self.step_length_to_boundary
         for x in range(LX+1):
          for y in range(LY+1):
           for z in range(LZ+1):
@@ -100,8 +106,8 @@ class FattyTissue(bpy.types.Operator):
                 dx, dy, dz = random.random()/3.0, random.random()/3.0, random.random()/3.0 # random floating point number in range [0.0, 1.0).
                 co = cube.empty_draw_size * ( (2.0 * Vector(((x+dx)/LX,(y+dy)/LY,(z+dz)/LZ))) - Vector((1,1,1)) )
             else:
-                co = cube.empty_draw_size * ( (2.0 * Vector((x/LX,y/LY,z/LZ))) - Vector((1,1,1)) ) # coord that been centered at the origin
-            v = organInv * cube.matrix_world * co
+                co = cube.empty_draw_size * ( (2.0 * Vector((x/LX,y/LY,z/LZ))) - Vector((1,1,1)) ) # local coord of the cube, centered at the origin
+            v = organInv * cube.matrix_world * co #local coord of the organ
             # version_string is a string composed of Blender version + "(sub 0)". E.g. "2.76 (sub 0)"
             # blenderVer stores the first 4 digits of the string, that is the version number.
             blenderVer = bpy.app.version_string[0:4]
@@ -110,27 +116,36 @@ class FattyTissue(bpy.types.Operator):
                 #print("location,normal,index = ",location, normal, index)
             else:
                 location,normal,_ = organ.closest_point_on_mesh(v)
-            d = (organ.matrix_world*v - organ.matrix_world*location).length #distance of v to the nearest vertex on organ
+            d = (organ.matrix_world * v - organ.matrix_world * location).length #distance of v to the nearest vertex on organ, in world coord
+            d_cube = (cubeInv * organ.matrix_world * (v - location)).length #distance in cube coord
+            #print("d, d_cube : ", d, d_cube)
             if normal.dot(v - location) > 0: # if v is outside
-                if d < D or d < radius/2: #or project and d < radius:
-                    isNearParentOrgan[x,y,z] = True
-                    vertexIndex[x,y,z] = len(M.vertices) 
-                    M.vertices.add(1)
-                    if self.map_to_boundary:
-                        if not self.step_length_to_boundary:
-                            stepLength = 0.2
-                        else:
-                            stepLength = self.step_length_to_boundary
-                        # if d > radius/2:
-                            # print("d > radius/2")
-                        co = co + (organ.matrix_world*location - organ.matrix_world*v) * stepLength
-                        #co = co - normal / normal.length / 2.0 * d  
-                    M.vertices[-1].co = co #idx '-1' means the last one
+                if d < D : #or d < radius/2: #or project and d < radius: 
+                    if self.map_to_boundary and d_cube < minEdgeLength: # to make sure algorithm is stable, we need to make sure vertex is within minEdgeLength/2 to the organ
+                        co = co + (cubeInv * organ.matrix_world * (location - v)) * stepLength
+                        isNearParentOrgan[x,y,z] = True
+                        vertexIndex[x,y,z] = len(M.vertices) 
+                        M.vertices.add(1)
+                        M.vertices[-1].co = co #idx '-1' means the last one
+                    elif not self.map_to_boundary:
+                        isNearParentOrgan[x,y,z] = True
+                        vertexIndex[x,y,z] = len(M.vertices) 
+                        M.vertices.add(1)
+                        M.vertices[-1].co = co #idx '-1' means the last one
+                    else:
+                        vertexIndex[x,y,z] = -1
+                        isNearParentOrgan[x,y,z] = False   
                 else:
                     vertexIndex[x,y,z] = -1
                     isNearParentOrgan[x,y,z] = False
             else: # v is inside
-                if self.preserve_interior: #Make sure all inside vertices of a hex are in the M list
+                if self.map_to_boundary and d_cube < minEdgeLength:
+                    #co = co - (cubeInv * organ.matrix_world * (location - v)) * stepLength
+                    isNearParentOrgan[x,y,z] = True
+                    vertexIndex[x,y,z] = len(M.vertices) 
+                    M.vertices.add(1)
+                    M.vertices[-1].co = co
+                elif self.preserve_interior: #Make sure all inside vertices of a hex are in the M list
                     isNearParentOrgan[x,y,z] = True
                     vertexIndex[x,y,z] = len(M.vertices) 
                     M.vertices.add(1)
