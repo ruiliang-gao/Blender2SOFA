@@ -26,8 +26,9 @@ class FattyTissue(bpy.types.Operator):
     add_perturbations = bpy.props.BoolProperty(name = 'Add perturbations',default=False, description='The output hex mesh will have random perturbations on its vertices')
     preserve_interior = bpy.props.BoolProperty(name = 'Preserve interior volume',default=True, description='The output hex mesh will preserve the volume that are inside the organ')
     map_to_boundary = bpy.props.BoolProperty(name = 'Map to boundary',default=False, description='Try to approximate the boundary surface of the organ ')
-    step_length_to_boundary = bpy.props.FloatProperty(name='Step Length', default=0.2, description='step length (0.0~0.5) for shifting the boudary vertices to approximate the organ surface mesh')
-    
+    step_length_to_boundary = bpy.props.FloatProperty(name='Step Length', default=0.8, description='step length (0.0~1.0） for shifting the boudary vertices to approximate the organ surface mesh')
+    add_internal_organ = bpy.props.BoolProperty(name = 'Add internal structure',default=False,description='Add internal structures')
+    internal_organ = bpy.props.StringProperty(name = 'Internal Structure', description = 'Pointer to the object of Internal Structure')
     @classmethod
     def poll(self, context):
         return context.object is not None and context.object.type == 'EMPTY' and context.object.empty_draw_type == 'CUBE' and len(context.selected_objects) == 2
@@ -47,6 +48,8 @@ class FattyTissue(bpy.types.Operator):
         l = self.layout
         l.prop_search(self, 'cube', context.scene, 'objects')
         l.prop_search(self, 'organ', context.scene, 'objects')
+        if self.add_internal_organ:
+            l.prop_search(self,'internal_organ', context.scene, 'objects')
         # l.prop(self, 'resolution')
         l.prop(self, 'resolutionX')
         l.prop(self, 'resolutionY')
@@ -54,6 +57,7 @@ class FattyTissue(bpy.types.Operator):
         l.prop(self, 'project_to_surface')
         if not self.project_to_surface:
           l.prop(self, 'thickness_from_surface')
+        l.prop(self,'add_internal_organ')
         l.prop(self,'add_perturbations')
         l.prop(self,'preserve_interior')
         l.prop(self, 'smoothness')
@@ -72,9 +76,12 @@ class FattyTissue(bpy.types.Operator):
         maxL = max(listL)
         organ = bpy.data.objects[self.organ]    # formerly o
         cube = bpy.data.objects[self.cube]      # formerly c
+        if self.add_internal_organ:
+            int_organ = bpy.data.objects[self.internal_organ] 
+            int_organInv = int_organ.matrix_world.inverted()
         listEdgeLenth = [cube.scale[0]/LX , cube.scale[1]/LY , cube.scale[2]/LZ]
         minEdgeLength = min(listEdgeLenth) * cube.empty_draw_size #in cube's coord
-        print("minEdgeLength",minEdgeLength)
+        # print("minEdgeLength",minEdgeLength)
         project = self.project_to_surface
         if project:
           D = 0
@@ -93,7 +100,7 @@ class FattyTissue(bpy.types.Operator):
         organInv = organ.matrix_world.inverted()    # formerly oinv
         cubeInv = cube.matrix_world.inverted()      # formerly cinv
         #radius = cube.empty_draw_size * (cube.scale[0] + cube.scale[1] + cube.scale[2]) / meanL / 2.0
-        radius = cube.empty_draw_size * np.power((cube.scale[0] * cube.scale[1] * cube.scale[2]),1/3) / 2.0
+        radius = cube.empty_draw_size * np.power((cube.scale[0] * cube.scale[1] * cube.scale[2]),1/3) / 2.0 # half of the diagonal
         #minEdgeLength = cube.empty_draw_size * (cube.scale[0] + cube.scale[1] + cube.scale[2]) / MaxL / 2.0
         if not self.step_length_to_boundary:
             stepLength = 0.2
@@ -108,21 +115,29 @@ class FattyTissue(bpy.types.Operator):
             else:
                 co = cube.empty_draw_size * ( (2.0 * Vector((x/LX,y/LY,z/LZ))) - Vector((1,1,1)) ) # local coord of the cube, centered at the origin
             v = organInv * cube.matrix_world * co #local coord of the organ
+            if self.add_internal_organ:
+                v2 = int_organInv * cube.matrix_world * co #local coord of the internal organ
             # version_string is a string composed of Blender version + "(sub 0)". E.g. "2.76 (sub 0)"
             # blenderVer stores the first 4 digits of the string, that is the version number.
             blenderVer = bpy.app.version_string[0:4]
             if (float(blenderVer) >= 2.77):
                 result,location,normal,index = organ.closest_point_on_mesh(v)
-                #print("location,normal,index = ",location, normal, index)
+                if self.add_internal_organ:
+                    result2,location2,normal2,index2 = int_organ.closest_point_on_mesh(v2)
             else:
                 location,normal,_ = organ.closest_point_on_mesh(v)
+                if self.add_internal_organ:
+                    location2,normal2,_ = int_organ.closest_point_on_mesh(v)
             d = (organ.matrix_world * v - organ.matrix_world * location).length #distance of v to the nearest vertex on organ, in world coord
-            d_cube = (cubeInv * organ.matrix_world * (v - location)).length #distance in cube coord
-            #print("d, d_cube : ", d, d_cube)
-            if normal.dot(v - location) > 0: # if v is outside
+            d_test =  (cubeInv * organ.matrix_world * (v - location)).length
+            d_cube = (cubeInv * organ.matrix_world * v - cubeInv * organ.matrix_world * location).length #distance in cube coord
+            if self.add_internal_organ:
+                d2_cube = (cubeInv * int_organ.matrix_world * v2 - cubeInv * int_organ.matrix_world * location2).length
+                isInsideInternalOrgan = (normal2.dot(v2 - location2) < 0)
+            if normal.dot(v - location) > 0: # if v is outside the organ
                 if d < D : #or d < radius/2: #or project and d < radius: 
                     if self.map_to_boundary and d_cube < minEdgeLength: # to make sure algorithm is stable, we need to make sure vertex is within minEdgeLength/2 to the organ
-                        co = co + (cubeInv * organ.matrix_world * (location - v)) * stepLength
+                        co = co + (cubeInv * organ.matrix_world * location - cubeInv * organ.matrix_world * v) * stepLength
                         isNearParentOrgan[x,y,z] = True
                         vertexIndex[x,y,z] = len(M.vertices) 
                         M.vertices.add(1)
@@ -139,12 +154,15 @@ class FattyTissue(bpy.types.Operator):
                     vertexIndex[x,y,z] = -1
                     isNearParentOrgan[x,y,z] = False
             else: # v is inside
-                if self.map_to_boundary and d_cube < minEdgeLength:
-                    #co = co - (cubeInv * organ.matrix_world * (location - v)) * stepLength
+                if self.map_to_boundary and self.add_internal_organ and not isInsideInternalOrgan and d2_cube < minEdgeLength:
+                    co = co + (cubeInv * int_organ.matrix_world * location2 - cubeInv * int_organ.matrix_world * v2) * stepLength
                     isNearParentOrgan[x,y,z] = True
                     vertexIndex[x,y,z] = len(M.vertices) 
                     M.vertices.add(1)
                     M.vertices[-1].co = co
+                elif self.add_internal_organ and isInsideInternalOrgan:
+                    vertexIndex[x,y,z] = -1
+                    isNearParentOrgan[x,y,z] = False
                 elif self.preserve_interior: #Make sure all inside vertices of a hex are in the M list
                     isNearParentOrgan[x,y,z] = True
                     vertexIndex[x,y,z] = len(M.vertices) 
@@ -162,8 +180,8 @@ class FattyTissue(bpy.types.Operator):
         for x in range(LX):
          for y in range(LY):
           for z in range(LZ):
-            # Check that all the vertices required for this hexa are available and outside
-            # the surface
+                # Check that all the vertices required for this hexa are available and outside
+                # the surface
             verticesAvailable = all([ isNearParentOrgan[x+i,y+j,z+k] for i,j,k in HEX_VERTICES ])
             # Build the hexa if all the vertices are available
             if verticesAvailable:
