@@ -650,7 +650,7 @@ def exportInstrument(o, opt):
                                )
             else:
               pm = ET.Element("TPointModel", name = 'toolTip',
-                                 contactStiffness="20.0", bothSide="0", proximity = i.proximity,
+                                 contactStiffness="15.0", bothSide="0", proximity = i.proximity,
                                  group= o.collisionGroup
                                  )
             if o.toolFunction == 'CARVE':
@@ -712,7 +712,7 @@ def exportInstrument(o, opt):
         idx = INSTRUMENT_PART_MAP[i.instrumentPart]
         name = fixName(i.name)
         child =  ET.Element("Node", name = fixName(i.name))
-        if i.template == 'INSTRUMENTPART'and i.instrumentPart != 'TOOLSHAFT' and o.toolFunction not in ['GRASP', 'CLAMP']:
+        if i.template == 'INSTRUMENTPART'and i.instrumentPart != 'TOOLSHAFT':# and o.toolFunction not in ['GRASP', 'CLAMP']:
           OglShd = ET.Element("OglShader", fileVertexShaders = "['shaders/TIPSShaders/instrument.glsl']" , fileFragmentShaders = "['shaders/TIPSShaders/instrument.glsl']", printLog="1");
           child.append(OglShd)
         child.append(exportVisual(i, opt, name = name + '-visual', with_transform = True))
