@@ -257,7 +257,8 @@ def exportThickCurve(o, opt):
     addElasticityParameters(o,h)
     t.append(h)
     if o.damping > 0:
-        dmp = ET.Element("DiagonalVelocityDampingForceField", template="Vec3d",  dampingCoefficient="0.05 0.05 0.05 0.05 0.05 0.05")
+        dampstr = str(o.damping)+' '+str(o.damping)+' '+str(o.damping)+' '+str(o.damping)+' '+str(o.damping)+' '+str(o.damping)
+        dmp = ET.Element("DiagonalVelocityDampingForceField", template="Vec3d",  dampingCoefficient= dampstr) # "0.05 0.05 0.05 0.05 0.05 0.05")
         t.append(dmp)
     addConstraintCorrection(o, t)
     addConstraints(o, t)
@@ -563,7 +564,8 @@ def cwisemul(a, b):
 
 def addConstraints(o, t):
     if o.fixed_indices:
-        t.append(ET.Element("FixedConstraint", indices=o.fixed_indices))
+        t.append(ET.Element("PartialFixedConstraint", name="partialFixedConstraint", fixedDirections="1 1 1", indices=o.fixed_indices))
+        #t.append(ET.Element("FixedConstraint", indices=o.fixed_indices))
     else:  
         for q in o.children:
           if not q.hide_render:
