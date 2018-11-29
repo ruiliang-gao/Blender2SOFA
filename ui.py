@@ -113,6 +113,8 @@ class SofaObjectAnnotationPanel(bpy.types.Panel):
                 c.prop(p, 'collisionGroup')
                 c.prop(p, 'contactStiffness')
                 c.prop(p, 'contactFriction')
+            if t == 'COLLISION':
+                c.prop(p,'proximity')
             c.label('Rendering Parameters') 
             c.prop(p, 'useShader')
             c.prop(p, 'shaderFile')

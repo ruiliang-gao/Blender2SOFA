@@ -612,14 +612,14 @@ def collisionModelParts(o, opt, obstacle = False, group = None, bothSide = 0):
         return [
             #ET.Element("PointModel",selfCollision=sc, contactFriction = o.contactFriction, contactStiffness = o.contactStiffness, group=group, moving = M, simulated = M, bothSide= bothSide ),
             ET.Element("PointModel",selfCollision=sc, contactFriction = o.contactFriction, active = "0", contactStiffness = o.contactStiffness, group=group, moving = M, simulated = M, bothSide= bothSide ),
-            ET.Element("LineModel",selfCollision=sc, contactFriction = o.contactFriction, contactStiffness = o.contactStiffness, group=group, moving = M, simulated = M, bothSide= bothSide ),
+            ET.Element("LineModel",selfCollision=sc,  contactFriction = o.contactFriction, contactStiffness = o.contactStiffness, group=group, moving = M, simulated = M, bothSide= bothSide ),
             ET.Element("TriangleModel", tags = sutureTag, selfCollision=sc, contactFriction = o.contactFriction, contactStiffness = o.contactStiffness, group=group, moving = M, simulated = M, bothSide= bothSide )
         ]
     else:
         return [
             # ET.Element("PointModel",selfCollision=sc, contactFriction = o.contactFriction, contactStiffness = o.contactStiffness, group=group, moving = M, simulated = M, bothSide= bothSide ),
             ET.Element("PointModel",selfCollision=sc, contactFriction = o.contactFriction, active = "0", contactStiffness = o.contactStiffness, group=group, moving = M, simulated = M, bothSide= bothSide ),
-            ET.Element("LineModel",selfCollision=sc, contactFriction = o.contactFriction, contactStiffness = o.contactStiffness, group=group, moving = M, simulated = M, bothSide= bothSide ),
+            ET.Element("LineModel",selfCollision=sc, proximity=o.proximity, contactFriction = o.contactFriction, contactStiffness = o.contactStiffness, group=group, moving = M, simulated = M, bothSide= bothSide ),
             ET.Element("TriangleModel", tags = sutureTag,selfCollision=sc, contactFriction = o.contactFriction, contactStiffness = o.contactStiffness, group=group, moving = M, simulated = M, bothSide= bothSide )
         ]
     
