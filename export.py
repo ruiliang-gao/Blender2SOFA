@@ -148,7 +148,56 @@ def exportHexahedralTopology(o, opt, name):
 
     c =  ET.Element('HexahedronSetTopologyContainer', name= name, points = points, hexahedra = hexahedra) # createTriangleArray='1'
     return geometryNode(opt,c)
+def exportThickShellCollision(o, opt, name): 
+    if o.alternativeCollision:
+        collisionObject = opt.scene.objects[o.alternativeCollision]
+        m = collisionObject.to_mesh(opt.scene, True, 'PREVIEW')
+    else:
+        m = o.to_mesh(opt.scene, True, 'PREVIEW')
 
+    thickness = o.thickness
+    layerCount    = o.layerCount
+    assert(layerCount >= 1)
+    V = len(m.vertices)
+    rj = list(range(-layerCount,1)) # [-1,0]
+    points =  np.empty([V * (layerCount+1),3])
+    for i, v in enumerate(m.vertices): #[i, vertices[i]]
+      for j, offset in enumerate(rj): #j=0,1... offset= ...,-2,-1,0
+        vn = v.co + v.normal * offset * thickness
+        #vn = v.co * j + m_shrink.vertices[i].co * (1-j);
+        points[i+V*j][0] = vn[0]
+        points[i+V*j][1] = vn[1]
+        points[i+V*j][2] = vn[2]
+    
+    quads = list(filter(lambda f: len(f.vertices) == 4, m.polygons))
+    quadCount = len(quads)
+    
+    # bpy.ops.object.select_all(action='DESELECT')
+    # o_shrink.select = True;
+    # bpy.ops.object.delete(use_global=False);
+    
+    if quadCount == 0 : raise ExportException("Object '%s' has to be a quad mesh for a thick shell topology" % o.name)
+
+    hexahedra = np.empty([quadCount * layerCount, 8], dtype=int)
+    for i, f in enumerate(quads):
+      for l in range(0, layerCount):
+        hexahedra[l*quadCount+i] = [f.vertices[0]+l*V,f.vertices[1]+l*V,f.vertices[2]+l*V,f.vertices[3]+l*V,f.vertices[0]+(l+1)*V,f.vertices[1]+(l+1)*V,f.vertices[2]+(l+1)*V,f.vertices[3]+(l+1)*V]
+
+
+    # first one is inner, second one is outer shell
+    shell = [ np.empty([quadCount*2, 3], dtype=int), np.empty([quadCount*2, 3], dtype=int) ]
+
+    for i, f in enumerate(quads):
+      shell[1][i*2  ] = [f.vertices[0],f.vertices[1],f.vertices[2]]
+      shell[1][i*2+1] = [f.vertices[0],f.vertices[2],f.vertices[3]]
+      shell[0][i*2  ] = [f.vertices[0],f.vertices[2],f.vertices[1]]
+      shell[0][i*2+1] = [f.vertices[0],f.vertices[3],f.vertices[2]]
+
+    oshell = ET.Element('MeshTopology', name = name + "-outer", triangles = shell[1], points = points[V*layerCount:V*(layerCount+1), ...])
+    ishell = ET.Element('MeshTopology', name = name + "-inner", triangles = shell[0], points = points[0:V, ...])
+    c =  ET.Element('HexahedronSetTopologyContainer', name= name, points = points, hexahedra = hexahedra)
+    return geometryNode(opt, oshell), geometryNode(opt, ishell)
+    
 def exportThickShellTopologies(o, opt, name): #currently using triangle for visual model since quad mesh may not be planar
     # bpy.ops.object.select_all(action='DESELECT')
     m = o.to_mesh(opt.scene, True, 'PREVIEW')
@@ -323,6 +372,7 @@ def exportThickQuadShell(o, opt):
         t.append(ET.Element('Gravity', gravity = o.local_gravity))
     topo = name + '-hexahedral-topology'
     c, oshell, ishell = exportThickShellTopologies(o, opt, topo)
+    oshellcollision, ishellcollision = exportThickShellCollision(o,opt,topo)
     t.append(c)
 
     t.append(createMechanicalObject(o))
@@ -343,7 +393,7 @@ def exportThickQuadShell(o, opt):
     addConstraints(o, t)
 
 
-    for i, tp in enumerate([ oshell, ishell ]):
+    for i, tp in enumerate([ oshellcollision, ishellcollision ]):
       n = ET.Element('Node')
       if i == 0:
         n.set('name', 'CollisionOuter')

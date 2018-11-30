@@ -63,7 +63,8 @@ def register_sofa_properties():
     bpy.types.Object.selfCollision = bpy.props.BoolProperty(name="Self Collision",description="Object cannot go through itself when enabled",default=False)
     bpy.types.Object.contactFriction = bpy.props.FloatProperty(name="Contact Friction",default=500,min=0,max=1e+5,step=100)
     bpy.types.Object.contactStiffness = bpy.props.FloatProperty(name="Contact Stiffness",default=500,min=0,max=1e+5,step=100)
-
+    bpy.types.Object.alternativeCollision = bpy.props.StringProperty(name='Alternative CollisionModel', description='Name of the object that will be used as collision model')
+    
     # Elasticity
     bpy.types.Object.youngModulus = bpy.props.FloatProperty(name="Stiffness (Young Modulus)",description=' Modulus of elasticity which represents how easy it is to deform (stretch a material)',default=3000,min=1,max=1e+6,soft_min=10,step=100)
     bpy.types.Object.poissonRatio = bpy.props.FloatProperty(name="Compressibility (PoissonRatio)",description = 'Measures how much will the material expand in directions perpendicular to the direction of compression',default=0.45,min=0.0,max=0.49,step=0.01)
@@ -130,6 +131,7 @@ def unregister_sofa_properties():
     del bpy.types.Object.selfCollision
     del bpy.types.Object.contactFriction
     del bpy.types.Object.contactStiffness
+    del bpy.types.Object.alternativeCollision
 
     # Elasticity
     del bpy.types.Object.youngModulus
