@@ -178,10 +178,10 @@ def exportThickShellCollision(o, opt, name):
     
     if quadCount == 0 : raise ExportException("Object '%s' has to be a quad mesh for a thick shell topology" % o.name)
 
-    hexahedra = np.empty([quadCount * layerCount, 8], dtype=int)
-    for i, f in enumerate(quads):
-      for l in range(0, layerCount):
-        hexahedra[l*quadCount+i] = [f.vertices[0]+l*V,f.vertices[1]+l*V,f.vertices[2]+l*V,f.vertices[3]+l*V,f.vertices[0]+(l+1)*V,f.vertices[1]+(l+1)*V,f.vertices[2]+(l+1)*V,f.vertices[3]+(l+1)*V]
+    # hexahedra = np.empty([quadCount * layerCount, 8], dtype=int)
+    # for i, f in enumerate(quads):
+      # for l in range(0, layerCount):
+        # hexahedra[l*quadCount+i] = [f.vertices[0]+l*V,f.vertices[1]+l*V,f.vertices[2]+l*V,f.vertices[3]+l*V,f.vertices[0]+(l+1)*V,f.vertices[1]+(l+1)*V,f.vertices[2]+(l+1)*V,f.vertices[3]+(l+1)*V]
 
 
     # first one is inner, second one is outer shell
@@ -195,7 +195,6 @@ def exportThickShellCollision(o, opt, name):
 
     oshell = ET.Element('MeshTopology', name = name + "-outer", triangles = shell[1], points = points[V*layerCount:V*(layerCount+1), ...])
     ishell = ET.Element('MeshTopology', name = name + "-inner", triangles = shell[0], points = points[0:V, ...])
-    c =  ET.Element('HexahedronSetTopologyContainer', name= name, points = points, hexahedra = hexahedra)
     return geometryNode(opt, oshell), geometryNode(opt, ishell)
     
 def exportThickShellTopologies(o, opt, name): #currently using triangle for visual model since quad mesh may not be planar
