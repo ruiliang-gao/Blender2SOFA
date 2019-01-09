@@ -490,13 +490,16 @@ def exportVolumetric(o, opt):
           ogl = ET.Element("OglModel", name="Visual");
         if o.useShader:
           if not o.shaderFile:
-            print("no default shader for tetrahedra exists!")
-          else:
+            print("no default shader for volumetric exists!")
+          elif o.useTessellation:
             oglshd = ET.Element("OglShader", fileVertexShaders = o.shaderFile, fileTessellationControlShaders = o.shaderFile,
              fileTessellationEvaluationShaders = o.shaderFile, fileFragmentShaders = o.shaderFile, printLog="1");
             ogltesslvl = ET.Element("OglFloatVariable", name="TessellationLevel", value = "8")
             n.append(oglshd)
             n.append(ogltesslvl)
+          elif not o.useTessellation:
+            oglshd = ET.Element("OglShader", fileVertexShaders = o.shaderFile, fileFragmentShaders = o.shaderFile, printLog="1");
+            n.append(oglshd)
         addMaterial(o, ogl);
         n.append(ogl)
         n.append(ET.Element("IdentityMapping",input="@../MO",output="@Visual"))
@@ -784,7 +787,7 @@ def exportDeformableGrid(o,opt):
     t.append(ET.Element('SparseGridRamification', n = o.grid_dimension, name= name+"-grid", fileTopology="mesh/TIPS/"+name_obj, nbVirtualFinerLevels = "3", finestConnectivity="0"))
     t.append(ET.Element('MechanicalObject', name= name+"-dofs", scale="1", dy="0", position='@' + name + '-grid.position', tags="NoPicking"))
     t.append(ET.Element("UniformMass", mass = o.totalMass))
-    h = ET.Element("HexahedronFEMForceField",method="large",updateStiffnessMatrix="false")
+    h = ET.Element("HexahedronFEMForceField", method="large", updateStiffnessMatrix="false")
     addElasticityParameters(o,h)
     t.append(h)
     if o.damping > 0:
@@ -793,13 +796,25 @@ def exportDeformableGrid(o,opt):
     addConstraintCorrection(o, t)
     addConstraints(o, t)
     
-    n = ET.Element('Node', name="Collision")
-    n.append(ET.Element('MeshObjLoader', filename = 'mesh/TIPS/' + name_obj, name="loader"))
-    n.append(ET.Element('MechanicalObject', src = '@loader', name="CollisModel"))
-    n.append(ET.Element('TriangleSetTopologyContainer', src = '@loader'))
-    n.extend(collisionModelParts(o, opt))
-    n.append(ET.Element("BarycentricMapping", input="@..", output="@."))
-    t.append(n)
+    if o.alternativeCollision:
+        n = ET.Element('Node', name="Collision")
+        collisionObject = opt.scene.objects[o.alternativeCollision]
+        n.append(exportTriangularTopologyContainer(collisionObject,opt))
+        n.append(ET.Element('EdgeSetTopologyModifier'))
+        moc = createMechanicalObject(o)
+        moc.set('name', 'MOC')
+        n.append(moc)
+        n.extend(collisionModelParts(o, opt))
+        n.append(ET.Element("BarycentricMapping",input="@../"+name+"-dofs",output="@MOC"))
+        t.append(n)
+    else:#if not alternativeCollision:
+        n = ET.Element('Node', name="Collision")
+        n.append(ET.Element('MeshObjLoader', filename = 'mesh/TIPS/' + name_obj, name="loader"))
+        n.append(ET.Element('MechanicalObject', src = '@loader', name="CollisModel"))
+        n.append(ET.Element('TriangleSetTopologyContainer', src = '@loader'))
+        n.extend(collisionModelParts(o, opt))
+        n.append(ET.Element("BarycentricMapping", input="@..", output="@."))
+        t.append(n)
     v = ET.Element('Node', name="Visual")
     if o.texture2d != '':
         tex = "textures/"+o.texture2d
@@ -1195,6 +1210,10 @@ def exportHaptic(l, opt):
         positionBase = b.location
         orientationBase = rotation_to_quaternion(b)
         scaleBase = pow(b.scale[0] * b.scale[1] * b.scale[2], 1./3)
+        if scene.hapticMoveTo:
+            moveTo = scene.objects[scene.hapticMoveTo].location
+        else:
+            moveTo = positionBase
     else:
         positionBase = [0, 0, 0]
         orientationBase = [0, 0, 0, 1]
@@ -1212,14 +1231,14 @@ def exportHaptic(l, opt):
           rl.append(ET.Element("NewOmniDriver",
                                name = 'driver',
                                deviceName = hp.deviceName,
-                               tags= omniTag, scale = hp.scale * scaleBase , positionBase = positionBase, orientationBase = orientationBase, desirePosition = positionBase,
+                               tags= omniTag, scale = hp.scale * scaleBase , positionBase = positionBase, orientationBase = orientationBase, desirePosition = moveTo,
                                permanent="true", listening="true", alignOmniWithCamera="false",
                                forceScale = 1));
         else:
           rl.append(ET.Element("NewOmniDriver",
                                  name = 'driver',
                                  deviceName = hp.deviceName,
-                                 tags= omniTag, scale = hp.scale * scaleBase , positionBase = positionBase, orientationBase = orientationBase, desirePosition = positionBase,
+                                 tags= omniTag, scale = hp.scale * scaleBase , positionBase = positionBase, orientationBase = orientationBase, desirePosition = moveTo,
                                  permanent="true", listening="true", alignOmniWithCamera="false",
                                  forceScale = hp.forceScale));
         rl.append(ET.Element("MechanicalObject", name="ToolRealPosition", tags=omniTag, template="Rigid", position="0 0 0 0 0 0 1",free_position="0 0 0 0 0 0 1"))
