@@ -56,6 +56,7 @@ class SofaObjectAnnotationPanel(bpy.types.Panel):
         c.prop(p, 'texture2d')
         if t == 'INSTRUMENT':
             c.prop(p, 'toolFunction')
+            c.prop(p, 'extraTag')
         elif t == 'INSTRUMENTPART':
             c.prop(p, 'instrumentPart')
         elif t in ['INSTRUMENTTIP', 'INSTRUMENTCOLLISION']:
@@ -67,6 +68,7 @@ class SofaObjectAnnotationPanel(bpy.types.Panel):
             c.prop(p, 'rayleighStiffness')
             c.prop(p, 'totalMass')
             c.prop(p,'local_gravity')
+            c.prop(p, 'extraTag')
             if t == 'DEFORMABLE':
                 c.prop(p, 'grid_dimension')
                 c.prop(p, 'safetyConcern')   

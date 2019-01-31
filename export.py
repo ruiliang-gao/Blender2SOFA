@@ -708,19 +708,19 @@ def exportInstrument(o, opt):
                                  group= o.collisionGroup
                                  )
             if o.toolFunction == 'CARVE':
-              pm.set('tags', 'CarvingTool')
+              pm.set('tags', 'CarvingTool '+ o.extraTag)
             elif o.toolFunction == 'DISSECT':
-              pm.set('tags', 'DissectingTool')
+              pm.set('tags', 'DissectingTool '+ o.extraTag)
             elif o.toolFunction == 'SUTURE':
               pm.set('tags', 'SuturingTool')
             elif o.toolFunction == 'CLAMP':
-              pm.set('tags', 'ClampingTool')
+              pm.set('tags', 'ClampingTool '+ o.extraTag)
             elif o.toolFunction == 'CONTAIN':
-              pm.set('tags', 'ContainerTool')
+              pm.set('tags', 'ContainerTool '+ o.extraTag)
             elif o.toolFunction == 'CUT':
-              pm.set('tags', 'CuttingTool')
+              pm.set('tags', 'CuttingTool '+ o.extraTag)
             else:
-              pm.set('tags', 'GraspingTool')
+              pm.set('tags', 'GraspingTool '+ o.extraTag)
 
             child.append(pm)
             child.append(ET.Element("RigidMapping", input="@../../instrumentState",output="@CM",index= 0))
@@ -1210,15 +1210,15 @@ def exportHaptic(l, opt):
         positionBase = b.location
         orientationBase = rotation_to_quaternion(b)
         scaleBase = pow(b.scale[0] * b.scale[1] * b.scale[2], 1./3)
-        if scene.hapticMoveTo:
-            moveTo = scene.objects[scene.hapticMoveTo].location
-        else:
-            moveTo = positionBase
+        
     else:
         positionBase = [0, 0, 0]
         orientationBase = [0, 0, 0, 1]
         scaleBase = 1
-
+    if scene.hapticMoveTo:
+        moveTo = scene.objects[scene.hapticMoveTo].location
+    else:
+        moveTo = positionBase
 
     for hp in hapticDevices:
         n = hp.deviceName

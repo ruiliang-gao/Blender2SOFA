@@ -58,6 +58,7 @@ def register_sofa_properties():
         ('TOOLSHAFT', 'Tool shaft', 'shaft of the tool')
         ])
     bpy.types.Object.proximity = bpy.props.FloatProperty(name="Proximity",description="Proximity for collision detection",min=0,default=0,max=10,step=0.001)
+    bpy.types.Object.extraTag = bpy.props.StringProperty(name="Extra Tag",description='Put extra tag to the object to fit some special purposes')
 
     # Collision detection and response
     bpy.types.Object.collisionGroup = bpy.props.IntProperty(name="Collision Group",default=1,min=1,max=100,soft_max=10)
@@ -127,6 +128,7 @@ def unregister_sofa_properties():
     del bpy.types.Object.toolFunction
     del bpy.types.Object.instrumentPart
     del bpy.types.Object.proximity
+    del bpy.types.Object.extraTag
     # Collision detection and response
     del bpy.types.Object.collisionGroup
     del bpy.types.Object.selfCollision
