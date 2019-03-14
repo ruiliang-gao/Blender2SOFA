@@ -1,8 +1,8 @@
 bl_info = {
     'name': "SOFA Export plugin",
-    'author': "Saleh Dindar, Di Xie",
-    'version': (0, 2,  0),
-    'blender': (2, 77, 0),
+    'author': "Saleh Dindar, Ruiliang Gao, Di Xie",
+    'version': (0, 2,  1),
+    'blender': (2, 79, 0),
     'location': "https://bitbucket.org/surflab/blender2sofa",
     'warning': "",
     'description': "Export Blender scenes into SOFA scene files",

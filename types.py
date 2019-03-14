@@ -11,6 +11,7 @@ def register_sofa_properties():
     bpy.types.Scene.precompution = bpy.props.BoolProperty(name="Precompution",description="Check if there are any objects to be precomputed in the scene",default=False)
     bpy.types.Scene.hapticWorkspaceBox = bpy.props.StringProperty(name="Haptic Workspace Box",description="An empty object that defines the haptic workspace box")
     bpy.types.Scene.hapticMoveTo = bpy.props.StringProperty(name="Haptic Move To Position",description="An object that defines where the haptic moves to when simulation starts")
+    bpy.types.Scene.alignOmniWithCamera = bpy.props.BoolProperty(name="Align Omni With Camera",description="align Omni position and orientation with camera",default=False)
     bpy.types.Scene.defaultInstrument = bpy.props.StringProperty(name="Default instrument",description="A tool object that defines the default instrument")
     bpy.types.Scene.useSpeechRecognition = bpy.props.BoolProperty(name="SpeechRecognition", description="check this if you want to use SpeechRecognition plugin", default=False)
     bpy.types.Scene.targetOrgan = bpy.props.StringProperty(name="Target Organ",description="The major target organ in the surgery")
@@ -117,6 +118,9 @@ def unregister_sofa_properties():
     del bpy.types.Scene.showXYZFrame
     del bpy.types.Scene.precompution
     del bpy.types.Scene.hapticWorkspaceBox
+    del bpy.types.Scene.hapticMoveTo
+    del bpy.types.Scene.alignOmniWithCamera   
+    
     del bpy.types.Scene.defaultInstrument
     del bpy.types.Scene.useSpeechRecognition
     del bpy.types.Scene.targetOrgan

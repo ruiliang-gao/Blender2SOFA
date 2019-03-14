@@ -156,6 +156,8 @@ class SofaScenePropertyPanel(bpy.types.Panel):
         c.prop(s, "showXYZFrame")
         c.prop(s, "precompution")
         c.prop(s, "useSpeechRecognition")
+        c.label('Haptic Setup')
+        c.prop(s, "alignOmniWithCamera")
         c.prop_search(s, "hapticWorkspaceBox", context.scene, "objects")
         c.prop_search(s, "hapticMoveTo", context.scene, "objects")
         c.prop_search(s, "targetOrgan", context.scene, "objects")
