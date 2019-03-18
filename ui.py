@@ -105,13 +105,13 @@ class SofaObjectAnnotationPanel(bpy.types.Panel):
         if t in [ 'VOLUMETRIC', 'CLOTH', 'THICKSHELL', 'THICKCURVE', 'DEFORMABLE' ]:
             c = layout.column(align=True)
             c.label('Model') 
+            c.label('Collision Parameters') 
             c.prop_search(p, 'alternativeCollision', context.scene, "objects")
-            c.label('Collision Parameters')   
-            
             c.prop(p, 'selfCollision')
             c.prop(p, 'carvable')
             c.prop(p, 'suture')
             c.prop(p, 'fixed_indices')
+            c.prop(p, 'fixed_direction')
 
         if t in [ 'VOLUMETRIC','CLOTH', 'THICKSHELL', 'THICKCURVE', 'COLLISION', 'SAFETYSURFACE', 'VISUAL', 'DEFORMABLE' ]:
             if t != 'VISUAL':

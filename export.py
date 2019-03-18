@@ -616,7 +616,11 @@ def cwisemul(a, b):
 
 def addConstraints(o, t):
     if o.fixed_indices:
-        t.append(ET.Element("PartialFixedConstraint", name="partialFixedConstraint", fixedDirections="1 1 1", indices=o.fixed_indices))
+        if not o.fixed_direction:
+            t.append(ET.Element("PartialFixedConstraint", name="partialFixedConstraint", fixedDirections="1 1 1", indices=o.fixed_indices))
+        else:
+            t.append(ET.Element("PartialFixedConstraint", name="partialFixedConstraint", fixedDirections=o.fixed_direction, indices=o.fixed_indices))
+        
         #t.append(ET.Element("FixedConstraint", indices=o.fixed_indices))
     else:  
         for q in o.children:

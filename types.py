@@ -92,6 +92,7 @@ def register_sofa_properties():
     
     #Some Constraints
     bpy.types.Object.fixed_indices = bpy.props.StringProperty(name='Fixed_Indices',description='Vertex indices used for fixed constraints')
+    bpy.types.Object.fixed_direction = bpy.props.StringProperty(name='Fixed Directions',description='Directions for fixed constraints, e.g 0 0 1 to fix along Z-axis')
     bpy.types.Object.local_gravity = bpy.props.StringProperty(name='Local Gravity',description='A Local force vector that will be applied on the object, like gravity. Input three numbers for XYZ, like "0 0 -9.8"')
     
 	#Rendering
@@ -161,6 +162,7 @@ def unregister_sofa_properties():
     del bpy.types.Object.carvable
     del bpy.types.Object.suture
     del bpy.types.Object.fixed_indices
+    del bpy.types.Object.fixed_direction
     del bpy.types.Object.local_gravity
 
     #Rendering and safety
