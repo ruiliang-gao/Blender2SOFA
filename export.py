@@ -113,7 +113,7 @@ def addSolvers(t):
       if bpy.context.scene.use_gravity :
         t.append(ET.Element("Gravity", gravity=bpy.context.scene.gravity))
       t.append(ET.Element("EulerImplicitSolver", rayleighMass="0.05", rayleighStiffness="0.0"))
-      t.append(ET.Element("CGLinearSolver",iterations="100", tolerance="1.0e-10", threshold="1.0e-6"))
+      t.append(ET.Element("CGLinearSolver",iterations="50", tolerance="1.0e-10", threshold="1.0e-6"))
 
 def exportTetrahedralTopology(o, opt, name):
     if o.type == 'MESH' and hasattr(o.data,'tetrahedra') and len(o.data.tetrahedra) > 0:
@@ -404,7 +404,8 @@ def exportThickQuadShell(o, opt):
       moc = createMechanicalObject(o)
       moc.set('name', 'MOC')
       n.append(moc)
-      n.extend(collisionModelParts(o, opt, group = o.collisionGroup + i, bothSide = 0))
+      # n.extend(collisionModelParts(o, opt, group = o.collisionGroup + i, bothSide = 0)) the '+i' here is unnecessary and creates high computation cost
+      n.extend(collisionModelParts(o, opt, group = o.collisionGroup, bothSide = 0))
       n.append(ET.Element("BarycentricMapping",input="@../MO",output="@MOC"))
       t.append(n)
     #currently using triangle for visual model since quad mesh may not be planar
@@ -661,6 +662,8 @@ def collisionModelParts(o, opt, obstacle = False, group = None, bothSide = 0):
       sutureTag = 'HapticSurface'
     else:
       sutureTag = ''
+    if o.extraTag:
+      sutureTag = sutureTag + o.extraTag
     M = not obstacle
     sc = o.selfCollision
     if group == None:  group = o.collisionGroup

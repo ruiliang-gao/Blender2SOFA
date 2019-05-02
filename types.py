@@ -75,7 +75,7 @@ def register_sofa_properties():
     bpy.types.Object.bendingStiffness = bpy.props.FloatProperty(name="Bending Stiffness", description = 'the resistance of a member against bending deformation.', default=3000,min=1,max=1e+6,step=100)
     bpy.types.Object.damping = bpy.props.FloatProperty(name="Damping",default=0.1,min=0,max=1000,step=0.1)
     bpy.types.Object.precomputeConstraints = bpy.props.BoolProperty(name='Accurate Constraints',description='(Currently unstable)Better and more accurate constraints but requires lengthy precomputation',default=False)
-    bpy.types.Object.totalMass = bpy.props.FloatProperty(name="Uniform Mass Density",default=0.01,min=0.001,max=100,step=0.01)
+    bpy.types.Object.totalMass = bpy.props.FloatProperty(name="Uniform Mass Density",default=0.05,min=0.001,max=100,step=0.01)
     
     # Attachments
     bpy.types.Object.attachStiffness = bpy.props.FloatProperty(name="Attach Stiffness",default=10000,min=1,max=1e+6,soft_min=10,step=100)
@@ -96,10 +96,10 @@ def register_sofa_properties():
     bpy.types.Object.local_gravity = bpy.props.StringProperty(name='Local Gravity',description='A Local force vector that will be applied on the object, like gravity. Input three numbers for XYZ, like "0 0 -9.8"')
     
 	#Rendering
-    bpy.types.Object.texture3d = bpy.props.StringProperty(name='3D Texture',description='Filename of the 3D texture')
-    bpy.types.Object.texture2d = bpy.props.StringProperty(name='2D Texture',description='Filename of the 2D texture')
+    bpy.types.Object.texture3d = bpy.props.StringProperty(name='3D Texture',description='Filepath of the 3D texture, relative path of share/textures/')
+    bpy.types.Object.texture2d = bpy.props.StringProperty(name='2D Texture',description='Filepath of the 2D texture, relative path of share/textures/')
     bpy.types.Object.useShader = bpy.props.BoolProperty(name='UseShader',description='Use our default shader for rendering this object',default=False)
-    bpy.types.Object.shaderFile = bpy.props.StringProperty(name='shader location',description='Sader file location')
+    bpy.types.Object.shaderFile = bpy.props.StringProperty(name='shader location',description='Shader file location')
     bpy.types.Object.useTessellation = bpy.props.BoolProperty(name='useTessellation',description='Use the Tessellation shader for rendering this object',default=False)
     
     #Geometry
