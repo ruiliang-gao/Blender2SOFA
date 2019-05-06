@@ -161,6 +161,8 @@ class SofaScenePropertyPanel(bpy.types.Panel):
         c.prop_search(s, "hapticWorkspaceBox", context.scene, "objects")
         c.prop_search(s, "hapticMoveTo", context.scene, "objects")
         c.prop_search(s, "targetOrgan", context.scene, "objects")
+        c.label('SOFA Configurations')
+        c.prop(s, "versionSOFA")
         c.prop(s, "sharePath")
 
 PROPERTY_NAME_MAP = { 'topObject': 'object1', 'botObject': 'object2', 'stretchDamping' : 'damping',

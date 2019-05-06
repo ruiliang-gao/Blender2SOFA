@@ -16,7 +16,7 @@ def register_sofa_properties():
     bpy.types.Scene.useSpeechRecognition = bpy.props.BoolProperty(name="SpeechRecognition", description="check this if you want to use SpeechRecognition plugin", default=False)
     bpy.types.Scene.targetOrgan = bpy.props.StringProperty(name="Target Organ",description="The major target organ in the surgery")
     bpy.types.Scene.sharePath = bpy.props.StringProperty(name="SOFA mesh filepath",description="Specify SOFA's mesh filepath here")
-  
+    bpy.types.Scene.versionSOFA = bpy.props.StringProperty(name="SOFA version number",default="18",description="Specify SOFA's version number here, 18 means SOFA1812")
     
 
     #"""SOFA properties and annotations for objects"""
@@ -126,6 +126,7 @@ def unregister_sofa_properties():
     del bpy.types.Scene.useSpeechRecognition
     del bpy.types.Scene.targetOrgan
     del bpy.types.Scene.sharePath
+    del bpy.types.Scene.versionSOFA
 
     #"""SOFA properties and annotations for objects"""
     del bpy.types.Object.template

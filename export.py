@@ -298,8 +298,10 @@ def exportThickCurve(o, opt):
     t.append(ET.Element('HexahedronSetGeometryAlgorithms',template="Vec3d"))
 
     # set massDensity later
-    t.append(ET.Element("UniformMass", mass = o.totalMass))
-
+    if opt.scene.versionSOFA == "18":
+        t.append(ET.Element("UniformMass", vertexMass = o.totalMass))
+    else:
+        t.append(ET.Element("UniformMass", mass = o.totalmass))
     #h = ET.Element("HexahedronFEMForceField",template="Vec3d", method="large")
     h = ET.Element("HexahedronFEMForceField", method="large")
     addElasticityParameters(o,h)
@@ -381,7 +383,10 @@ def exportThickQuadShell(o, opt):
     t.append(ET.Element('HexahedronSetGeometryAlgorithms'))
 
     # TODO: set massDensity later
-    t.append(ET.Element("UniformMass", mass = o.totalMass))
+    if opt.scene.versionSOFA == "18":
+        t.append(ET.Element("UniformMass", vertexMass = o.totalMass))
+    else:
+        t.append(ET.Element("UniformMass", mass = o.totalMass))
     h = ET.Element("HexahedronFEMForceField", method="large")
     addElasticityParameters(o,h)
     t.append(h)
@@ -549,7 +554,10 @@ def exportHexVolumetric(o, opt):
     t.append(ET.Element('HexahedronSetGeometryAlgorithms', template = 'Vec3d'))
 
     # set massDensity later
-    t.append(ET.Element("UniformMass", mass = o.totalMass))
+    if opt.scene.versionSOFA == "18":
+        t.append(ET.Element("UniformMass", vertexMass = o.totalMass))
+    else:
+        t.append(ET.Element("UniformMass", mass = o.totalMass))
     h = ET.Element("HexahedronFEMForceField",method="large")
     addElasticityParameters(o,h)
     t.append(h)
@@ -793,7 +801,10 @@ def exportDeformableGrid(o,opt):
         o.grid_dimension = "1 1 1"
     t.append(ET.Element('SparseGridRamification', n = o.grid_dimension, name= name+"-grid", fileTopology="mesh/TIPS/"+name_obj, nbVirtualFinerLevels = "3", finestConnectivity="0"))
     t.append(ET.Element('MechanicalObject', name= name+"-dofs", scale="1", dy="0", position='@' + name + '-grid.position', tags="NoPicking"))
-    t.append(ET.Element("UniformMass", mass = o.totalMass))
+    if opt.scene.versionSOFA == "18":
+        t.append(ET.Element("UniformMass", vertexMass = o.totalMass))
+    else:
+        t.append(ET.Element("UniformMass", mass = o.totalMass))
     h = ET.Element("HexahedronFEMForceField", method="large", updateStiffnessMatrix="false")
     addElasticityParameters(o,h)
     t.append(h)
@@ -1195,6 +1206,8 @@ def exportHaptic(l, opt):
     instruments = []
 
     # Stuff at the root that are needed for a haptic scene
+    if opt.scene.versionSOFA == "18":
+        nodes.append(ET.Element("RequiredPlugin", pluginName="SofaMiscCollision"))
     nodes.append(ET.Element("RequiredPlugin", pluginName="Sensable"))
     nodes.append(ET.Element("RequiredPlugin", pluginName="SurfLabHaptic"))
     nodes.append(ET.Element("RequiredPlugin", pluginName="SaLua"))
@@ -1262,13 +1275,19 @@ def exportHaptic(l, opt):
         isn.append(ET.Element("CGLinearSolver",iterations="100", tolerance="1.0e-10", threshold="1.0e-10"))
         isn.append(ET.Element("MechanicalObject", name = "instrumentState", template="Rigid3d", position="0 0 0 0 0 0 1 0 0 0 0 0 0 1 0 0 0 0 0 0 1 0 0 0 0 0 0 1 0 0 0 0 0 0 1 0 0 0 0 0 0 1", free_position="0 0 0 0 0 0 1 0 0 0 0 0 0 1 0 0 0 0 0 0 1 0 0 0 0 0 0 1 0 0 0 0 0 0 1 0 0 0 0 0 0 1" ))
         if scene.precompution:
-          isn.append(ET.Element("UniformMass", template = "Rigid3d", name="mass", totalmass="0.3"))
+          isn.append(ET.Element("UniformMass", template = "Rigid3d", name="mass", totalMass="0.3"))
           isn.append(ET.Element("LCPForceFeedback", activate=hp.forceFeedback, tags=omniTag, forceCoef="0.02"))
         else:
-          isn.append(ET.Element("UniformMass", template = "Rigid3d", name="mass", totalmass="15.0"))
+          if opt.scene.versionSOFA == "18":
+            isn.append(ET.Element("UniformMass", template = "Rigid3d", name="mass", totalMass="15.0"))
+          else:
+            isn.append(ET.Element("UniformMass", template = "Rigid3d", name="mass", totalmass="15.0"))
           isn.append(ET.Element("LCPForceFeedback", activate=hp.forceFeedback, tags=omniTag, forceCoef="0.25"))
         isn.extend(instruments)
-        isn.append(ET.Element("RestShapeSpringsForceField", template="Rigid",stiffness="1e12",angularStiffness="1e12", external_rest_shape="../RigidLayer/ToolRealPosition", points = "0"))
+        if opt.scene.versionSOFA == "18":
+            isn.append(ET.Element("RestShapeSpringsForceField", template="Rigid",stiffness="1e12",angularStiffness="1e12", external_rest_shape="@../RigidLayer/ToolRealPosition", points = "0"))
+        else:
+            isn.append(ET.Element("RestShapeSpringsForceField", template="Rigid",stiffness="1e12",angularStiffness="1e12", external_rest_shape="../RigidLayer/ToolRealPosition", points = "0"))
         isn.append(ET.Element("UncoupledConstraintCorrection"))
         t.append(isn)
 
