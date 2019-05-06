@@ -301,7 +301,7 @@ def exportThickCurve(o, opt):
     if opt.scene.versionSOFA == "18":
         t.append(ET.Element("UniformMass", vertexMass = o.totalMass))
     else:
-        t.append(ET.Element("UniformMass", mass = o.totalmass))
+        t.append(ET.Element("UniformMass", mass = o.totalMass))
     #h = ET.Element("HexahedronFEMForceField",template="Vec3d", method="large")
     h = ET.Element("HexahedronFEMForceField", method="large")
     addElasticityParameters(o,h)
