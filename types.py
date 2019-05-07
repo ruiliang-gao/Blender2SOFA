@@ -15,7 +15,7 @@ def register_sofa_properties():
     bpy.types.Scene.defaultInstrument = bpy.props.StringProperty(name="Default instrument",description="A tool object that defines the default instrument")
     bpy.types.Scene.useSpeechRecognition = bpy.props.BoolProperty(name="SpeechRecognition", description="check this if you want to use SpeechRecognition plugin", default=False)
     bpy.types.Scene.targetOrgan = bpy.props.StringProperty(name="Target Organ",description="The major target organ in the surgery")
-    bpy.types.Scene.sharePath = bpy.props.StringProperty(name="SOFA mesh filepath",description="Specify SOFA's mesh filepath here")
+    bpy.types.Scene.sharePath = bpy.props.StringProperty(name="SOFA mesh filepath",description="Specify SOFA's mesh/TIPS filepath here")
     bpy.types.Scene.versionSOFA = bpy.props.StringProperty(name="SOFA version number",default="18",description="Specify SOFA's version number here, 18 means SOFA1812")
     
 
@@ -27,15 +27,15 @@ def register_sofa_properties():
         ('THICKCURVE', 'Thick Curve', 'A thick curve made from a Bezier object', 'ROOTCURVE', 4),
         ('CLOTH', 'Cloth', 'A surface cloth', 'OUTLINER_OB_SURFACE', 5),
         ('COLLISION', 'Obstacle', '', 'SOLID', 6),
-        ('SPHERECONSTRAINT','Sphere Constraint','', 'SURFACE_NSPHERE', 7),
+        ('SPHERECONSTRAINT','Sphere Constraint','To constrain a certain object, put this sphere object as a child object and all vertices inside this sphere will be fixed ', 'SURFACE_NSPHERE', 7),
         ('BOXCONSTRAINT', 'Box Constraint', '','OBJECT_DATA', 8),
-        ('ATTACHCONSTRAINT', 'Spring Attachment', '', 'LINKED', 9),
+        ('ATTACHCONSTRAINT', 'Spring Attachment', 'specify the two objects that you want to attach, this sphere object should cover the area where springs are generated', 'LINKED', 9),
         ('INSTRUMENT','Haptic Instrument','A haptically enabled surgical instrument', 'SCULPTMODE_HLT',10),
         ('INSTRUMENTPART', 'Intrument part', 'An animated part of the instrument', 'OOPS', 11),
         ('INSTRUMENTTIP','Tip of Instrument','Active part of the instrument that performs actions', 'OOPS', 12),
         ('INSTRUMENTCOLLISION','Collision part of Instrument' ,'Collision part of the instrument along the shaft', 'OOPS', 13),
         ('SAFETYSURFACE', 'Safety surface','An surface object that used for safety detection', 'MOD_SUBSURF', 14),
-        ('DEFORMABLE', 'Defomable Grid ','An deformable surface object that is embeded in a grid structure', 'LATTICE_DATA', 15)
+        ('DEFORMABLE', 'Defomable Grid ','An deformable surface object that is embeded in a grid structure: To use it, first export .obj to SOFA/share/mesh  ', 'LATTICE_DATA', 15)
         # Rigid does not work as expected. It is hidden until it is fixed
         # ('RIGID', 'Rigid', '', 'SOLID', 13),
         ])
