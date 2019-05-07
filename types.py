@@ -14,9 +14,9 @@ def register_sofa_properties():
     bpy.types.Scene.alignOmniWithCamera = bpy.props.BoolProperty(name="Align Omni With Camera",description="align Omni position and orientation with camera",default=False)
     bpy.types.Scene.defaultInstrument = bpy.props.StringProperty(name="Default instrument",description="A tool object that defines the default instrument")
     bpy.types.Scene.useSpeechRecognition = bpy.props.BoolProperty(name="SpeechRecognition", description="check this if you want to use SpeechRecognition plugin", default=False)
-    bpy.types.Scene.targetOrgan = bpy.props.StringProperty(name="Target Organ",description="The major target organ in the surgery")
+    bpy.types.Scene.targetOrgan = bpy.props.StringProperty(name="Target Organ",description="The target organ for this procedure, will be used for triggering the completion")
     bpy.types.Scene.sharePath = bpy.props.StringProperty(name="SOFA mesh filepath",description="Specify SOFA's mesh/TIPS filepath here")
-    bpy.types.Scene.versionSOFA = bpy.props.StringProperty(name="SOFA version number",default="18",description="Specify SOFA's version number here, 18 means SOFA1812")
+    bpy.types.Scene.versionSOFA = bpy.props.StringProperty(name="SOFA version number",default="18",description="Specify SOFA's version number here, type ‘18’ for SOFA1812")
     
 
     #"""SOFA properties and annotations for objects"""
@@ -59,7 +59,7 @@ def register_sofa_properties():
         ('TOOLSHAFT', 'Tool shaft', 'shaft of the tool')
         ])
     bpy.types.Object.proximity = bpy.props.FloatProperty(name="Proximity",description="Proximity for collision detection",min=0,default=0,max=10,step=0.001)
-    bpy.types.Object.extraTag = bpy.props.StringProperty(name="Extra Tag",description='Put extra tag to the object to fit some special purposes')
+    bpy.types.Object.extraTag = bpy.props.StringProperty(name="Extra Tag",description='Put extra tag to the object that SOFA will recognize it')
 
     # Collision detection and response
     bpy.types.Object.collisionGroup = bpy.props.IntProperty(name="Collision Group",default=1,min=1,max=100,soft_max=10)
