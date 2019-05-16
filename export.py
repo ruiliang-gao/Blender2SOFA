@@ -384,7 +384,7 @@ def exportThickQuadShell(o, opt):
 
     # TODO: set massDensity later
     if opt.scene.versionSOFA == "18":
-        t.append(ET.Element("UniformMass", vertexMass = o.totalMass))
+        t.append(ET.Element("UniformMass", totalMass = o.totalMass))
     else:
         t.append(ET.Element("UniformMass", mass = o.totalMass))
     h = ET.Element("HexahedronFEMForceField", method="large")
