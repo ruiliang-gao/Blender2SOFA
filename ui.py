@@ -113,19 +113,22 @@ class SofaObjectAnnotationPanel(bpy.types.Panel):
             c.prop(p, 'fixed_indices')
             c.prop(p, 'fixed_direction')
 
-        if t in [ 'VOLUMETRIC','CLOTH', 'THICKSHELL', 'THICKCURVE', 'COLLISION', 'SAFETYSURFACE', 'VISUAL', 'DEFORMABLE' ]:
+        if t in [ 'VOLUMETRIC','CLOTH', 'THICKSHELL', 'THICKCURVE', 'COLLISION', 'RIGID', 'SAFETYSURFACE', 'VISUAL', 'DEFORMABLE' ]:
             if t != 'VISUAL':
                 c.prop(p, 'collisionGroup')
                 c.prop(p, 'contactStiffness')
                 c.prop(p, 'contactFriction')
-            if t == 'COLLISION':
+            if t in ['COLLISION', 'RIGID']:
                 c.prop(p,'proximity')
             c.label('Rendering Parameters') 
             c.prop(p, 'useShader')
             c.prop(p, 'shaderFile')
             c.prop(p, 'useTessellation')
 
-
+        if t == 'RIGID':
+            c.prop(p,'totalMass')
+            c.prop(p, 'damping')
+            c.prop(p,'local_gravity')
 
         if t == 'VOLUMETRIC':
             if o.type != 'MESH' or len(o.data.hexahedra) + len(o.data.tetrahedra) == 0:

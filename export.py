@@ -523,15 +523,7 @@ def exportVolumetric(o, opt):
         t.append(n)
 
         v = ET.Element('Node', name="Visual")
-        if o.useShader:
-          if not o.shaderFile:
-            print("no default shader for tetrahedra exists!")
-          else:
-            oglshd = ET.Element("OglShader", fileVertexShaders = o.shaderFile, fileTessellationControlShaders = o.shaderFile,
-             fileTessellationEvaluationShaders = o.shaderFile, fileFragmentShaders = o.shaderFile, printLog="1");
-            ogltesslvl = ET.Element("OglFloatVariable", name="TessellationLevel", value = "8")
-            v.append(oglshd)
-            v.append(ogltesslvl)
+        addShadertoVisual(o,v)
 
         v.append(exportVisual(o, opt, name = name + "-visual"))
         v.append(ET.Element("BarycentricMapping",template="Vec3d,ExtVec3f",object1="../MO",object2=name + "-visual"))
@@ -995,23 +987,29 @@ def addElasticityParameters(o, t):
     t.set("damping", o.damping)
     return t
 
+# default oglShader config
+def addShadertoVisual(o,v):
+    if o.useShader:
+        if not o.shaderFile:
+            print("no default shader for obstacle exists!")
+        elif not o.useTessellation:
+            oglshd = ET.Element("OglShader", fileVertexShaders = o.shaderFile, fileFragmentShaders = o.shaderFile, printLog="1");
+            v.append(oglshd);
+        else:
+            oglshd = ET.Element("OglShader", fileVertexShaders = o.shaderFile, fileTessellationControlShaders = o.shaderFile,
+            fileTessellationEvaluationShaders = o.shaderFile, fileFragmentShaders = o.shaderFile, printLog="1");
+            ogltesslvl = ET.Element("OglFloatVariable", name="TessellationLevel", value = "4")
+            v.append(oglshd)
+            v.append(ogltesslvl)
+    return v
+
+
 def exportObstacle(o, opt):
     name=fixName(o.name)
     t = ET.Element("Node",name=name)
     t.set('author-parent', 'root')
     t.set('author-order', 1)
-    if o.useShader:
-      if not o.shaderFile:
-        print("no default shader for obstacle exists!")
-      elif not o.useTessellation:
-        oglshd = ET.Element("OglShader", fileVertexShaders = o.shaderFile, fileFragmentShaders = o.shaderFile, printLog="1");
-        t.append(oglshd);
-      else:
-        oglshd = ET.Element("OglShader", fileVertexShaders = o.shaderFile, fileTessellationControlShaders = o.shaderFile,
-         fileTessellationEvaluationShaders = o.shaderFile, fileFragmentShaders = o.shaderFile, printLog="1");
-        ogltesslvl = ET.Element("OglFloatVariable", name="TessellationLevel", value = "4")
-        t.append(oglshd)
-        t.append(ogltesslvl)
+    addShadertoVisual(o,t)
     t.append(exportVisual(o, opt, name = name+'-visual', with_transform = True))
     t.append(exportTriangularTopologyContainer(o,opt))
     t.append(createMechanicalObject(o))
@@ -1019,22 +1017,35 @@ def exportObstacle(o, opt):
     t.append(ET.Element('UncoupledConstraintCorrection'))
     return t
 
-# TODO: debug this and make it work
+# Note: currently the Rigid type only works with meshObjLoader
 def exportRigid(o, opt):
     name=fixName(o.name)
     t = ET.Element("Node",name=name)
     t.set('author-parent', 'SolverNode')
     t.set('author-order', 1)
-
-    t.append(exportVisual(o, opt, name = name + '-visual', with_transform = False))
-    t.append(exportTriangularTopology(o,opt))
-
-    mo = createMechanicalObject(o)
-
-    mo.set('template','Rigid')
-    t.append(mo)
-    t.append(ET.Element("RigidMapping",template='Rigid,ExtVec3f',input="@MO",output='@' + name + "-visual"))
-    t.extend(collisionModelParts(o,opt, obstacle = False))
+    if o.local_gravity:
+        t.append(ET.Element('Gravity', gravity = o.local_gravity))
+    name = fixName(o.name)
+    name_obj = name + ".obj"
+    t.append(ET.Element('MeshObjLoader', filename = 'mesh/TIPS/' + name_obj, name="loader"))
+    t.append(ET.Element('MeshTopology', src="@loader"))
+    t.append(ET.Element('MechanicalObject', src="@loader", name="MO", template="Rigid3d"))
+    ogl = ET.Element('OglModel', src="@loader", name=name + "-visual")   
+    addMaterial(o, ogl);
+    t.append(ogl)
+    addShadertoVisual(o,t)
+    if o.totalMass:
+        t.append(ET.Element("UniformMass", totalMass = o.totalMass, template="Rigid3d"))
+    if o.damping:
+        dampstr = str(o.damping)+' '+str(o.damping)+' '+str(o.damping)+' '+str(o.damping)+' '+str(o.damping)+' '+str(o.damping)
+        t.append(ET.Element("DiagonalVelocityDampingForceField", template="Rigid3d",  dampingCoefficient= dampstr))
+    t.append(ET.Element("RigidMapping",template='Rigid3d,ExtVec3d',input="@MO",output='@' + name + "-visual"))
+    col = ET.Element("Node", name="Collision")
+    col.append(ET.Element("MechanicalObject", name="CollisModel", src="@../loader"))
+    col.append(ET.Element("TriangleSetTopologyContainer", src="@../loader"))
+    col.extend(collisionModelParts(o,opt, obstacle = False))
+    col.append(ET.Element("RigidMapping",template='Rigid3d,Vec3d',input="@..",output="@."))
+    t.append(col)
     t.append(ET.Element('UncoupledConstraintCorrection'))
     return t
 
@@ -1213,7 +1224,7 @@ def exportHaptic(l, opt):
     nodes.append(ET.Element("RequiredPlugin", pluginName="SurfLabHaptic"))
     nodes.append(ET.Element("RequiredPlugin", pluginName="SofaOpenglVisual"))
     nodes.append(ET.Element("RequiredPlugin", pluginName="SofaHaptics"))
-    # nodes.append(ET.Element("RequiredPlugin", pluginName="SaLua")) 
+    nodes.append(ET.Element("RequiredPlugin", pluginName="SofaPython")) 
     
     # nodes.append(ET.Element("LuaController", source = "changeInstrumentController.lua", listening=1))
     # replace Salua by SofaPython Plugin
