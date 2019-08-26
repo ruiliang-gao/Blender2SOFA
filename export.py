@@ -874,10 +874,11 @@ def exportCloth(o, opt):
 
     # Force fields
     tfff=ET.Element("TriangularFEMForceField", method="large" )
-    addElasticityParameters(o,tfff)
+    tfff.set("youngModulus", o.youngModulus)
+    tfff.set("poissonRatio", o.poissonRatio)
     t.append(tfff)
     t.append(ET.Element("TriangularBendingSprings",
-        stiffness= o.bendingStiffness, damping = o.damping))
+        stiffness= o.bendingStiffness))
 
     # Collision and Constraints
     addConstraints(o,t)

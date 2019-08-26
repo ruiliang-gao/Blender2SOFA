@@ -91,7 +91,7 @@ class SofaObjectAnnotationPanel(bpy.types.Panel):
         elif t == 'CLOTH':
             c.prop(p, 'youngModulus')
             c.prop(p, 'bendingStiffness')
-            c.prop(p, 'damping')
+            c.prop(p, 'poissonRatio')
             c.prop(p, 'precomputeConstraints')
         elif t == 'ATTACHCONSTRAINT'  :
             c.prop(p, 'attachStiffness')
