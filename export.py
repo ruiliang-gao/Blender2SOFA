@@ -359,7 +359,7 @@ def exportThickCurve(o, opt):
 
         v = ET.Element('Node', name="Visual")
         v.append(exportVisual(o, opt, name = name + "-visual"))
-        v.append(ET.Element("BarycentricMapping",template="Vec3d,ExtVec3f",input="@../MO",output= '@' + name + "-visual"))
+        v.append(ET.Element("BarycentricMapping",template="Vec3d,ExtVec3d",input="@../MO",output= '@' + name + "-visual"))
         t.append(v)
 
     return t
@@ -452,7 +452,7 @@ def exportThickQuadShell(o, opt):
         #vt.append(exportVisual(o, opt, name = name + "-triSurf-visual"))
     else:
         v.append(exportVisual(o, opt, name = name + "-visual"))
-        v.append(ET.Element("BarycentricMapping",template="Vec3d,ExtVec3f",input="@../MO",output='@' + name + "-visual"))
+        v.append(ET.Element("BarycentricMapping",template="Vec3d,ExtVec3d",input="@../MO",output='@' + name + "-visual"))
     t.append(v)
     return t
 
@@ -526,7 +526,7 @@ def exportVolumetric(o, opt):
         addShadertoVisual(o,v)
 
         v.append(exportVisual(o, opt, name = name + "-visual"))
-        v.append(ET.Element("BarycentricMapping",template="Vec3d,ExtVec3f",object1="../MO",object2=name + "-visual"))
+        v.append(ET.Element("BarycentricMapping",template="Vec3d,ExtVec3d",object1="../MO",object2=name + "-visual"))
         t.append(v)
 
     addConnectionsToTissue(t, o, opt)
@@ -607,7 +607,7 @@ def exportHexVolumetric(o, opt):
 
         v = ET.Element('Node', name="Visual")
         v.append(exportVisual(o, opt, name = name + "-visual"))
-        v.append(ET.Element("BarycentricMapping",template="Vec3d,ExtVec3f",object1="../MO",object2=name + "-visual"))
+        v.append(ET.Element("BarycentricMapping",template="Vec3d,ExtVec3d",object1="../MO",object2=name + "-visual"))
         t.append(v)
 
     return t
@@ -873,12 +873,15 @@ def exportCloth(o, opt):
     t.append(ET.Element("DiagonalMass"))
 
     # Force fields
-    tfff=ET.Element("TriangularFEMForceField", method="large" )
+    tfff=ET.Element("TriangularFEMForceField", method="large", rayleighStiffness="0.1" )
     tfff.set("youngModulus", o.youngModulus)
     tfff.set("poissonRatio", o.poissonRatio)
     t.append(tfff)
+    if o.damping:
+        dampstr = str(o.damping)+' '+str(o.damping)+' '+str(o.damping)+' '+str(o.damping)+' '+str(o.damping)+' '+str(o.damping)
+        t.append(ET.Element("DiagonalVelocityDampingForceField", template="Rigid3d",  dampingCoefficient= dampstr))
     t.append(ET.Element("TriangularBendingSprings",
-        stiffness= o.bendingStiffness))
+        stiffness= o.bendingStiffness, damping="1.0"))
 
     # Collision and Constraints
     addConstraints(o,t)
@@ -889,7 +892,7 @@ def exportCloth(o, opt):
     ogl = ET.Element("OglModel", name= name + '-visual');
     addMaterial(o, ogl);
     t.append(ogl)
-    t.append(ET.Element("IdentityMapping",template="Vec3d,ExtVec3f",input="@MO",output='@' + name + "-visual"))
+    t.append(ET.Element("IdentityMapping",template="Vec3d,ExtVec3d",input="@MO",output='@' + name + "-visual"))
     return t
 
 def pointInsideSphere(v,s,f):
