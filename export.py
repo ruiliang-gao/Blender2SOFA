@@ -640,30 +640,28 @@ def addConstraints(o, t):
                 t.append(ET.Element("FixedConstraint", indices="@%s.indices" % n))
 
 def collisionModelParts(o, opt, obstacle = False, group = None, bothSide = 0):
-    if o.suture and o.template == 'THICKCURVE':
+    if o.interactive and o.template == 'THICKCURVE':
       if any(c in o.name for c in ("vein", "Vein", "artery", "Artery")):
-        sutureTag = 'HapticSurfaceVein SafetyForceThreshold_' + str(o.safetyForceThreshold)
-      elif o.name == opt.scene.targetOrgan:
-        sutureTag = 'HapticSurfaceCurve TargetOrgan'
+        objectTag = 'HapticSurfaceVein SafetyForceThreshold_' + str(o.safetyForceThreshold)
       else:
-        sutureTag = 'HapticSurfaceCurve'
-    elif o.suture and o.template == 'SAFETYSURFACE':
-      sutureTag = 'SafetySurface'
-    elif o.suture and o.template in ('VOLUMETRIC', 'DEFORMABLE'):
-      if o.name == opt.scene.targetOrgan:
-        sutureTag = 'HapticSurface HapticSurfaceVolume TargetOrgan'
-      elif o.safetyConcern: 
-        sutureTag = 'HapticSurface HapticSurfaceVolume SafetySurface'
+        objectTag = 'HapticSurfaceCurve'
+    elif o.interactive and o.template == 'SAFETYSURFACE':
+      objectTag = 'SafetySurface'
+    elif o.interactive and o.template in ('VOLUMETRIC', 'DEFORMABLE'):
+      if o.safetyConcern: 
+        objectTag = 'HapticSurface HapticSurfaceVolume SafetySurface'
       else:
-        sutureTag = 'HapticSurface HapticSurfaceVolume'
-    elif o.suture and o.name == opt.scene.targetOrgan:
-        sutureTag = 'HapticSurface TargetOrgan'
-    elif o.suture:
-      sutureTag = 'HapticSurface'
+        objectTag = 'HapticSurface HapticSurfaceVolume'
+	elif o.template == 'CLOTH':
+			objectTag = 'HapticSurface HapticCloth'
+    elif o.interactive:
+      objectTag = 'HapticSurface'
     else:
-      sutureTag = ''
+      objectTag = ''
+    if o.interactive and o.name == opt.scene.targetOrgan:
+    	objectTag = objectTag + ' TargetOrgan'
     if o.extraTag:
-      sutureTag = sutureTag + o.extraTag
+      objectTag = objectTag + o.extraTag
     M = not obstacle
     sc = o.selfCollision
     if group == None:  group = o.collisionGroup
@@ -672,14 +670,14 @@ def collisionModelParts(o, opt, obstacle = False, group = None, bothSide = 0):
             #ET.Element("PointModel",selfCollision=sc, contactFriction = o.contactFriction, contactStiffness = o.contactStiffness, group=group, moving = M, simulated = M, bothSide= bothSide ),
             ET.Element("PointModel",selfCollision=sc, contactFriction = o.contactFriction, active = "0", contactStiffness = o.contactStiffness, group=group, moving = M, simulated = M, bothSide= bothSide ),
             ET.Element("LineModel",selfCollision=sc,  contactFriction = o.contactFriction, contactStiffness = o.contactStiffness, group=group, moving = M, simulated = M, bothSide= bothSide ),
-            ET.Element("TriangleModel", tags = sutureTag, selfCollision=sc, contactFriction = o.contactFriction, contactStiffness = o.contactStiffness, group=group, moving = M, simulated = M, bothSide= bothSide )
+            ET.Element("TriangleModel", tags = objectTag, selfCollision=sc, contactFriction = o.contactFriction, contactStiffness = o.contactStiffness, group=group, moving = M, simulated = M, bothSide= bothSide )
         ]
     else:
         return [
             # ET.Element("PointModel",selfCollision=sc, contactFriction = o.contactFriction, contactStiffness = o.contactStiffness, group=group, moving = M, simulated = M, bothSide= bothSide ),
             ET.Element("PointModel",selfCollision=sc, contactFriction = o.contactFriction, active = "0", contactStiffness = o.contactStiffness, group=group, moving = M, simulated = M, bothSide= bothSide ),
             ET.Element("LineModel",selfCollision=sc, proximity=o.proximity, contactFriction = o.contactFriction, contactStiffness = o.contactStiffness, group=group, moving = M, simulated = M, bothSide= bothSide ),
-            ET.Element("TriangleModel", tags = sutureTag,selfCollision=sc, contactFriction = o.contactFriction, contactStiffness = o.contactStiffness, group=group, moving = M, simulated = M, bothSide= bothSide )
+            ET.Element("TriangleModel", tags = objectTag,selfCollision=sc, contactFriction = o.contactFriction, contactStiffness = o.contactStiffness, group=group, moving = M, simulated = M, bothSide= bothSide )
         ]
     
 
@@ -879,7 +877,7 @@ def exportCloth(o, opt):
     t.append(tfff)
     if o.damping:
         dampstr = str(o.damping)+' '+str(o.damping)+' '+str(o.damping)+' '+str(o.damping)+' '+str(o.damping)+' '+str(o.damping)
-        t.append(ET.Element("DiagonalVelocityDampingForceField", template="Rigid3d",  dampingCoefficient= dampstr))
+        t.append(ET.Element("DiagonalVelocityDampingForceField", template="Vec3d",  dampingCoefficient= dampstr))
     t.append(ET.Element("TriangularBendingSprings",
         stiffness= o.bendingStiffness, damping="1.0"))
 
@@ -1335,7 +1333,7 @@ def exportCamera(o, opt):
     position=o.location
     orientation=rotation_to_quaternion(o)
     lookAt = o.matrix_world * Vector((0,0,-1))
-    return ET.Element("InteractiveCamera", position=position, orientation=orientation, fieldOfView=fov, distance=1)
+    return ET.Element("InteractiveCamera", name="interactiveCamera", position=position, orientation=orientation, fieldOfView=fov, distance=1)
 
 def get_obj_family(obj):    # get object and its children
     objs = set()

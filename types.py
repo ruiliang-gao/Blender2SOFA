@@ -88,7 +88,7 @@ def register_sofa_properties():
 
     # Interactive features
     bpy.types.Object.carvable = bpy.props.BoolProperty(name='Carvable',description='Allow the object be interactively carved by mouse or a carving tool',default=False)
-    bpy.types.Object.suture = bpy.props.BoolProperty(name='Interactive',description='Allow the object to be interactively manipulated by the haptic tools',default=True)
+    bpy.types.Object.interactive = bpy.props.BoolProperty(name='Interactive',description='Allow the object to be interactively manipulated by the haptic tools',default=True)
     
     #Some Constraints
     bpy.types.Object.fixed_indices = bpy.props.StringProperty(name='Fixed_Indices',description='Vertex indices used for fixed constraints')
@@ -161,7 +161,7 @@ def unregister_sofa_properties():
 
     # Interactive features
     del bpy.types.Object.carvable
-    del bpy.types.Object.suture
+    del bpy.types.Object.interactive
     del bpy.types.Object.fixed_indices
     del bpy.types.Object.fixed_direction
     del bpy.types.Object.local_gravity
