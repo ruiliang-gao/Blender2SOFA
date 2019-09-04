@@ -48,7 +48,8 @@ def register_sofa_properties():
         ('DISSECT','Dissect', 'An instrument that dissects both tissue and veins at contact'),
         ('CUT','Cut', 'An instrument that dissects tissue but does nothing on the veins'),
         ('CLAMP', 'Clamp', 'Apply clips to vessels to close them'),
-        ('CONTAIN', 'Contain', 'Container of the orgrans')
+        ('CONTAIN', 'Contain', 'Container of the orgrans'),
+        ('CAMERA', 'Camera', 'Endoscope tool')
         ])
     bpy.types.Object.instrumentPart = bpy.props.EnumProperty(name="Animated Part type",default='FIXED',items=[
         ('LEFTJAW', 'Left Jaw', 'left jaw of an instrument that rotate around Y-axis'),
