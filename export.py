@@ -1240,7 +1240,7 @@ def exportHaptic(l, opt):
     # nodes.append(ET.Element("LuaController", source = "changeInstrumentController.lua", listening=1))
     # replace Salua by SofaPython Plugin
     nodes.append(ET.Element("PythonScriptController", filename = "changeInstrumentController.py", classname="ChangeInstrumentController", listening=1))
-    useEndoscope = "true"
+    useEndoscope = opt.scene.enableEndoscope
     if useEndoscope:
         nodes.append(ET.Element("PythonScriptController", filename = "endoscopeController.py", classname="EndoscopeController", listening=1))
     # Prepare the instruments in the order of layers, they are included in each haptic

@@ -110,7 +110,7 @@ class SofaObjectAnnotationPanel(bpy.types.Panel):
             c.prop_search(p, 'alternativeCollision', context.scene, "objects")
             c.prop(p, 'selfCollision')
             c.prop(p, 'carvable')
-            c.prop(p, 'suture')
+            c.prop(p, 'interactive')
             c.prop(p, 'fixed_indices')
             c.prop(p, 'fixed_direction')
 
@@ -168,6 +168,7 @@ class SofaScenePropertyPanel(bpy.types.Panel):
         c.label('SOFA Configurations')
         c.prop(s, "versionSOFA")
         c.prop(s, "sharePath")
+        c.prop(s, "enableEndoscope")
 
 PROPERTY_NAME_MAP = { 'topObject': 'object1', 'botObject': 'object2', 'stretchDamping' : 'damping',
     'attach_stiffness': 'attachStiffness', '3dtexture':'texture3d' }
