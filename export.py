@@ -303,8 +303,15 @@ def exportThickCurve(o, opt):
     else:
         t.append(ET.Element("UniformMass", mass = o.totalMass))
     #h = ET.Element("HexahedronFEMForceField",template="Vec3d", method="large")
-    h = ET.Element("HexahedronFEMForceField", method="large")
-    addElasticityParameters(o,h)
+    if o.materialType == "ELASTIC":
+        h = ET.Element("HexahedronFEMForceField",method="large")
+        addElasticityParameters(o,h)
+    elif o.materialType == "PLASTIC":
+        h = ET.Element("TetrahedronFEMForceField",method="large")
+        addElasticityParameters(o,h)
+        addPlasticityParameters(o,h)
+    elif o.materialType == "HYPERELASTIC":
+        h = ET.Element("TetrahedronHyperelasticityFEMForceField", name="HyperelasticFEM", ParameterSet="3448.2759 31034.483", materialName=o.materialName)
     t.append(h)
     if o.damping > 0:
         dampstr = str(o.damping)+' '+str(o.damping)+' '+str(o.damping)+' '+str(o.damping)+' '+str(o.damping)+' '+str(o.damping)
@@ -387,8 +394,18 @@ def exportThickQuadShell(o, opt):
         t.append(ET.Element("UniformMass", totalMass = o.totalMass))
     else:
         t.append(ET.Element("UniformMass", mass = o.totalMass))
-    h = ET.Element("HexahedronFEMForceField", method="large")
-    addElasticityParameters(o,h)
+
+    # FEM and materials   
+    if o.materialType == "ELASTIC":
+        h = ET.Element("HexahedronFEMForceField",method="large")
+        addElasticityParameters(o,h)
+    elif o.materialType == "PLASTIC":
+        h = ET.Element("TetrahedronFEMForceField",method="large")
+        addElasticityParameters(o,h)
+        addPlasticityParameters(o,h)
+    elif o.materialType == "HYPERELASTIC":
+        h = ET.Element("TetrahedronHyperelasticityFEMForceField", name="HyperelasticFEM", ParameterSet="3448.2759 31034.483", materialName=o.materialName)
+    
     t.append(h)
     if o.damping > 0:
         dmp = ET.Element("DiagonalVelocityDampingForceField", template="Vec3d",  dampingCoefficient="0.05 0.05 0.05 0.05 0.05 0.05")
@@ -550,8 +567,15 @@ def exportHexVolumetric(o, opt):
         t.append(ET.Element("UniformMass", vertexMass = o.totalMass))
     else:
         t.append(ET.Element("UniformMass", mass = o.totalMass))
-    h = ET.Element("HexahedronFEMForceField",method="large")
-    addElasticityParameters(o,h)
+    if o.materialType == "ELASTIC":
+        h = ET.Element("HexahedronFEMForceField",method="large")
+        addElasticityParameters(o,h)
+    elif o.materialType == "PLASTIC":
+        h = ET.Element("TetrahedronFEMForceField",method="large")
+        addElasticityParameters(o,h)
+        addPlasticityParameters(o,h)
+    elif o.materialType == "HYPERELASTIC":
+        h = ET.Element("TetrahedronHyperelasticityFEMForceField", name="HyperelasticFEM", ParameterSet="3448.2759 31034.483", materialName=o.materialName)
     t.append(h)
     if o.damping > 0:
         dmp = ET.Element("DiagonalVelocityDampingForceField", template="Vec3d",  dampingCoefficient="0.05 0.05 0.05 0.05 0.05 0.05")
@@ -995,6 +1019,13 @@ def addElasticityParameters(o, t):
     t.set("poissonRatio", o.poissonRatio)
     t.set("rayleighStiffness", o.rayleighStiffness)
     t.set("damping", o.damping)
+    return t
+
+def addPlasticityParameters(o, t):
+    t.set("plasticYieldThreshold", o.plasticYieldThreshold)
+    t.set("plasticMaxThreshold", o.plasticMaxThreshold)
+    t.set("plasticCreep", o.plasticCreep)
+    t.set("computeGlobalMatrix", "false")
     return t
 
 # default oglShader config

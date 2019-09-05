@@ -78,6 +78,23 @@ def register_sofa_properties():
     bpy.types.Object.precomputeConstraints = bpy.props.BoolProperty(name='Accurate Constraints',description='(Currently unstable)Better and more accurate constraints but requires lengthy precomputation',default=False)
     bpy.types.Object.totalMass = bpy.props.FloatProperty(name="Uniform Mass Density",default=0.05,min=0.001,max=100,step=0.01)
     
+    # Other Material Types & Params
+    bpy.types.Object.materialType = bpy.props.EnumProperty(name="Material type",default='ELASTIC',items=[
+        ('ELASTIC', 'Elasticity', 'use default elastic material with CorotationalFEM'),
+        ('PLASTIC', 'Plasticity', 'use plastic material'),
+        ('HYPERELASTIC', 'Hyperelasticity', 'use hyperelastic material')   
+        ])
+
+    bpy.types.Object.materialName = bpy.props.EnumProperty(name="Material name",default='StVenantKirchhoff',items=[
+        ('StVenantKirchhoff', 'StVenantKirchhoff', 'StVenantKirchhoff material'),
+        ('ArrudaBoyce', 'ArrudaBoyce', 'ArrudaBoyce material'),
+        ('NeoHookean', 'NeoHookean', 'NeoHookean material'),
+        ('MooneyRivlin', 'MooneyRivlin', 'MooneyRivlin material')
+        ])
+    bpy.types.Object.plasticYieldThreshold = bpy.props.FloatProperty(name="plasticYieldThreshold",description='plasticYieldThreshold',default=0.005,min=0,max=1,soft_min=0,step=0.001)
+    bpy.types.Object.plasticMaxThreshold = bpy.props.FloatProperty(name="plasticMaxThreshold",description='plasticMaxThreshold',default=0.5,min=0,max=1,soft_min=0,step=0.01)
+    bpy.types.Object.plasticCreep = bpy.props.FloatProperty(name="plasticCreep",description='plasticCreep',default=0.1,min=0,max=1,soft_min=0,step=0.01)
+    
     # Attachments
     bpy.types.Object.attachStiffness = bpy.props.FloatProperty(name="Attach Stiffness",default=10000,min=1,max=1e+6,soft_min=10,step=100)
     bpy.types.Object.naturalLength = bpy.props.FloatProperty(name="Spring Natural Length",default=0.5,min=0.1,max=10,step=0.1)

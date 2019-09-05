@@ -62,6 +62,14 @@ class SofaObjectAnnotationPanel(bpy.types.Panel):
         elif t in ['INSTRUMENTTIP', 'INSTRUMENTCOLLISION']:
             c.prop(p, 'proximity')
         elif t in [ 'VOLUMETRIC', 'THICKSHELL', 'THICKCURVE', 'DEFORMABLE']:
+            c.prop(p,'materialType')
+            if (p.materialType == 'PLASTIC'):
+                c.prop(p,'plasticYieldThreshold')
+                c.prop(p,'plasticMaxThreshold')
+                c.prop(p,'plasticCreep')
+            elif (p.materialType == 'HYPERELASTIC'):
+                c.prop(p, 'materialName')
+                layout.label('To use hyperelasticity, this object needs to be tetrahedral mesh', icon='ARROW_LEFTRIGHT')            
             c.prop(p, 'youngModulus')
             c.prop(p, 'poissonRatio')
             c.prop(p, 'damping')
