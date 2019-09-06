@@ -489,10 +489,17 @@ def exportVolumetric(o, opt):
     t.append(ET.Element('TetrahedronSetGeometryAlgorithms', template = 'Vec3d'))
 
     # set massDensity later
-    t.append(ET.Element("UniformMass", mass = o.totalMass))
-    f = ET.Element('TetrahedralCorotationalFEMForceField')
-    addElasticityParameters(o,f)
-    t.append(f)
+    t.append(ET.Element("UniformMass", vertexMass = o.totalMass))
+    if o.materialType == "ELASTIC":
+        h = ET.Element('TetrahedralCorotationalFEMForceField')
+        addElasticityParameters(o,h)
+    elif o.materialType == "PLASTIC":
+        h = ET.Element("TetrahedronFEMForceField",method="large")
+        addElasticityParameters(o,h)
+        addPlasticityParameters(o,h)
+    elif o.materialType == "HYPERELASTIC":
+        h = ET.Element("TetrahedronHyperelasticityFEMForceField", name="HyperelasticFEM", ParameterSet="3448.2759 31034.483", materialName=o.materialName)
+    t.append(h)
     if o.damping > 0:
         dmp = ET.Element("DiagonalVelocityDampingForceField", template="Vec3d",  dampingCoefficient="0.05 0.05 0.05 0.05 0.05 0.05")
         t.append(dmp)

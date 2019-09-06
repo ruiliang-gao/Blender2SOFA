@@ -2,6 +2,7 @@ import bpy
 import bmesh
 import os
 from .types import *
+from .io_msh import recalc_outer_surface
 
 
 class SofaActionsPanel(bpy.types.Panel):
@@ -23,6 +24,8 @@ class SofaActionsPanel(bpy.types.Panel):
         layout.operator("option.generate_fixed_indices", icon= 'CONSTRAINT')
         layout.separator()
         layout.operator("option.export_obj", icon='EXPORT')
+        layout.separator()
+        layout.operator("option.convert_hex_to_tet", icon='DRIVER')
         layout.label('SOFA Create')
         c = layout.column(align=True)
         #c.operator("mesh.construct_connecting_tissue", icon='OUTLINER_OB_META', text='Connecting Tissue')
@@ -232,6 +235,49 @@ class GenerateFixedConstraints(bpy.types.Operator):
         else:
             print("Object is not in edit mode.")
 
+        return { 'FINISHED' }
+
+# Convert HexMesh to TetMesh by spliting each hex into 5 tets:
+# 0134, 1456, 1236, 3467, 1346
+class ConvertHexToTet(bpy.types.Operator):
+    bl_idname = "option.convert_hex_to_tet"
+    bl_label = "Convert HexMesh to TetMesh"
+    bl_options = { 'UNDO' }
+    bl_description = 'Convert HexMesh to TetMesh by spliting each hex into 5 tets. Select the object then click this button.'
+
+    @classmethod
+    def poll(self, context):
+        return context.scene is not None
+
+    def execute(self, context):
+        o=bpy.context.selected_objects[0]
+        # if o.mode == 'EDIT':
+        #     bm=bmesh.from_edit_mesh(o.data)
+        # else:
+        #     print("Object is not in edit mode.")
+        if o.type == 'MESH' and hasattr(o.data,'hexahedra') and len(o.data.hexahedra) > 0:
+            mesh = o.data
+        else:
+            raise ExportException("While processing %s: hexahedral mesh expected!" % o.name)
+        if len(o.data.tetrahedra) > 0:
+            o.data.tetrahedra.clear()
+        for hex in mesh.hexahedra:
+            v = hex.vertices
+            tet1 = mesh.tetrahedra.add()
+            tet1.vertices = [v[0], v[1], v[3], v[4]]
+            tet2 = mesh.tetrahedra.add()
+            tet2.vertices = [v[1], v[4], v[5], v[6]]
+            tet3 = mesh.tetrahedra.add()
+            tet3.vertices = [v[1], v[2], v[3], v[6]]
+            tet4 = mesh.tetrahedra.add()
+            tet4.vertices = [v[3], v[4], v[6], v[7]]
+            tet5 = mesh.tetrahedra.add()
+            tet5.vertices = [v[1], v[3], v[4], v[6]]
+        mesh.hexahedra.clear()
+        mesh.update()
+        recalc_outer_surface(mesh)
+        mesh.update()
+        print("finished converting to tetrahedral mesh, # of elements: %s" %len(o.data.tetrahedra))
         return { 'FINISHED' }
         
 class ExportObjToSofa(bpy.types.Operator):
