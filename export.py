@@ -809,7 +809,7 @@ def exportInstrument(o, opt):
         INSTRUMENT_PART_MAP = { 'LEFTJAW': 1, 'RIGHTJAW': 2, 'FIXED': 3, 'LEFTCLIP': 4, 'RIGHTCLIP': 5, 'TOOLSHAFT': 3 }
         idx = INSTRUMENT_PART_MAP[i.instrumentPart]
         name = fixName(i.name)
-        child =  ET.Element("Node", name = fixName(i.name))
+        child =  ET.Element("Node", name = name + '-visualNode')
         if i.template == 'INSTRUMENTPART'and i.instrumentPart != 'TOOLSHAFT':# and o.toolFunction not in ['GRASP', 'CLAMP']:
           OglShd = ET.Element("OglShader", fileVertexShaders = "['shaders/TIPSShaders/instrument.glsl']" , fileFragmentShaders = "['shaders/TIPSShaders/instrument.glsl']", printLog="1");
           child.append(OglShd)
@@ -922,7 +922,8 @@ def exportCloth(o, opt):
 
     # Collision and Constraints
     addConstraints(o,t)
-    addConstraintCorrection(o, t)
+    # addConstraintCorrection(o, t)
+    t.append(ET.Element('UncoupledConstraintCorrection', compliance="10"))
     t.extend(collisionModelParts(o, opt))
 
     # Visual
@@ -1269,7 +1270,8 @@ def exportHaptic(l, opt):
     # Stuff at the root that are needed for a haptic scene
     if opt.scene.versionSOFA == "18":
         nodes.append(ET.Element("RequiredPlugin", pluginName="SofaMiscCollision"))
-    nodes.append(ET.Element("RequiredPlugin", pluginName="Sensable"))
+    #nodes.append(ET.Element("RequiredPlugin", pluginName="Sensable"))
+    nodes.append(ET.Element("RequiredPlugin", pluginName="SurfLabHapticDevice"))
     nodes.append(ET.Element("RequiredPlugin", pluginName="SurfLabHaptic"))
     nodes.append(ET.Element("RequiredPlugin", pluginName="SofaOpenglVisual"))
     nodes.append(ET.Element("RequiredPlugin", pluginName="SofaHaptics"))
@@ -1321,14 +1323,14 @@ def exportHaptic(l, opt):
         ## Omni driver wrapper
         rl = ET.Element("Node", name="RigidLayer")
         if scene.precompution: # precompute is unstable now
-          rl.append(ET.Element("NewOmniDriver",
+          rl.append(ET.Element("SurfLabHapticDevice",
                                name = 'driver',
                                deviceName = hp.deviceName,
                                tags= omniTag, scale = hp.scale * scaleBase , positionBase = positionBase, orientationBase = orientationBase, desirePosition = moveTo,
                                permanent="true", listening="true", alignOmniWithCamera=scene.alignOmniWithCamera,
                                forceScale = 1));
         else:
-          rl.append(ET.Element("NewOmniDriver",
+          rl.append(ET.Element("SurfLabHapticDevice",
                                  name = 'driver',
                                  deviceName = hp.deviceName,
                                  tags= omniTag, scale = hp.scale * scaleBase , positionBase = positionBase, orientationBase = orientationBase, desirePosition = moveTo,
