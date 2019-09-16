@@ -1245,9 +1245,9 @@ def exportObject(opt, o):
 def addConnectionsBetween(t, o, q, opt):
     t.append(ET.Element("RequiredPlugin", name = "SurfLabConnectingTissue"))
     if o.attachStiffness < 1000000:
-      t.append(ET.Element("ConnectingTissue", object1='@' + fixName(o.name), object2='@' + fixName(q.name),useConstraint="false", threshold=o.attachThreshold, connectingStiffness=o.attachStiffness, naturalLength=o.naturalLength))
+      t.append(ET.Element("ConnectingTissue", object1='@' + fixName(o.name), object2='@' + fixName(q.name),useConstraint=o.useBilateralConstraint, threshold=o.attachThreshold, connectingStiffness=o.attachStiffness, naturalLength=o.naturalLength))
     else:
-      t.append(ET.Element("ConnectingTissue", object1='@' + fixName(o.name), object2='@' + fixName(q.name),useConstraint="false", threshold=o.attachThreshold, connectingStiffness=10000000000, naturalLength=o.naturalLength))
+      t.append(ET.Element("ConnectingTissue", object1='@' + fixName(o.name), object2='@' + fixName(q.name),useConstraint=o.useBilateralConstraint, threshold=o.attachThreshold, connectingStiffness=10000000000, naturalLength=o.naturalLength))
 
 def addConnectionsToTissue(t, o, opt):
     if o.object1 in opt.scene.objects:

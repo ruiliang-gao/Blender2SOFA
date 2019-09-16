@@ -96,9 +96,11 @@ class SofaObjectAnnotationPanel(bpy.types.Panel):
             c.label('Attached Objects')
             c.prop_search(p, "object1", context.scene, "objects")
             c.prop_search(p, "object2", context.scene, "objects")
+            c.prop(p,'useBilateralConstraint')
             c.prop(p, 'attachThreshold')
-            c.prop(p, 'attachStiffness')
-            c.prop(p, 'naturalLength')
+            if not o.useBilateralConstraint:
+                c.prop(p, 'attachStiffness')
+                c.prop(p, 'naturalLength')
         elif t == 'CLOTH':
             c.prop(p, 'youngModulus')
             c.prop(p, 'bendingStiffness')

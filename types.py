@@ -100,6 +100,7 @@ def register_sofa_properties():
     bpy.types.Object.naturalLength = bpy.props.FloatProperty(name="Spring Natural Length",default=0.5,min=0.1,max=10,step=0.1)
     bpy.types.Object.alwaysMatchForObject1 = bpy.props.BoolProperty(name='Always Match for First Object',default=False)
     bpy.types.Object.alwaysMatchForObject2 = bpy.props.BoolProperty(name='Always Match for Second Object',default=False)
+    bpy.types.Object.useBilateralConstraint = bpy.props.BoolProperty(name='use bilateralconstraint',description='if true, use bilateralconstraint instead of springs system',default=False)
     bpy.types.Object.object1 = bpy.props.StringProperty(name='First Object', description='Name of the first object in the attachment')
     bpy.types.Object.object2 = bpy.props.StringProperty(name='Second Object', description='Name of the second object in the attachment')
     bpy.types.Object.attachThreshold = bpy.props.FloatProperty(name="Attach Threshold",default=0.02,min=0.001,max=1.0,step=0.001,precision=3,description='Maximum distance between connected vertices of two objects as a percentage of the size of object')
