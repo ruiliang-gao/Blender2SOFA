@@ -268,6 +268,7 @@ def addConstraintCorrection(o, t):
 #CURVE2HEX = [ 3,2,1,0, 7,6,5,4 ]
 CURVE2HEX = [ 0,1,2,3,4,5,6,7 ]
 def exportThickCurveTopology(o, opt, name):
+    if o.data.bevel_resolution>0 : raise ExportException("The bevel_resolution of '%s' has to be 0 for a thick curve topology" % o.name)
     m = o.to_mesh(opt.scene, True, 'PREVIEW')
 
     points =  np.empty([len(m.vertices),3], dtype=float)
@@ -692,7 +693,7 @@ def collisionModelParts(o, opt, obstacle = False, group = None, bothSide = 0):
     if o.interactive and o.name == opt.scene.targetOrgan:
         objectTag = objectTag + ' TargetOrgan'
     if o.extraTag:
-        objectTag = objectTag + o.extraTag
+        objectTag = objectTag +' '+ o.extraTag
     M = not obstacle
     sc = o.selfCollision
     if group == None:  group = o.collisionGroup
