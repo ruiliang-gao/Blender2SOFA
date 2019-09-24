@@ -16,7 +16,7 @@ def register_sofa_properties():
     bpy.types.Scene.useSpeechRecognition = bpy.props.BoolProperty(name="SpeechRecognition", description="check this if you want to use SpeechRecognition plugin", default=False)
     bpy.types.Scene.targetOrgan = bpy.props.StringProperty(name="Target Organ",description="The target organ for this procedure, will be used for triggering the completion")
     bpy.types.Scene.sharePath = bpy.props.StringProperty(name="SOFA mesh filepath",description="Specify SOFA's mesh/TIPS filepath here")
-    bpy.types.Scene.versionSOFA = bpy.props.StringProperty(name="SOFA version number",default="18",description="Specify SOFA's version number here, type ‘18’ for SOFA1812")
+    bpy.types.Scene.versionSOFA = bpy.props.StringProperty(name="SOFA version number",default="18",description="Specify SOFA's version number here, type ‘18’ for SOFA1812 or later")
     bpy.types.Scene.enableEndoscope = bpy.props.BoolProperty(name="Use Endoscope",description="Check if you have included endoscope tool in the scene",default=False)
 
     #"""SOFA properties and annotations for objects"""

@@ -179,7 +179,7 @@ class SofaScenePropertyPanel(bpy.types.Panel):
         c.prop_search(s, "hapticMoveTo", context.scene, "objects")
         c.prop_search(s, "targetOrgan", context.scene, "objects")
         c.label('SOFA Configurations')
-        c.prop(s, "versionSOFA")
+        # c.prop(s, "versionSOFA")
         c.prop(s, "sharePath")
         c.prop(s, "enableEndoscope")
 
