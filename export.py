@@ -268,9 +268,10 @@ def addConstraintCorrection(o, t):
 #CURVE2HEX = [ 3,2,1,0, 7,6,5,4 ]
 CURVE2HEX = [ 0,1,2,3,4,5,6,7 ]
 def exportThickCurveTopology(o, opt, name):
-    if o.data.bevel_resolution>0 : raise ExportException("The bevel_resolution of '%s' has to be 0 for a thick curve topology" % o.name)
-    m = o.to_mesh(opt.scene, True, 'PREVIEW')
 
+    if hasattr(o.data, 'bevel_resolution') and o.data.bevel_resolution>0 : 
+        raise ExportException("The bevel_resolution of '%s' has to be 0 for a thick curve topology" % o.name)
+    m = o.to_mesh(opt.scene, True, 'PREVIEW')
     points =  np.empty([len(m.vertices),3], dtype=float)
     for i, v in enumerate(m.vertices):
         points[i] = v.co
@@ -420,6 +421,7 @@ def exportThickQuadShell(o, opt):
       if i == 0:
         n.set('name', 'CollisionOuter')
       else:
+        break # note: disabled the innerCollisionShell here to save computation cost.
         n.set('name', 'CollisionInner')
       n.append(tp)
       n.append(ET.Element('TriangleSetTopologyContainer', src = "@" + tp.get('name')))
@@ -430,48 +432,67 @@ def exportThickQuadShell(o, opt):
       # n.extend(collisionModelParts(o, opt, group = o.collisionGroup + i, bothSide = 0)) the '+i' here is unnecessary and creates high computation cost
       n.extend(collisionModelParts(o, opt, group = o.collisionGroup, bothSide = 0))
       n.append(ET.Element("BarycentricMapping",input="@../MO",output="@MOC"))
+
+      #Visual Model: triangle surface
+      vt = ET.Element('Node', name="Visual_trisurf")
+      vt.append(ET.Element("TriangleSetTopologyContainer", name= name + "-triSurf", src = "@../" + tp.get('name')))
+      if o.shaderFile and o.useTessellation:
+          oglshd = ET.Element("OglShader", fileVertexShaders = o.shaderFile, fileTessellationControlShaders = o.shaderFile,
+                 fileTessellationEvaluationShaders = o.shaderFile, fileFragmentShaders = o.shaderFile, printLog="1");
+          ogltesslvl = ET.Element("OglFloatVariable", name="TessellationLevel", value = "6")
+          vt.append(oglshd)
+          vt.append(ogltesslvl)
+          ogl = ET.Element("OglModel", primitiveType = "PATCHES", name= name + '-triSurf-visual');
+          addMaterial(o, ogl);
+          vt.append(ogl)
+          vt.append(ET.Element("IdentityMapping", input="@../../MO", output='@' + name + "-triSurf-visual"))
+      else:
+          vt.append(exportVisual(o, opt, name = name + "-visual"))
+          vt.append(ET.Element("BarycentricMapping",template="Vec3d,ExtVec3d",input="@../../MO",output='@' + name + "-visual"))
+      n.append(vt)
       t.append(n)
-    #currently using triangle for visual model since quad mesh may not be planar
-    v = ET.Element('Node', name="Visual")
-    v.append(ET.Element("QuadSetTopologyContainer", name= name + "-quadSurf"))
-    v.append(ET.Element("QuadSetGeometryAlgorithms", template="Vec3d"))
-    v.append(ET.Element("QuadSetTopologyModifier"))
-    v.append(ET.Element("QuadSetTopologyAlgorithms", template="Vec3d"))
-    v.append(ET.Element("Hexa2QuadTopologicalMapping", input='@../' + topo, output="@" + name + "-quadSurf"))
-    smoothSurface = False
+    # The Following been commented out since we only want the visual from outter collision shell
+    # Visual: currently using triangle for visual model since quad mesh may not be planar
+    # v = ET.Element('Node', name="Visual")
+    # v.append(ET.Element("QuadSetTopologyContainer", name= name + "-quadSurf"))
+    # v.append(ET.Element("QuadSetGeometryAlgorithms", template="Vec3d"))
+    # v.append(ET.Element("QuadSetTopologyModifier"))
+    # v.append(ET.Element("QuadSetTopologyAlgorithms", template="Vec3d"))
+    # v.append(ET.Element("Hexa2QuadTopologicalMapping", input='@../' + topo, output="@" + name + "-quadSurf"))
+    # smoothSurface = False
     
-    # vt.append(ET.Element("TriangleSetTopologyAlgorithms", template="Vec3d"))
-    # vt.append(ET.Element("TriangleSetGeometryAlgorithms", template="Vec3d"))
-    # smoothSurface = True
-    if smoothSurface:
-        v.append(ET.Element('RequiredPlugin', name='SurfLabSplineSurface'));
-        b3 = ET.Element('BiCubicSplineSurface');
-        addMaterialToBicubic(o, b3);
-        v.append(b3);
-    elif o.useShader:
-        if not o.shaderFile:
-            print("no default shader for thick shell exists!")
-        else:#assuming using tessellation shader here
-            vt = ET.Element('Node', name="Visual-tri")
-            vt.append(ET.Element("TriangleSetTopologyContainer", name= name + "-triSurf"))
-            vt.append(ET.Element("TriangleSetTopologyModifier"))
-            vt.append(ET.Element("Quad2TriangleTopologicalMapping", input='@../' + name + "-quadSurf", output="@" + name + "-triSurf"))
-            oglshd = ET.Element("OglShader", fileVertexShaders = o.shaderFile, fileTessellationControlShaders = o.shaderFile,
-             fileTessellationEvaluationShaders = o.shaderFile, fileFragmentShaders = o.shaderFile, printLog="1");
-            ogltesslvl = ET.Element("OglFloatVariable", name="TessellationLevel", value = "6")
-            vt.append(oglshd)
-            vt.append(ogltesslvl)
-            #manully add ogl
-            ogl = ET.Element("OglModel", primitiveType = "PATCHES", name= name + '-triSurf-visual');
-            addMaterial(o, ogl);
-            vt.append(ogl)
-            vt.append(ET.Element("IdentityMapping",input="@../../MO",output='@' + name + "-triSurf-visual"))
-            v.append(vt)
-        #vt.append(exportVisual(o, opt, name = name + "-triSurf-visual"))
-    else:
-        v.append(exportVisual(o, opt, name = name + "-visual"))
-        v.append(ET.Element("BarycentricMapping",template="Vec3d,ExtVec3d",input="@../MO",output='@' + name + "-visual"))
-    t.append(v)
+    # # vt.append(ET.Element("TriangleSetTopologyAlgorithms", template="Vec3d"))
+    # # vt.append(ET.Element("TriangleSetGeometryAlgorithms", template="Vec3d"))
+    # # smoothSurface = True
+    # if smoothSurface:
+    #     v.append(ET.Element('RequiredPlugin', name='SurfLabSplineSurface'));
+    #     b3 = ET.Element('BiCubicSplineSurface');
+    #     addMaterialToBicubic(o, b3);
+    #     v.append(b3);
+    # elif o.useShader:
+    #     if not o.shaderFile:
+    #         print("no default shader for thick shell exists!")
+    #     else:#assuming using tessellation shader here
+    #         vt = ET.Element('Node', name="Visual-tri")
+    #         vt.append(ET.Element("TriangleSetTopologyContainer", name= name + "-triSurf"))
+    #         vt.append(ET.Element("TriangleSetTopologyModifier"))
+    #         vt.append(ET.Element("Quad2TriangleTopologicalMapping", input='@../' + name + "-quadSurf", output="@" + name + "-triSurf"))
+    #         oglshd = ET.Element("OglShader", fileVertexShaders = o.shaderFile, fileTessellationControlShaders = o.shaderFile,
+    #          fileTessellationEvaluationShaders = o.shaderFile, fileFragmentShaders = o.shaderFile, printLog="1");
+    #         ogltesslvl = ET.Element("OglFloatVariable", name="TessellationLevel", value = "6")
+    #         vt.append(oglshd)
+    #         vt.append(ogltesslvl)
+    #         #manully add ogl
+    #         ogl = ET.Element("OglModel", primitiveType = "PATCHES", name= name + '-triSurf-visual');
+    #         addMaterial(o, ogl);
+    #         vt.append(ogl)
+    #         vt.append(ET.Element("IdentityMapping",input="@../../MO",output='@' + name + "-triSurf-visual"))
+    #         v.append(vt)
+    #     #vt.append(exportVisual(o, opt, name = name + "-triSurf-visual"))
+    # else:
+    #     v.append(exportVisual(o, opt, name = name + "-visual"))
+    #     v.append(ET.Element("BarycentricMapping",template="Vec3d,ExtVec3d",input="@../MO",output='@' + name + "-visual"))
+    # t.append(v)
     return t
 
 
@@ -702,14 +723,14 @@ def collisionModelParts(o, opt, obstacle = False, group = None, bothSide = 0):
             #ET.Element("PointModel",selfCollision=sc, contactFriction = o.contactFriction, contactStiffness = o.contactStiffness, group=group, moving = M, simulated = M, bothSide= bothSide ),
             ET.Element("PointModel",selfCollision=sc, contactFriction = o.contactFriction, active = "0", contactStiffness = o.contactStiffness, group=group, moving = M, simulated = M, bothSide= bothSide ),
             ET.Element("LineModel",selfCollision=sc,  contactFriction = o.contactFriction, contactStiffness = o.contactStiffness, group=group, moving = M, simulated = M, bothSide= bothSide ),
-            ET.Element("TriangleModel", tags = objectTag, selfCollision=sc, contactFriction = o.contactFriction, contactStiffness = o.contactStiffness, group=group, moving = M, simulated = M, bothSide= bothSide )
+            ET.Element("TriangleModel", name="TriangleModel", tags = objectTag, selfCollision=sc, contactFriction = o.contactFriction, contactStiffness = o.contactStiffness, group=group, moving = M, simulated = M, bothSide= bothSide )
         ]
     else:
         return [
-            # ET.Element("PointModel",selfCollision=sc, contactFriction = o.contactFriction, contactStiffness = o.contactStiffness, group=group, moving = M, simulated = M, bothSide= bothSide ),
-            ET.Element("PointModel",selfCollision=sc, contactFriction = o.contactFriction, active = "0", contactStiffness = o.contactStiffness, group=group, moving = M, simulated = M, bothSide= bothSide ),
+            ET.Element("PointModel",selfCollision=sc, proximity = o.proximity, contactFriction = o.contactFriction, contactStiffness = o.contactStiffness, group=group, moving = M, simulated = M, bothSide= bothSide ),
+            # ET.Element("TPointModel", name = 'testPointCollision', contactStiffness=o.contactStiffness, bothSide="0", proximity = o.proximity, group= o.collisionGroup, movin = M ),                          
             ET.Element("LineModel",selfCollision=sc, proximity=o.proximity, contactFriction = o.contactFriction, contactStiffness = o.contactStiffness, group=group, moving = M, simulated = M, bothSide= bothSide ),
-            ET.Element("TriangleModel", tags = objectTag,selfCollision=sc, contactFriction = o.contactFriction, contactStiffness = o.contactStiffness, group=group, moving = M, simulated = M, bothSide= bothSide )
+            ET.Element("TriangleModel", tags = objectTag, selfCollision=sc, proximity=o.proximity, contactFriction = o.contactFriction, contactStiffness = o.contactStiffness, group=group, moving = M, simulated = M, bothSide= bothSide )
         ]
     
 
@@ -891,8 +912,7 @@ def exportDeformableGrid(o,opt):
     t.append(v)
     return t
 
- 
-    
+   
  
 def exportCloth(o, opt):
     name=fixName(o.name)
@@ -924,8 +944,8 @@ def exportCloth(o, opt):
     # Collision and Constraints
     addConstraints(o,t)
     # addConstraintCorrection(o, t)
-    t.append(ET.Element('UncoupledConstraintCorrection', compliance="10"))
-    t.extend(collisionModelParts(o, opt))
+    t.append(ET.Element('UncoupledConstraintCorrection')) # compliance="10"?
+    t.extend(collisionModelParts(o, opt, False, o.collisionGroup, 1))
 
     # Visual
     ogl = ET.Element("OglModel", name= name + '-visual');
@@ -1061,7 +1081,8 @@ def exportObstacle(o, opt):
     t.set('author-order', 1)
     addShadertoVisual(o,t)
     t.append(exportVisual(o, opt, name = name+'-visual', with_transform = True))
-    t.append(exportTriangularTopologyContainer(o,opt))
+    # t.append(exportTriangularTopologyContainer(o,opt))
+    t.append(exportTriangularTopology(o,opt))
     t.append(createMechanicalObject(o))
     t.extend(collisionModelParts(o, opt, obstacle = True))
     t.append(ET.Element('UncoupledConstraintCorrection'))
@@ -1284,6 +1305,7 @@ def exportHaptic(l, opt):
     useEndoscope = opt.scene.enableEndoscope
     if useEndoscope:
         nodes.append(ET.Element("PythonScriptController", filename = "endoscopeController.py", classname="EndoscopeController", listening=1))
+        # nodes.append(ET.Element("PythonScriptController", filename = "sutureController.py", classname="SutureController", listening=1))
     # Prepare the instruments in the order of layers, they are included in each haptic
     
     for layer in range(10): # check layers 0 ~ 8

@@ -59,8 +59,8 @@ def register_sofa_properties():
         ('RIGHTCLIP', 'Right clip', 'right jaw of clip applier that rotate around X-axis'),
         ('TOOLSHAFT', 'Tool shaft', 'shaft of the tool')
         ])
-    bpy.types.Object.proximity = bpy.props.FloatProperty(name="Proximity",description="Proximity for collision detection",min=0,default=0,max=10,step=0.001)
-    bpy.types.Object.extraTag = bpy.props.StringProperty(name="Extra Tag",description='Put extra tag to the object that SOFA will recognize it')
+    bpy.types.Object.proximity = bpy.props.FloatProperty(name="Proximity",description="Proximity: enlargement of its collision model",min=0,default=0,max=10,step=0.001)
+    bpy.types.Object.extraTag = bpy.props.StringProperty(name="Extra Tag",description='Put extra tag to the object that SOFA can access it')
 
     # Collision detection and response
     bpy.types.Object.collisionGroup = bpy.props.IntProperty(name="Collision Group",default=1,min=1,max=100,soft_max=10)
