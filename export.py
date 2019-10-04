@@ -14,7 +14,7 @@ import math
 import bmesh
 import zipfile
 from os.path import basename
-from .io_msh import     
+from .io_msh import recalc_outer_surface     
 
 FILEFORMATS = [ ('.salua', 'SaLua', 'Lua based scene file'), ('.scn', 'XML', 'XML scene file') ]
 
@@ -427,13 +427,9 @@ def exportThickQuadShell(o, opt):
     t.append(ET.Element('HexahedronSetTopologyAlgorithms'))
     t.append(ET.Element('HexahedronSetGeometryAlgorithms'))
 
-    # TODO: set massDensity later
-    if opt.scene.versionSOFA == "18":
-        t.append(ET.Element("UniformMass", totalMass = o.totalMass))
-    else:
-        t.append(ET.Element("UniformMass", mass = o.totalMass))
+    t.append(ET.Element("DiagonalMass", massDensity = o.totalMass, name="diagonalMass"))
 
-    # FEM and materials   
+    # FEM and materials     
     if o.materialType == "ELASTIC":
         h = ET.Element("HexahedronFEMForceField",method="large")
         addElasticityParameters(o,h)
@@ -852,14 +848,20 @@ def exportInstrument(o, opt):
                                contactStiffness="4.7", contactFriction="500.0", proximity = i.proximity,
                                group= o.collisionGroup, moving="1", selfCollision="0", simulated="1"
                                )
+            if o.toolFunction == 'CAMERA':
+                pm.set('tags', 'CameraTool')
             child.append(pm)
             child.append(ET.Element("RigidMapping", input="@../../instrumentState",output="@CM",index= 0))
             t.append(child)
 
-    # currently camera tool doesn't work with collision model and haptic manager        
-    if o.toolFunction != 'CAMERA':
-        hm = ET.Element("HapticManager", omniDriver = '@../../RigidLayer/driver',
-            graspStiffness = "1e3", attachStiffness="1e5", grasp_force_scale = "-1e-3", duration = "50")
+    # currently camera tool doesn't work with collision model and haptic manager
+    hm = ET.Element("HapticManager", omniDriver = '@../../RigidLayer/driver',
+            graspStiffness = "1e3", attachStiffness="1e5", grasp_force_scale = "-1e-3", duration = "50")        
+    if o.toolFunction == 'CAMERA':
+        hm.set('toolModel', "@testCollisionPart_endoscope/toolCollision")
+        t.append(hm)
+    else:
+        
         if len(tip_names) == 1:
             hm.set('toolModel', '@'+ tip_names[0] + '/toolTip')
         elif len(tip_names) == 2:
