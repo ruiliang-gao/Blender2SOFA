@@ -1370,25 +1370,30 @@ def exportHaptic(l, opt):
         # if not o.hide_render and o.template == 'INSTRUMENT' and o.name != scene.defaultInstrument:
             # instruments.append(objectNode(opt, exportInstrument(o, opt)))
 
-    if scene.hapticWorkspaceBox in scene.objects:
-        b = scene.objects[scene.hapticWorkspaceBox]
-        positionBase = b.location
-        orientationBase = rotation_to_quaternion(b)
-        scaleBase = pow(b.scale[0] * b.scale[1] * b.scale[2], 1./3)
-        
-    else:
-        positionBase = [0, 0, 0]
-        orientationBase = [0, 0, 0, 1]
-        scaleBase = 1
-    if scene.hapticMoveTo:
-        moveTo = scene.objects[scene.hapticMoveTo].location
-    else:
-        moveTo = positionBase
-
     for hp in hapticDevices:
         n = hp.deviceName
         t = ET.Element("Node", name = hp.deviceName, tags='haptic')
         omniTag = n + "__omni"
+
+        if n == 'PHANToM 1' and scene.haptic1WorkspaceBox in scene.objects:
+            b = scene.objects[scene.haptic1WorkspaceBox]
+            positionBase = b.location
+            orientationBase = rotation_to_quaternion(b)
+            scaleBase = pow(b.scale[0] * b.scale[1] * b.scale[2], 1./3)
+        elif n == 'PHANToM 2' and scene.haptic2WorkspaceBox in scene.objects:
+            b = scene.objects[scene.haptic2WorkspaceBox]
+            positionBase = b.location
+            orientationBase = rotation_to_quaternion(b)
+            scaleBase = pow(b.scale[0] * b.scale[1] * b.scale[2], 1./3) 
+        else:
+            positionBase = [0, 0, 0]
+            orientationBase = [0, 0, 0, 1]
+            scaleBase = 1
+
+        if scene.hapticMoveTo:
+            moveTo = scene.objects[scene.hapticMoveTo].location
+        else:
+            moveTo = positionBase
 
         ## Omni driver wrapper
         rl = ET.Element("Node", name="RigidLayer")

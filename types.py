@@ -9,7 +9,8 @@ def register_sofa_properties():
     bpy.types.Scene.contactDistance = bpy.props.FloatProperty(name="Contact Distance",default=0.01,soft_min=1e-5,soft_max=0.1,step=1e-5,precision=6)
     bpy.types.Scene.showXYZFrame = bpy.props.BoolProperty(name="Show XYZ frame",description="Show a small XYZ frame in the lower right corner in SOFA simulation",default=False)
     bpy.types.Scene.precompution = bpy.props.BoolProperty(name="Precompution",description="Check if there are any objects to be precomputed in the scene",default=False)
-    bpy.types.Scene.hapticWorkspaceBox = bpy.props.StringProperty(name="Haptic Workspace Box",description="An empty object that defines the haptic workspace box")
+    bpy.types.Scene.haptic1WorkspaceBox = bpy.props.StringProperty(name="Haptic1 Workspace Box",description="An empty object that defines the haptic 1 workspace box")
+    bpy.types.Scene.haptic2WorkspaceBox = bpy.props.StringProperty(name="Haptic2 Workspace Box",description="An empty object that defines the haptic 2 workspace box")
     bpy.types.Scene.hapticMoveTo = bpy.props.StringProperty(name="Haptic Move To Position",description="An object that defines where the haptic moves to when simulation starts")
     bpy.types.Scene.alignOmniWithCamera = bpy.props.BoolProperty(name="Align Omni With Camera",description="align Omni position and orientation with camera",default=False)
     bpy.types.Scene.defaultInstrument = bpy.props.StringProperty(name="Default instrument",description="A tool object that defines the default instrument")
@@ -138,7 +139,8 @@ def unregister_sofa_properties():
     del bpy.types.Scene.contactDistance
     del bpy.types.Scene.showXYZFrame
     del bpy.types.Scene.precompution
-    del bpy.types.Scene.hapticWorkspaceBox
+    del bpy.types.Scene.haptic1WorkspaceBox
+    del bpy.types.Scene.haptic2WorkspaceBox
     del bpy.types.Scene.hapticMoveTo
     del bpy.types.Scene.alignOmniWithCamera   
     
