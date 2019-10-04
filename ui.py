@@ -182,6 +182,7 @@ class SofaScenePropertyPanel(bpy.types.Panel):
         # c.prop(s, "versionSOFA")
         c.prop(s, "sharePath")
         c.prop(s, "enableEndoscope")
+        c.prop(s, "enableSutureController")
 
 PROPERTY_NAME_MAP = { 'topObject': 'object1', 'botObject': 'object2', 'stretchDamping' : 'damping',
     'attach_stiffness': 'attachStiffness', '3dtexture':'texture3d' }

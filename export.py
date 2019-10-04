@@ -474,11 +474,18 @@ def exportThickQuadShell(o, opt):
       vt.append(ET.Element("TriangleSetTopologyContainer", name= name + "-triSurf", src = "@../" + tp.get('name')))
       if o.shaderFile and o.useTessellation:
           oglshd = ET.Element("OglShader", fileVertexShaders = o.shaderFile, fileTessellationControlShaders = o.shaderFile,
-                 fileTessellationEvaluationShaders = o.shaderFile, fileFragmentShaders = o.shaderFile, printLog="1");
+                 fileTessellationEvaluationShaders = o.shaderFile, fileFragmentShaders = o.shaderFile, printLog="1")
           ogltesslvl = ET.Element("OglFloatVariable", name="TessellationLevel", value = "6")
           vt.append(oglshd)
           vt.append(ogltesslvl)
-          ogl = ET.Element("OglModel", primitiveType = "PATCHES", name= name + '-triSurf-visual');
+          ogl = ET.Element("OglModel", primitiveType = "PATCHES", name= name + '-triSurf-visual')
+          addMaterial(o, ogl)
+          vt.append(ogl)
+          vt.append(ET.Element("IdentityMapping", input="@../../MO", output='@' + name + "-triSurf-visual"))
+      elif o.shaderFile and not o.useTessellation:
+          oglshd = ET.Element("OglShader", fileVertexShaders = o.shaderFile, fileFragmentShaders = o.shaderFile, printLog="1");
+          vt.append(oglshd)
+          ogl = ET.Element("OglModel", name= name + '-triSurf-visual');
           addMaterial(o, ogl);
           vt.append(ogl)
           vt.append(ET.Element("IdentityMapping", input="@../../MO", output='@' + name + "-triSurf-visual"))
@@ -766,7 +773,7 @@ def collisionModelParts(o, opt, obstacle = False, group = None, bothSide = 0):
             ET.Element("PointModel",selfCollision=sc, proximity = o.proximity, contactFriction = o.contactFriction, contactStiffness = o.contactStiffness, group=group, moving = M, simulated = M, bothSide= bothSide ),
             # ET.Element("TPointModel", name = 'testPointCollision', contactStiffness=o.contactStiffness, bothSide="0", proximity = o.proximity, group= o.collisionGroup, movin = M ),                          
             ET.Element("LineModel",selfCollision=sc, proximity=o.proximity, contactFriction = o.contactFriction, contactStiffness = o.contactStiffness, group=group, moving = M, simulated = M, bothSide= bothSide ),
-            ET.Element("TriangleModel", tags = objectTag, selfCollision=sc, proximity=o.proximity, contactFriction = o.contactFriction, contactStiffness = o.contactStiffness, group=group, moving = M, simulated = M, bothSide= bothSide )
+            ET.Element("TriangleModel", name="TriangleModel", tags = objectTag, selfCollision=sc, proximity=o.proximity, contactFriction = o.contactFriction, contactStiffness = o.contactStiffness, group=group, moving = M, simulated = M, bothSide= bothSide )
         ]
     
 
@@ -1339,11 +1346,13 @@ def exportHaptic(l, opt):
     # replace Salua by SofaPython Plugin
     nodes.append(ET.Element("PythonScriptController", filename = "changeInstrumentController.py", classname="ChangeInstrumentController", listening=1))
     useEndoscope = opt.scene.enableEndoscope
+    useSuture = opt.scene.enableSutureController
     if useEndoscope:
         nodes.append(ET.Element("PythonScriptController", filename = "endoscopeController.py", classname="EndoscopeController", listening=1))
-        # nodes.append(ET.Element("PythonScriptController", filename = "sutureController.py", classname="SutureController", listening=1))
-    # Prepare the instruments in the order of layers, they are included in each haptic
-    
+    if useSuture:
+        nodes.append(ET.Element("PythonScriptController", filename = "sutureController.py", classname="SutureController", listening=1))
+
+    # Prepare the instruments in the order of layers, they are included in each haptic 
     for layer in range(10): # check layers 0 ~ 8
         objs = [o for o in l if o.layers[layer]]
         layer = layer+1
@@ -1574,6 +1583,11 @@ def exportScene(opt):
             addConnectionsToTissue(solverNode, o, opt)
         if not o.hide_render and o.template == 'ATTACHCONSTRAINT':
             solverNode.append( objectNode(opt, exportAttachConstraint(o, opt)) )
+
+    if scene.enableSutureController:
+        sutureNode = ET.Element("Node", name="SutureNode", sleeping="true")
+        sutureNode.append(ET.Element("AttachConstraint", name="sutureConstraint", object1="@fundus_old", object2="@fundus_old", twoWay="true", indices1="49", indices2="61", constraintFactor="1" ))
+        solverNode.append(sutureNode)
     root.append(solverNode)
 
     # To make sure the python sript 'endoscopeController.py' works properly,
