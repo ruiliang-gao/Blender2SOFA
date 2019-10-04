@@ -3,7 +3,7 @@ import bmesh
 import os
 from .types import *
 from .io_msh import recalc_outer_surface
-
+from .export import convertHexTo5Tets
 
 class SofaActionsPanel(bpy.types.Panel):
     bl_label = "SOFA Actions"
@@ -253,33 +253,7 @@ class ConvertHexToTet(bpy.types.Operator):
 
     def execute(self, context):
         o=bpy.context.selected_objects[0]
-        # if o.mode == 'EDIT':
-        #     bm=bmesh.from_edit_mesh(o.data)
-        # else:
-        #     print("Object is not in edit mode.")
-        if o.type == 'MESH' and hasattr(o.data,'hexahedra') and len(o.data.hexahedra) > 0:
-            mesh = o.data
-        else:
-            raise ExportException("While processing %s: hexahedral mesh expected!" % o.name)
-        if len(o.data.tetrahedra) > 0:
-            o.data.tetrahedra.clear()
-        for hex in mesh.hexahedra:
-            v = hex.vertices
-            tet1 = mesh.tetrahedra.add()
-            tet1.vertices = [v[0], v[1], v[3], v[4]]
-            tet2 = mesh.tetrahedra.add()
-            tet2.vertices = [v[1], v[4], v[5], v[6]]
-            tet3 = mesh.tetrahedra.add()
-            tet3.vertices = [v[1], v[2], v[3], v[6]]
-            tet4 = mesh.tetrahedra.add()
-            tet4.vertices = [v[3], v[4], v[6], v[7]]
-            tet5 = mesh.tetrahedra.add()
-            tet5.vertices = [v[1], v[3], v[4], v[6]]
-        mesh.hexahedra.clear()
-        mesh.update()
-        recalc_outer_surface(mesh)
-        mesh.update()
-        print("finished converting to tetrahedral mesh, # of elements: %s" %len(o.data.tetrahedra))
+        convertHexTo5Tets(o)
         return { 'FINISHED' }
         
 class ExportObjToSofa(bpy.types.Operator):

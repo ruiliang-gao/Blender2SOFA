@@ -14,6 +14,7 @@ import math
 import bmesh
 import zipfile
 from os.path import basename
+from .io_msh import     
 
 FILEFORMATS = [ ('.salua', 'SaLua', 'Lua based scene file'), ('.scn', 'XML', 'XML scene file') ]
 
@@ -115,6 +116,40 @@ def addSolvers(t):
       t.append(ET.Element("EulerImplicitSolver", rayleighMass="0.05", rayleighStiffness="0.0"))
       t.append(ET.Element("CGLinearSolver",iterations="50", tolerance="1.0e-10", threshold="1.0e-6"))
 
+def convertHexTo5Tets(o):
+    if o.type == 'MESH' and hasattr(o.data,'hexahedra') and len(o.data.hexahedra) > 0:
+            mesh = o.data
+    else:
+        raise ExportException("While processing %s: hexahedral mesh expected!" % o.name)
+    if len(o.data.tetrahedra) > 0:
+        o.data.tetrahedra.clear()
+    for hex in mesh.hexahedra:
+        v = hex.vertices
+        tet1 = mesh.tetrahedra.add()
+        tet1.vertices = [v[0], v[1], v[3], v[4]]
+        tet2 = mesh.tetrahedra.add()
+        tet2.vertices = [v[1], v[4], v[5], v[6]]
+        tet3 = mesh.tetrahedra.add()
+        tet3.vertices = [v[1], v[2], v[3], v[6]]
+        tet4 = mesh.tetrahedra.add()
+        tet4.vertices = [v[3], v[4], v[6], v[7]]
+        tet5 = mesh.tetrahedra.add()
+        tet5.vertices = [v[1], v[3], v[4], v[6]]
+    mesh.hexahedra.clear()
+    recalc_outer_surface(mesh)
+    # recalculate normals, all should point outside
+    bpy.ops.object.select_all(action='DESELECT')
+    o.select = True
+    bpy.context.scene.objects.active = o
+    bpy.ops.object.mode_set(mode='EDIT')
+    bpy.ops.mesh.select_all(action='SELECT')
+    bpy.ops.mesh.normals_make_consistent(inside=False)
+    bpy.ops.object.editmode_toggle()
+    
+    mesh.update()
+    print("finished converting to tetrahedral mesh, # of elements: %s" %len(o.data.tetrahedra))
+    return 0
+
 def exportTetrahedralTopology(o, opt, name):
     if o.type == 'MESH' and hasattr(o.data,'tetrahedra') and len(o.data.tetrahedra) > 0:
       m = o.data
@@ -200,6 +235,7 @@ def exportThickShellCollision(o, opt, name):
 def exportThickShellTopologies(o, opt, name): #currently using triangle for visual model since quad mesh may not be planar
     # bpy.ops.object.select_all(action='DESELECT')
     m = o.to_mesh(opt.scene, True, 'PREVIEW')
+    if hasattr(o.data, "hexahedra") and len(o.data.hexahedra) > 0: raise ExportException("Object '%s' can not have volumetric data for a thick shell topology" % o.name)
     # o.select = True;
     # bpy.ops.object.duplicate();
     # print("duplicate done")
