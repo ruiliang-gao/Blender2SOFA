@@ -1592,8 +1592,12 @@ def exportScene(opt):
             solverNode.append( objectNode(opt, exportAttachConstraint(o, opt)) )
 
     if scene.enableSutureController:
+        if scene.sutureOrgan1 == '':
+            raise ExportException("SutureOrgan1 is expected to use the Suture Controller!")
+        if scene.sutureOrgan2 == '':
+            scene.sutureOrgan2 = scene.sutureOrgan1
         sutureNode = ET.Element("Node", name="SutureNode", sleeping="true")
-        sutureNode.append(ET.Element("AttachConstraint", name="sutureConstraint", object1="@fundus_old", object2="@fundus_old", twoWay="true", indices1="49", indices2="61", constraintFactor="1" ))
+        sutureNode.append(ET.Element("AttachConstraint", name="sutureConstraint", object1='@'+scene.sutureOrgan1, object2='@'+scene.sutureOrgan2, twoWay="true", indices1="58", indices2="1042", constraintFactor="1" ))
         solverNode.append(sutureNode)
     root.append(solverNode)
 

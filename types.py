@@ -20,7 +20,8 @@ def register_sofa_properties():
     bpy.types.Scene.versionSOFA = bpy.props.StringProperty(name="SOFA version number",default="18",description="Specify SOFA's version number here, type ‘18’ for SOFA1812 or later")
     bpy.types.Scene.enableEndoscope = bpy.props.BoolProperty(name="Use EndoscopeController",description="Check if you have included endoscope tool in the scene",default=False)
     bpy.types.Scene.enableSutureController = bpy.props.BoolProperty(name="Use SutureController",description="Check if you have included the python SutureController in the scene",default=False)
-
+    bpy.types.Scene.sutureOrgan1 = bpy.props.StringProperty(name="Suture Organ 1",description="The first organ to be sutured for this procedure")
+    bpy.types.Scene.sutureOrgan2 = bpy.props.StringProperty(name="Suture Organ 2",description="The second organ to be sutured for this procedure")
     #"""SOFA properties and annotations for objects"""
     bpy.types.Object.template = bpy.props.EnumProperty(name="Template",default='VISUAL', items=[
         ('VISUAL', 'Visual', 'A decorative visual object that does not participate in simulation', 'SCENE', 1),
