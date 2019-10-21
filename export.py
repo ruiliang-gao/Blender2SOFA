@@ -1363,7 +1363,7 @@ def exportHaptic(l, opt):
             if not o.hide_render and o.template == 'INSTRUMENT' and o.toolFunction != 'CAMERA':
                 instruments.append(objectNode(opt, exportInstrument(o, opt)))
                 instrumentsWithCamera.append(objectNode(opt, exportInstrument(o, opt)))
-            elif o.template == 'INSTRUMENT' and o.toolFunction == 'CAMERA':
+            elif not o.hide_render and o.template == 'INSTRUMENT' and o.toolFunction == 'CAMERA':
                 # instrumentsWithCamera.append(objectNode(opt, exportInstrument(o, opt)))
                 instrumentsWithCamera.insert(0,objectNode(opt, exportInstrument(o, opt)))
     # for o in l:
