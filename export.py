@@ -903,8 +903,13 @@ def exportDeformableGrid(o,opt):
         t.append(ET.Element("UniformMass", vertexMass = o.totalMass))
     else:
         t.append(ET.Element("UniformMass", mass = o.totalMass))
-    h = ET.Element("HexahedronFEMForceField", method="large", updateStiffnessMatrix="false")
-    addElasticityParameters(o,h)
+    if o.materialType == "ELASTIC":
+        h = ET.Element("HexahedronFEMForceField",method="large",updateStiffnessMatrix="false")
+        addElasticityParameters(o,h)
+    elif o.materialType == "PLASTIC":
+        h = ET.Element("TetrahedronFEMForceField",method="large")
+        addElasticityParameters(o,h)
+        addPlasticityParameters(o,h)
     t.append(h)
     if o.damping > 0:
         dmp = ET.Element("DiagonalVelocityDampingForceField", template="Vec3d",  dampingCoefficient="0.05 0.05 0.05 0.05 0.05 0.05")
