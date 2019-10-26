@@ -80,9 +80,9 @@ class SofaObjectAnnotationPanel(bpy.types.Panel):
             c.prop(p, 'totalMass')
             c.prop(p,'local_gravity')
             c.prop(p, 'extraTag')
+            c.prop(p, 'safetyConcern') 
             if t == 'DEFORMABLE':
                 c.prop(p, 'grid_dimension')
-                c.prop(p, 'safetyConcern')   
             if t == 'THICKSHELL':
                 c.prop(p, 'thickness')
                 c.prop(p, 'layerCount')

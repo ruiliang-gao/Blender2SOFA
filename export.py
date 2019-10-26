@@ -740,10 +740,10 @@ def collisionModelParts(o, opt, obstacle = False, group = None, bothSide = 0):
     elif o.interactive and o.template == 'SAFETYSURFACE':
         objectTag = 'SafetySurface'
     elif o.interactive and o.template in ('VOLUMETRIC', 'DEFORMABLE'):
-        if o.safetyConcern: 
-            objectTag = 'HapticSurface HapticSurfaceVolume SafetySurface'
-        else:
-            objectTag = 'HapticSurface HapticSurfaceVolume'
+        # if o.safetyConcern: 
+        #     objectTag = 'HapticSurface HapticSurfaceVolume SafetySurface'
+        # else:
+        objectTag = 'HapticSurface HapticSurfaceVolume'
     elif o.interactive and o.template == 'CLOTH':
         objectTag = 'HapticSurface HapticCloth'
     elif o.interactive:
@@ -752,6 +752,8 @@ def collisionModelParts(o, opt, obstacle = False, group = None, bothSide = 0):
         objectTag = ''
     if o.interactive and o.name == opt.scene.targetOrgan:
         objectTag = objectTag + ' TargetOrgan'
+    if hasattr(o,'safetyConcern') and o.safetyConcern:
+        objectTag = objectTag + ' SafetySurface'
     if o.extraTag:
         objectTag = objectTag +' '+ o.extraTag
     M = not obstacle
@@ -1598,6 +1600,10 @@ def exportScene(opt):
             scene.sutureOrgan2 = scene.sutureOrgan1
         sutureNode = ET.Element("Node", name="SutureNode", sleeping="true")
         sutureNode.append(ET.Element("AttachConstraint", name="sutureConstraint", object1='@'+scene.sutureOrgan1, object2='@'+scene.sutureOrgan2, twoWay="true", indices1="58", indices2="1042", constraintFactor="1" ))
+        sutureTargetPos = bpy.data.objects.get("suturePosNissen")
+        if sutureTargetPos != None and not sutureTargetPos.hide_render: #this is buggy right now
+            # sutureNode.append(ET.Element("AttachConstraint", name="sutureConstraint2", object1='@'+scene.sutureOrgan1, object2='@suturePosNissen', twoWay="false", indices1="58", indices2="1", constraintFactor="1" ))
+            sutureNode.append(ET.Element("ConnectingTissue", name="sutureConstraint2", object1='@'+scene.sutureOrgan1, object2='@esophagus', connectingStiffness="100", useConstraint="0", threshold="0.1"))
         solverNode.append(sutureNode)
     root.append(solverNode)
 
