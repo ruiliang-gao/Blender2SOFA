@@ -80,7 +80,8 @@ class SofaObjectAnnotationPanel(bpy.types.Panel):
             c.prop(p, 'totalMass')
             c.prop(p,'local_gravity')
             c.prop(p, 'extraTag')
-            c.prop(p, 'safetyConcern') 
+            c.prop(p, 'safetyConcern')
+            c.prop(p, "safetyForceThreshold") 
             if t == 'DEFORMABLE':
                 c.prop(p, 'grid_dimension')
             if t == 'THICKSHELL':
@@ -88,7 +89,6 @@ class SofaObjectAnnotationPanel(bpy.types.Panel):
                 c.prop(p, 'layerCount')
             if t == 'THICKCURVE' and p.type != 'MESH':
                 c.prop(o.data, 'bevel_depth', text = 'Thickness')
-                c.prop(p, "safetyForceThreshold")
             c.prop(p, 'texture3d')
             c.prop(p, 'precomputeConstraints')
 

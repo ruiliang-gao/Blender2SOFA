@@ -130,7 +130,7 @@ def register_sofa_properties():
     bpy.types.Object.layerCount = bpy.props.IntProperty(name='Layer Count', description='Number of layers in the thick shell',default=1,min=1,max=10)
     
     #Safety
-    bpy.types.Object.safetyForceThreshold = bpy.props.FloatProperty(name='Safety Force Threshold', description='Maximum force a vein can withstand without sustaining injury', default=2.0)
+    bpy.types.Object.safetyForceThreshold = bpy.props.FloatProperty(name='Safety Force Threshold', description='Maximum force a vein can withstand without sustaining injury', default=4.0)
     bpy.types.Object.safetyConcern = bpy.props.BoolProperty(name='Safety Organ', description='is a safety organ?',default=False)
     
 def unregister_sofa_properties():
