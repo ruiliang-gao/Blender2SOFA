@@ -101,6 +101,7 @@ class SofaObjectAnnotationPanel(bpy.types.Panel):
             if not o.useBilateralConstraint:
                 c.prop(p, 'attachStiffness')
                 c.prop(p, 'naturalLength')
+                c.prop(p,'tearingThreshold')
         elif t == 'CLOTH':
             c.prop(p, 'youngModulus')
             c.prop(p, 'bendingStiffness')

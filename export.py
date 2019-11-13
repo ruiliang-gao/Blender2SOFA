@@ -1318,8 +1318,8 @@ def exportObject(opt, o):
 
 def addConnectionsBetween(t, o, q, opt):
     t.append(ET.Element("RequiredPlugin", name = "SurfLabConnectingTissue"))
-    if o.attachStiffness < 1000000:
-      t.append(ET.Element("ConnectingTissue", object1='@' + fixName(o.name), object2='@' + fixName(q.name),useConstraint=o.useBilateralConstraint, threshold=o.attachThreshold, connectingStiffness=o.attachStiffness, naturalLength=o.naturalLength))
+    if o.attachStiffness < 1000000 and o.tearingThreshold > 1:
+      t.append(ET.Element("ConnectingTissue", object1='@' + fixName(o.name), object2='@' + fixName(q.name),useConstraint=o.useBilateralConstraint, threshold=o.attachThreshold, connectingStiffness=o.attachStiffness, naturalLength=o.naturalLength, thresholdTearing=o.tearingThreshold))
     else:
       t.append(ET.Element("ConnectingTissue", object1='@' + fixName(o.name), object2='@' + fixName(q.name),useConstraint=o.useBilateralConstraint, threshold=o.attachThreshold, connectingStiffness=10000000000, naturalLength=o.naturalLength))
 
@@ -1604,11 +1604,12 @@ def exportScene(opt):
         if scene.sutureOrgan2 == '':
             scene.sutureOrgan2 = scene.sutureOrgan1
         sutureNode = ET.Element("Node", name="SutureNode", sleeping="true")
-        sutureNode.append(ET.Element("AttachConstraint", name="sutureConstraint", object1='@'+scene.sutureOrgan1, object2='@'+scene.sutureOrgan2, twoWay="true", indices1="58", indices2="1042", constraintFactor="1" ))
-        sutureTargetPos = bpy.data.objects.get("suturePosNissen")
-        if sutureTargetPos != None and not sutureTargetPos.hide_render: #this is buggy right now
-            # sutureNode.append(ET.Element("AttachConstraint", name="sutureConstraint2", object1='@'+scene.sutureOrgan1, object2='@suturePosNissen', twoWay="false", indices1="58", indices2="1", constraintFactor="1" ))
-            sutureNode.append(ET.Element("ConnectingTissue", name="sutureConstraint2", object1='@'+scene.sutureOrgan1, object2='@esophagus', connectingStiffness="100", useConstraint="0", threshold="0.1"))
+        sutureNode.append(ET.Element("ConnectingTissue", name="sutureConstraint2", object1='@'+scene.sutureOrgan1, object2='@'+scene.sutureOrgan2, naturalLength="0.5", connectingStiffness="1000", useConstraint="0", threshold="0.5"))
+        # sutureNode.append(ET.Element("AttachConstraint", name="sutureConstraint", object1='@'+scene.sutureOrgan1, object2='@'+scene.sutureOrgan2, twoWay="true", indices1="58", indices2="1042", constraintFactor="1" ))
+        # sutureTargetPos = bpy.data.objects.get("suturePosNissen")
+        # if sutureTargetPos != None and not sutureTargetPos.hide_render: #this is buggy right now
+        #     # sutureNode.append(ET.Element("AttachConstraint", name="sutureConstraint2", object1='@'+scene.sutureOrgan1, object2='@suturePosNissen', twoWay="false", indices1="58", indices2="1", constraintFactor="1" ))
+        #     sutureNode.append(ET.Element("ConnectingTissue", name="sutureConstraint2", object1='@'+scene.sutureOrgan1, object2='@esophagus', connectingStiffness="100", useConstraint="0", threshold="0.1"))
         solverNode.append(sutureNode)
     root.append(solverNode)
 

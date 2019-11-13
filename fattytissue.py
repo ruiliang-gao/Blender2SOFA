@@ -168,11 +168,11 @@ class FattyTissue(bpy.types.Operator):
                     vertexIndex[x,y,z] = len(M.vertices) 
                     M.vertices.add(1)
                     M.vertices[-1].co = co
-                elif d < 1.5 * D or d < radius: 
-                    isNearParentOrgan[x,y,z] = True
-                    vertexIndex[x,y,z] = len(M.vertices) 
-                    M.vertices.add(1)
-                    M.vertices[-1].co = co
+                # elif d < 1.5 * D or d < radius: 
+                #     isNearParentOrgan[x,y,z] = True
+                #     vertexIndex[x,y,z] = len(M.vertices) 
+                #     M.vertices.add(1)
+                #     M.vertices[-1].co = co
                 else:
                     vertexIndex[x,y,z] = -1
                     isNearParentOrgan[x,y,z] = False
@@ -180,8 +180,8 @@ class FattyTissue(bpy.types.Operator):
         for x in range(LX):
          for y in range(LY):
           for z in range(LZ):
-                # Check that all the vertices required for this hexa are available and outside
-                # the surface
+            # Check that all the vertices required for this hexa are available and outside the surface
+            # ISSUE: this may leave some isolated vertices as they don't belong to any hexas
             verticesAvailable = all([ isNearParentOrgan[x+i,y+j,z+k] for i,j,k in HEX_VERTICES ])
             # Build the hexa if all the vertices are available
             if verticesAvailable:
