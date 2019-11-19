@@ -57,9 +57,9 @@ class OBJECT_OT_ShrinkwrapTest(bpy.types.Operator):
     bl_idname = "mesh.test_shrinkwrap"
     bl_label = "Test the Projection"
     bl_description = "Shrinkwrap a plane to an object to determine if it fits corectly"
-    index = IntProperty()
-    applied1 = BoolProperty(default = False)
-    applied2 = BoolProperty(default = False)
+    index : IntProperty()
+    applied1 : BoolProperty(default = False)
+    applied2 : BoolProperty(default = False)
     
     def execute(self, context):
         scn = context.scene
@@ -67,7 +67,7 @@ class OBJECT_OT_ShrinkwrapTest(bpy.types.Operator):
         def wrap(applied, map, c):
             if applied == False:
                 sh = map.modifiers.new('Shrinkwrap-' + c.name,'SHRINKWRAP')
-                sh.use_keep_above_surface = True
+                sh.wrap_mode = "ABOVE_SURFACE"
                 sh.wrap_method = 'PROJECT'
                 sh.target = c
                 sh.use_negative_direction = True
@@ -127,14 +127,15 @@ class OBJECT_OT_ConnectingTissue(bpy.types.Operator):
         c2 = bpy.data.objects[scn.object2]
 
         def shrinkwrap(map, obj):
-            scn.objects.active = obj
+            context.view_layer.objects.active = obj
             sh = map.modifiers.new('Shrinkwrap-' + obj.name,'SHRINKWRAP')
-            sh.use_keep_above_surface = True
+            sh.wrap_mode = "ABOVE_SURFACE"
             sh.wrap_method = 'PROJECT'
             sh.target = obj
             sh.use_negative_direction = True
             sh.use_positive_direction = True
-            M = map.to_mesh(context.scene, True, 'PREVIEW')
+            # M = map.to_mesh(context.scene, True, 'PREVIEW')
+            M = map.to_mesh()
             return M
 
         # Meshes of the map objects
@@ -173,7 +174,7 @@ class OBJECT_OT_ConnectingTissue(bpy.types.Operator):
         tissue = bpy.data.meshes.new('connectingtissue')
         ct = bpy.data.objects.new('Tissue Connecting %s and %s' % (c1.name,c2.name), tissue)
         scn = bpy.context.scene
-        scn.objects.link(ct)
+        scn.collection.objects.link(ct)
         ct.data = M
         ct.template = 'VOLUMETRIC'
         ct.object1 = c1.name
@@ -183,14 +184,14 @@ class OBJECT_OT_ConnectingTissue(bpy.types.Operator):
 
         # Delete the mapping objects
         bpy.ops.object.select_all(action='DESELECT')
-        m1.select = True
-        m2.select = True
+        m1.select_set(True)
+        m2.select_set(True)
         bpy.ops.object.delete()
 
         # Select the newly created object
-        m2.select = False
-        c1.select = False
-        c2.select = False
-        ct.select = True
-        scn.objects.active = ct
+        m2.select_set(False)
+        c1.select_set(False)
+        c2.select_set(False)
+        ct.select_set(True)
+        context.view_layer.objects.active = ct
         return {'FINISHED'}

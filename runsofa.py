@@ -6,6 +6,8 @@ from tempfile import mktemp
 import sys
 from bpy.props import StringProperty, BoolProperty, EnumProperty
 
+from pprint import pprint
+
 def updateFileFormat(self, context):
   base, ext = os.path.splitext(self.filepath)
   self.filepath = base + self.file_format
@@ -14,10 +16,10 @@ class RunSofaOperator(bpy.types.Operator):
     bl_idname = "scene.runsofa"
     bl_label = "Run Simulation in Sofa"
     bl_options = { 'REGISTER', 'UNDO' }
-    file_format = EnumProperty(name = "File format",
+    file_format : EnumProperty(name = "File format",
       items = FILEFORMATS, update = updateFileFormat, default='.scn')
 
-    filepath = StringProperty(name = "Filepath")
+    filepath : StringProperty(name = "Filepath")
 
     @classmethod
     def poll(cls, context):
@@ -41,7 +43,8 @@ class RunSofaOperator(bpy.types.Operator):
             opt.selection_only = False
             opt.directory = os.path.dirname(self.filepath)
             opt.file_format = self.file_format
-            opt.pref = context.user_preferences.addons[__package__].preferences
+
+            opt.pref = context.preferences.addons[__package__].preferences
             root = exportScene(opt)
             writeNodesToFile(root,self.filepath, opt)
             if sys.platform == 'linux':

@@ -10,9 +10,9 @@ class AddThickCurve(bpy.types.Operator):
     bl_description = 'Add a curve with a bevel object to give it volume'
     
     
-    radius1 = bpy.props.FloatProperty(name = 'Radius1', description = 'Thickness of one end of the curve.',default=1.0,min=0,max=10)
-    radius2 = bpy.props.FloatProperty(name = 'Radius2', description = 'Thickness of the other end of the curve.',default=1.0,min=0,max=10)
-    taper_curve = bpy.props.BoolProperty(name = 'Taper curve',default=True,description='If set, you may adjust ratio of max and min radii.')
+    radius1 : bpy.props.FloatProperty(name = 'Radius1', description = 'Thickness of one end of the curve.',default=1.0,min=0,max=10)
+    radius2 : bpy.props.FloatProperty(name = 'Radius2', description = 'Thickness of the other end of the curve.',default=1.0,min=0,max=10)
+    taper_curve : bpy.props.BoolProperty(name = 'Taper curve',default=True,description='If set, you may adjust ratio of max and min radii.')
     
 
     @classmethod
@@ -67,9 +67,9 @@ class AddThickCurve(bpy.types.Operator):
           # Taper the new object
           bpy.context.object.data.taper_object = bpy.data.objects[modelcurve]
           
-        bpy.data.objects[modelcurve].select = True
-        bpy.data.objects[thickcurve].select = True
-        bpy.context.scene.objects.active = bpy.data.objects[thickcurve]
+        bpy.data.objects[modelcurve].select_set(True)
+        bpy.data.objects[thickcurve].select_set(True)
+        bpy.context.view_layer.objects.active = bpy.data.objects[thickcurve]
         bpy.ops.object.parent_set()
 
         return { 'FINISHED' }
@@ -85,7 +85,7 @@ class AddThickCurve(bpy.types.Operator):
         # return context.scene is not None
 
     # def execute(self, context):
-        # bpy.context.user_preferences.active_section = 'ADDONS'
+        # bpy.context.preferences.active_section = 'ADDONS'
         # bpy.ops.screen.userpref_show('INVOKE_DEFAULT')
         # bpy.data.window_managers["WinMan"].addon_filter = 'User'
 

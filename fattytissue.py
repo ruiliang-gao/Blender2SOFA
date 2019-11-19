@@ -13,22 +13,22 @@ class FattyTissue(bpy.types.Operator):
     bl_description = "Construct a fatty tissue in a prescribed cube (empty object) that encompasses an organ. Needs two selected object, the empty cube should be the active one"
     bl_options = { 'UNDO' }
 
-    cube = bpy.props.StringProperty(name = 'Sampling Cube', description = 'The cube used for sampling')
-    organ = bpy.props.StringProperty(name = 'Organ', description = 'The organ on which the fat is wrapped around')
-    thickness_from_surface = bpy.props.FloatProperty(name = 'Distance from Surface',description='Distance of fatty tissue from organ surface',default=0.5,min=0,step=0.01)
+    cube: bpy.props.StringProperty(name = 'Sampling Cube', description = 'The cube used for sampling')
+    organ: bpy.props.StringProperty(name = 'Organ', description = 'The organ on which the fat is wrapped around')
+    thickness_from_surface: bpy.props.FloatProperty(name = 'Distance from Surface',description='Distance of fatty tissue from organ surface',default=0.5,min=0,step=0.01)
     # resolution = bpy.props.IntProperty(name = 'Resolution', description = 'Number of subdivisions along each edge of the cube. Determines the number of hexahedra generated',default=6,min=2,max=20)
-    resolutionX = bpy.props.IntProperty(name = 'ResolutionX', description = 'Number of subdivisions along X edge of the cube. Determines the number of hexahedra generated',default=6,min=1,max=20)
-    resolutionY = bpy.props.IntProperty(name = 'ResolutionY', description = 'Number of subdivisions along Y edge of the cube. Determines the number of hexahedra generated',default=6,min=1,max=20)
-    resolutionZ = bpy.props.IntProperty(name = 'ResolutionZ', description = 'Number of subdivisions along Z edge of the cube. Determines the number of hexahedra generated',default=6,min=1,max=20)
-    smoothness = bpy.props.IntProperty(name = 'Smoothness', description = 'How smooth the fatty tissue should be. Ideal is 2.',default=2,min=0,max=3)
-    project_to_surface = bpy.props.BoolProperty(name = 'Project points to surface',default=False,description='If set, the grid points are moved to the surface, may procedue some degenerate hexahedra')
-    keep_the_cube = bpy.props.BoolProperty(name = 'Keep the Cube',default=False, description='If set, the input cube will not be removed after the mesh is generated')
-    add_perturbations = bpy.props.BoolProperty(name = 'Add perturbations',default=False, description='The output hex mesh will have random perturbations on its vertices')
-    preserve_interior = bpy.props.BoolProperty(name = 'Preserve interior volume',default=True, description='The output hex mesh will preserve the volume that are inside the organ')
-    map_to_boundary = bpy.props.BoolProperty(name = 'Map to boundary',default=False, description='Try to approximate the boundary surface of the organ ')
-    step_length_to_boundary = bpy.props.FloatProperty(name='Step Length', default=0.8, description='step length (0.0~1.0） for shifting the boudary vertices to approximate the organ surface mesh')
-    add_internal_organ = bpy.props.BoolProperty(name = 'Add internal structure',default=False,description='Add internal structures')
-    internal_organ = bpy.props.StringProperty(name = 'Internal Structure', description = 'Pointer to the object of Internal Structure')
+    resolutionX: bpy.props.IntProperty(name = 'ResolutionX', description = 'Number of subdivisions along X edge of the cube. Determines the number of hexahedra generated',default=6,min=1,max=20)
+    resolutionY: bpy.props.IntProperty(name = 'ResolutionY', description = 'Number of subdivisions along Y edge of the cube. Determines the number of hexahedra generated',default=6,min=1,max=20)
+    resolutionZ: bpy.props.IntProperty(name = 'ResolutionZ', description = 'Number of subdivisions along Z edge of the cube. Determines the number of hexahedra generated',default=6,min=1,max=20)
+    smoothness: bpy.props.IntProperty(name = 'Smoothness', description = 'How smooth the fatty tissue should be. Ideal is 2.',default=2,min=0,max=3)
+    project_to_surface: bpy.props.BoolProperty(name = 'Project points to surface',default=False,description='If set, the grid points are moved to the surface, may procedue some degenerate hexahedra')
+    keep_the_cube: bpy.props.BoolProperty(name = 'Keep the Cube',default=False, description='If set, the input cube will not be removed after the mesh is generated')
+    add_perturbations: bpy.props.BoolProperty(name = 'Add perturbations',default=False, description='The output hex mesh will have random perturbations on its vertices')
+    preserve_interior: bpy.props.BoolProperty(name = 'Preserve interior volume',default=True, description='The output hex mesh will preserve the volume that are inside the organ')
+    map_to_boundary: bpy.props.BoolProperty(name = 'Map to boundary',default=False, description='Try to approximate the boundary surface of the organ ')
+    step_length_to_boundary: bpy.props.FloatProperty(name='Step Length', default=0.8, description='step length (0.0~1.0） for shifting the boudary vertices to approximate the organ surface mesh')
+    add_internal_organ: bpy.props.BoolProperty(name = 'Add internal structure',default=False,description='Add internal structures')
+    internal_organ: bpy.props.StringProperty(name = 'Internal Structure', description = 'Pointer to the object of Internal Structure')
     @classmethod
     def poll(self, context):
         return context.object is not None and context.object.type == 'EMPTY' and context.object.empty_draw_type == 'CUBE' and len(context.selected_objects) == 2
@@ -168,11 +168,11 @@ class FattyTissue(bpy.types.Operator):
                     vertexIndex[x,y,z] = len(M.vertices) 
                     M.vertices.add(1)
                     M.vertices[-1].co = co
-                # elif d < 1.5 * D or d < radius: 
-                #     isNearParentOrgan[x,y,z] = True
-                #     vertexIndex[x,y,z] = len(M.vertices) 
-                #     M.vertices.add(1)
-                #     M.vertices[-1].co = co
+                elif d < 1.5 * D or d < radius: 
+                    isNearParentOrgan[x,y,z] = True
+                    vertexIndex[x,y,z] = len(M.vertices) 
+                    M.vertices.add(1)
+                    M.vertices[-1].co = co
                 else:
                     vertexIndex[x,y,z] = -1
                     isNearParentOrgan[x,y,z] = False
@@ -180,8 +180,8 @@ class FattyTissue(bpy.types.Operator):
         for x in range(LX):
          for y in range(LY):
           for z in range(LZ):
-            # Check that all the vertices required for this hexa are available and outside the surface
-            # ISSUE: this may leave some isolated vertices as they don't belong to any hexas
+                # Check that all the vertices required for this hexa are available and outside
+                # the surface
             verticesAvailable = all([ isNearParentOrgan[x+i,y+j,z+k] for i,j,k in HEX_VERTICES ])
             # Build the hexa if all the vertices are available
             if verticesAvailable:
@@ -203,23 +203,23 @@ class FattyTissue(bpy.types.Operator):
         fatObj.scale = cube.scale
 
         # Add the object to the scene
-        context.scene.objects.link(fatObj)
+        context.scene.collection.objects.link(fatObj)
 
         # Deselect all objects (Note: Only c and o could  be selected at this time)
         #bpy.ops.object.select_all(action='DESELECT')
-        cube.select = False
-        organ.select = False
+        cube.select_set(False)
+        organ.select_set(False)
         #O.select = True
         
         # Remove the cube
         if not self.keep_the_cube:
-            context.scene.objects.unlink(cube)
+            context.scene.collection.objects.unlink(cube)
             bpy.data.objects.remove(cube)
             
         # Select the fatty tissue object and runs the smooth function the number of times specified by the user in Blender
         # The smooth function can only be executed in Edit Mode
-        fatObj.select = True
-        bpy.context.scene.objects.active = fatObj
+        fatObj.select_set(True)
+        bpy.context.view_layer.objects.active = fatObj
         bpy.ops.object.mode_set(mode = 'EDIT')
         for i in range (0, self.smoothness):
           bpy.ops.mesh.vertices_smooth()

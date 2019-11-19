@@ -2,10 +2,9 @@ import bpy
 import bmesh
 import os
 from .types import *
-from .io_msh import recalc_outer_surface
-from .export import convertHexTo5Tets
 
-class SofaActionsPanel(bpy.types.Panel):
+
+class SOFA_PT_Actions(bpy.types.Panel):
     bl_label = "SOFA Actions"
     bl_space_type = 'VIEW_3D'
     bl_region_type = 'TOOLS'
@@ -24,13 +23,11 @@ class SofaActionsPanel(bpy.types.Panel):
         layout.operator("option.generate_fixed_indices", icon= 'CONSTRAINT')
         layout.separator()
         layout.operator("option.export_obj", icon='EXPORT')
-        layout.separator()
-        layout.operator("option.convert_hex_to_tet", icon='DRIVER')
-        layout.label('SOFA Create')
+        layout.label(text='SOFA Create')
         c = layout.column(align=True)
         #c.operator("mesh.construct_connecting_tissue", icon='OUTLINER_OB_META', text='Connecting Tissue')
         #layout.separator()
-        c.operator("mesh.construct_fatty_tissue", icon='FACESEL_HLT', text = 'Create Fatty Tissue')
+        c.operator("mesh.construct_fatty_tissue", icon='FACESEL', text = 'Create Fatty Tissue')
         layout.operator("mesh.add_thick_curve", icon= 'ROOTCURVE')
         #layout.operator("mesh.add_hex_rod", icon= 'ROOTCURVE')
 
@@ -38,8 +35,9 @@ class SofaActionsPanel(bpy.types.Panel):
             layout.operator(ConvertFromCustomProperties.bl_idname)
 
 
-class SofaObjectAnnotationPanel(bpy.types.Panel):
+class SOFA_PT_AnnotationPanel(bpy.types.Panel):
     """A panel to adjust object properties"""
+    print("sofa object panel")
     bl_label = "SOFA annotations"
     bl_space_type = 'VIEW_3D'
     bl_region_type = 'TOOLS'
@@ -65,14 +63,6 @@ class SofaObjectAnnotationPanel(bpy.types.Panel):
         elif t in ['INSTRUMENTTIP', 'INSTRUMENTCOLLISION']:
             c.prop(p, 'proximity')
         elif t in [ 'VOLUMETRIC', 'THICKSHELL', 'THICKCURVE', 'DEFORMABLE']:
-            c.prop(p,'materialType')
-            if (p.materialType == 'PLASTIC'):
-                c.prop(p,'plasticYieldThreshold')
-                c.prop(p,'plasticMaxThreshold')
-                c.prop(p,'plasticCreep')
-            elif (p.materialType == 'HYPERELASTIC'):
-                c.prop(p, 'materialName')
-                layout.label('To use hyperelasticity, this object needs to be tetrahedral mesh', icon='ARROW_LEFTRIGHT')            
             c.prop(p, 'youngModulus')
             c.prop(p, 'poissonRatio')
             c.prop(p, 'damping')
@@ -80,32 +70,28 @@ class SofaObjectAnnotationPanel(bpy.types.Panel):
             c.prop(p, 'totalMass')
             c.prop(p,'local_gravity')
             c.prop(p, 'extraTag')
-            c.prop(p, 'safetyConcern')
-            c.prop(p, "safetyForceThreshold") 
             if t == 'DEFORMABLE':
                 c.prop(p, 'grid_dimension')
+                c.prop(p, 'safetyConcern')   
             if t == 'THICKSHELL':
                 c.prop(p, 'thickness')
                 c.prop(p, 'layerCount')
             if t == 'THICKCURVE' and p.type != 'MESH':
                 c.prop(o.data, 'bevel_depth', text = 'Thickness')
+                c.prop(p, "safetyForceThreshold")
             c.prop(p, 'texture3d')
             c.prop(p, 'precomputeConstraints')
 
             c = layout.column(align=True)
-            c.label('Attached Objects')
+            c.label(text='Attached Objects')
             c.prop_search(p, "object1", context.scene, "objects")
             c.prop_search(p, "object2", context.scene, "objects")
-            c.prop(p,'useBilateralConstraint')
             c.prop(p, 'attachThreshold')
-            if not o.useBilateralConstraint:
-                c.prop(p, 'attachStiffness')
-                c.prop(p, 'naturalLength')
-                c.prop(p,'tearingThreshold')
+            c.prop(p, 'attachStiffness')
+            c.prop(p, 'naturalLength')
         elif t == 'CLOTH':
             c.prop(p, 'youngModulus')
             c.prop(p, 'bendingStiffness')
-            c.prop(p, 'poissonRatio')
             c.prop(p, 'damping')
             c.prop(p, 'precomputeConstraints')
         elif t == 'ATTACHCONSTRAINT'  :
@@ -119,42 +105,39 @@ class SofaObjectAnnotationPanel(bpy.types.Panel):
 
         if t in [ 'VOLUMETRIC', 'CLOTH', 'THICKSHELL', 'THICKCURVE', 'DEFORMABLE' ]:
             c = layout.column(align=True)
-            c.label('Model') 
-            c.label('Collision Parameters') 
+            c.label(text='Model') 
+            c.label(text='Collision Parameters') 
             c.prop_search(p, 'alternativeCollision', context.scene, "objects")
             c.prop(p, 'selfCollision')
             c.prop(p, 'carvable')
-            c.prop(p, 'interactive')
+            c.prop(p, 'suture')
             c.prop(p, 'fixed_indices')
             c.prop(p, 'fixed_direction')
 
-        if t in [ 'VOLUMETRIC','CLOTH', 'THICKSHELL', 'THICKCURVE', 'COLLISION', 'RIGID', 'SAFETYSURFACE', 'VISUAL', 'DEFORMABLE' ]:
+        if t in [ 'VOLUMETRIC','CLOTH', 'THICKSHELL', 'THICKCURVE', 'COLLISION', 'SAFETYSURFACE', 'VISUAL', 'DEFORMABLE' ]:
             if t != 'VISUAL':
                 c.prop(p, 'collisionGroup')
                 c.prop(p, 'contactStiffness')
                 c.prop(p, 'contactFriction')
-            if t in ['COLLISION', 'RIGID', 'CLOTH', 'THICKSHELL', 'SAFETYSURFACE', 'THICKCURVE', 'DEFORMABLE']:
+            if t == 'COLLISION':
                 c.prop(p,'proximity')
-            c.label('Rendering Parameters') 
+            c.label(text='Rendering Parameters') 
             c.prop(p, 'useShader')
             c.prop(p, 'shaderFile')
             c.prop(p, 'useTessellation')
 
-        if t == 'RIGID':
-            c.prop(p,'totalMass')
-            c.prop(p, 'damping')
-            c.prop(p,'local_gravity')
+
 
         if t == 'VOLUMETRIC':
             if o.type != 'MESH' or len(o.data.hexahedra) + len(o.data.tetrahedra) == 0:
-                layout.label('This object does not contain a volumetric mesh', icon='ERROR')
+                layout.label(text='This object does not contain a volumetric mesh', icon='ERROR')
 
         if t == 'THICKCURVE':
             if o.type != 'CURVE':
-                layout.label('This object is not a curve', icon='ERROR')
+                layout.label(text='This object is not a curve', icon='ERROR')
 
 
-class SofaScenePropertyPanel(bpy.types.Panel):
+class SOFA_PT_PropertyPanel(bpy.types.Panel):
     """Creates a Panel in the Object properties window"""
     bl_label = "SOFA Scene Properties"
     bl_space_type = 'VIEW_3D'
@@ -174,20 +157,14 @@ class SofaScenePropertyPanel(bpy.types.Panel):
         c.prop(s, "showXYZFrame")
         c.prop(s, "precompution")
         c.prop(s, "useSpeechRecognition")
-        c.label('Haptic Setup')
+        c.label(text='Haptic Setup')
         c.prop(s, "alignOmniWithCamera")
-        c.prop_search(s, "haptic1WorkspaceBox", context.scene, "objects")
-        c.prop_search(s, "haptic2WorkspaceBox", context.scene, "objects")
+        c.prop_search(s, "hapticWorkspaceBox", context.scene, "objects")
         c.prop_search(s, "hapticMoveTo", context.scene, "objects")
         c.prop_search(s, "targetOrgan", context.scene, "objects")
-        c.label('SOFA Configurations')
-        # c.prop(s, "versionSOFA")
+        c.label(text='SOFA Configurations')
+        c.prop(s, "versionSOFA")
         c.prop(s, "sharePath")
-        c.prop(s, "enableEndoscope")
-        c.prop(s, "enableSutureController")
-        if s.enableSutureController:
-            c.prop_search(s, "sutureOrgan1", context.scene, "objects")
-            c.prop_search(s, "sutureOrgan2", context.scene, "objects")
 
 PROPERTY_NAME_MAP = { 'topObject': 'object1', 'botObject': 'object2', 'stretchDamping' : 'damping',
     'attach_stiffness': 'attachStiffness', '3dtexture':'texture3d' }
@@ -215,7 +192,7 @@ class HapticOptions(bpy.types.Operator):
         return context.scene is not None
 
     def execute(self, context):
-        bpy.context.user_preferences.active_section = 'ADDONS'
+        bpy.context.preferences.active_section = 'ADDONS'
         bpy.ops.screen.userpref_show('INVOKE_DEFAULT')
         bpy.data.window_managers["WinMan"].addon_filter = 'User'
 
@@ -244,23 +221,6 @@ class GenerateFixedConstraints(bpy.types.Operator):
             print("Object is not in edit mode.")
 
         return { 'FINISHED' }
-
-# Convert HexMesh to TetMesh by spliting each hex into 5 tets:
-# 0134, 1456, 1236, 3467, 1346
-class ConvertHexToTet(bpy.types.Operator):
-    bl_idname = "option.convert_hex_to_tet"
-    bl_label = "Convert HexMesh to TetMesh"
-    bl_options = { 'UNDO' }
-    bl_description = 'Convert HexMesh to TetMesh by spliting each hex into 5 tets. Select the object then click this button.'
-
-    @classmethod
-    def poll(self, context):
-        return context.scene is not None
-
-    def execute(self, context):
-        o=bpy.context.selected_objects[0]
-        convertHexTo5Tets(o)
-        return { 'FINISHED' }
         
 class ExportObjToSofa(bpy.types.Operator):
     bl_idname = "option.export_obj"
@@ -274,7 +234,7 @@ class ExportObjToSofa(bpy.types.Operator):
 
     def execute(self, context):
         if not context.scene.sharePath:
-          self.report({'ERROR'}, "Export failed: needs to specify the mesh filepath in SOFA Scene Properties" % et.message)
+          self.report({'ERROR'}, "Export failed: needs to specify the mesh filepath in SOFA Scene Properties")
         o=bpy.context.selected_objects[0]
         objname = o.name + '.obj'
         if bpy.context.scene.sharePath:
@@ -312,3 +272,7 @@ class ConvertFromCustomProperties(bpy.types.Operator):
                         setattr(o, PROPERTY_NAME_MAP[k], v)
                         removeCustomProperty(o, k)
         return { 'FINISHED' }
+
+def register_other():
+    #bpy.utils.register_class(SofaScenePropertyPanel)
+    pass

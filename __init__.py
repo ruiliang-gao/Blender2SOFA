@@ -2,7 +2,7 @@ bl_info = {
     'name': "SOFA Export plugin",
     'author': "Saleh Dindar, Ruiliang Gao, Di Xie",
     'version': (0, 2,  1),
-    'blender': (2, 79, 0),
+    'blender': (2, 80, 0),
     'location': "https://bitbucket.org/surflab/blender2sofa",
     'warning': "",
     'description': "Export Blender scenes into SOFA scene files",
@@ -13,26 +13,38 @@ bl_info = {
 
 import bpy
 
-from . import io_msh, io_zip, ui, conn_tiss, fattytissue, export, runsofa, thick_curve, preferences, types, conn_tiss
-from .types import *
-
-
-
-def menu_func_export(self, context):
-    self.layout.operator(export.ExportToSofa.bl_idname, text="SOFA Scene (.scn;.salua)")
+from . import io_msh, io_zip, ui, conn_tiss, hex_rod, fattytissue, export, runsofa, thick_curve, preferences, types, conn_tiss
+from . types import *
 
 addon_keymaps = []
 
+classes = ( 
+    types.HapticProperties, 
+    preferences.Blender2SOFASettings,
+    export.ExportToSofa, 
+    conn_tiss.OBJECT_PT_ConnectingTissuePanel, conn_tiss.OBJECT_OT_ShrinkwrapTest, conn_tiss.OBJECT_OT_ConnectingTissue, 
+    ui.SOFA_PT_Actions, ui.SOFA_PT_AnnotationPanel, ui.SOFA_PT_PropertyPanel, ui.GenerateFixedConstraints, ui.ExportObjToSofa, ui.ConvertFromCustomProperties, 
+    fattytissue.FattyTissue, 
+    hex_rod.HexRod, 
+    io_msh.MeshTetrahedron, io_msh.MeshHexahedron, io_msh.VolumetricMeshPanel, io_msh.ReCalculateOuterSurface, io_msh.RemoveDegenerateHexahedra, io_msh.ExportMSHOperator, io_msh.IO_OT_import_mesh, 
+    io_zip.ImportZIP, 
+    preferences.HAPTIC_UL_DeviceList, preferences.AddHapticDevice, preferences.RemoveHapticDevice, 
+    runsofa.RunSofaOperator, 
+    thick_curve.AddThickCurve, 
+    ui.HapticOptions )
+
 
 def register():
-    # Register the entire module
-    bpy.utils.register_module(__name__)
+    for c in classes:
+        bpy.utils.register_class(c)
+    # Register UI
+    ui.register_other()
     # Register properties in io_msh
     io_msh.register_other()
-	# Register properties in io_zip
+    # Register properties in io_zip
     io_zip.register_other()
-    # Add the items in export menu
-    bpy.types.INFO_MT_file_export.append(menu_func_export)
+    # Register properties in export
+    export.register_other()
     # Add SOFA properties to scene and objects
     types.register_sofa_properties()
     # Add keyboard shortcut F5 for invoking RunSofa
@@ -41,6 +53,8 @@ def register():
     addon_keymaps.append((km, kmi))
 
 def unregister():
+    for c in classes:
+        bpy.utils.unregister_class(c)
     # Remove keyboard shortcuts
     for km, kmi in addon_keymaps:
         km.keymap_items.remove(kmi)
@@ -48,11 +62,11 @@ def unregister():
     # Remove SOFA properties
     types.unregister_sofa_properties()
     # Remove items in export menu
-    bpy.types.INFO_MT_file_export.remove(menu_func_export)
-	# Remove io_zip properties
+    export.unregister_other()
+    # Remove io_zip properties
     io_zip.unregister_other()
     # Remove io_msh properties
     io_msh.unregister_other()
-    # Unregister everything
-    bpy.utils.unregister_module(__name__)
 
+if __name__ == "__main__":
+    register()

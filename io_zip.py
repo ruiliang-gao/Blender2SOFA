@@ -4,7 +4,7 @@ bl_info = {
     'name': "Import/Export SOFA scene zip files plugin",
     'author': "Jose Carlos de Almeida Machado",
     'version': (0, 1, 0),
-    'blender': (2, 69, 0),
+    'blender': (2, 80, 0),
     'location': "https://bitbucket.org/surflab/blender2sofa/src/default/io_zip.py",
     'warning': "",
     'description': "Import/export SOFA scene zip files",
@@ -29,11 +29,11 @@ class ImportZIP(bpy.types.Operator, ImportHelper):
 
 
   filename_ext = ".zip"
-  filter_glob = StringProperty(default="*.zip", options={'HIDDEN'})
+  filter_glob: StringProperty(default="*.zip", options={'HIDDEN'})
   
   # This property defines if uses the current scene or erase it
   
-  erase_scene = BoolProperty(
+  erase_scene: BoolProperty(
             name="Erase Existing scene",
             description="Erases existing scene",
             default=False,
@@ -50,7 +50,7 @@ class ImportZIP(bpy.types.Operator, ImportHelper):
 	#check if the the option to erase the scene is checked
     if(self.erase_scene):
       for ob in bpy.context.scene.objects:
-        ob.select = True
+        ob.select_set(True)
       bpy.ops.object.delete()
 	
 	
@@ -65,14 +65,14 @@ class ImportZIP(bpy.types.Operator, ImportHelper):
 	    #link object to current scene
         for obj in data_to.objects:
           if obj is not None:
-            scn.objects.link(obj)
+            scn.collection.objects.link(obj)
 			#select the new objects in the scene
-            obj.select = True
+            obj.select_set(True)
 			
 	#if the scene was erased, deselect all.		
     if(self.erase_scene):
       for obj in scn:
-        obj.select = False
+        obj.select_set(False)
 		
     #deletes the temporary created folder
     shutil.rmtree(tempPath)	
@@ -85,11 +85,12 @@ def menu_func_import(self, context):
     self.layout.operator(ImportZIP.bl_idname, text="SOFA Scene (.zip)")
 
 def register_other():
-    bpy.types.INFO_MT_file_import.append(menu_func_import)
+    bpy.types.TOPBAR_MT_file_import.remove(menu_func_import)
+    # bpy.types.INFO_MT_file_import.append(menu_func_import)
    
 
 def unregister_other():
-    bpy.types.INFO_MT_file_import.remove(menu_func_import)
+    bpy.types.TOPBAR_MT_file_import.remove(menu_func_import)
 
 
 def register():

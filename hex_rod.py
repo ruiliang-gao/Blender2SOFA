@@ -8,9 +8,9 @@ class HexRod(bpy.types.Operator):
     bl_label = "Construct Hex Rod"
     bl_options = { 'UNDO' }
     bl_description = "Create a rod made of hexahedra (one per unit length) along the input curve"    
-    hex_number = bpy.props.IntProperty(name="Number of hexahedra (default = 20)", description = "Number of hexahedra to construct")    
-    rod_radius = bpy.props.FloatProperty(name="Radius of the rod (default = curve length/30)", description = "Radius of the rod")
-    rod_bevel_factor = bpy.props.FloatProperty(name="Bevel Factor(default = 0)", description = "For taper only, enter -1 if no taper needed")     
+    hex_number: bpy.props.IntProperty(name="Number of hexahedra (default = 20)", description = "Number of hexahedra to construct")    
+    rod_radius: bpy.props.FloatProperty(name="Radius of the rod (default = curve length/30)", description = "Radius of the rod")
+    rod_bevel_factor: bpy.props.FloatProperty(name="Bevel Factor(default = 0)", description = "For taper only, enter -1 if no taper needed")     
     
     def invoke(self, context, event):
         return context.window_manager.invoke_props_dialog(self)
@@ -40,7 +40,8 @@ class HexRod(bpy.types.Operator):
 def constructSegments(context,options):
   # return a piecewise linear curve from the original curve 
   curve = context.selected_objects[0]     
-  m = curve.to_mesh(context.scene, True, 'PREVIEW')  
+  # m = curve.to_mesh(context.scene, True, 'PREVIEW')  
+  m = curve.to_mesh()  
   return m
 
 def construct(context, options):
@@ -51,7 +52,8 @@ def construct(context, options):
   bpy.ops.object.duplicate()
   curve1 = context.selected_objects[0]     
   curve1.data.splines[0].resolution_u = 20
-  m = curve1.to_mesh(context.scene,True,"PREVIEW")
+  # m = curve1.to_mesh(context.scene,True,"PREVIEW")
+  m = curve1.to_mesh()
   nE = len(m.edges)
   curveLen = 0
   for i in range(nE):
@@ -77,7 +79,8 @@ def construct(context, options):
   # m.data.bevel_object = bpy.data.objects[square.name]
   
   # outcome mesh from the bevel object 
-  tube = curve.to_mesh(context.scene,True,"PREVIEW")
+  # tube = curve.to_mesh(context.scene,True,"PREVIEW")
+  tube = curve.to_mesh()
   nMvert = len(tube.vertices)
   nHex = int(len(tube.polygons)/4)
   # now construct the hex rod 
@@ -139,8 +142,8 @@ def construct(context, options):
   rod['color'] = "white"
 
   bpy.ops.object.select_all(action='DESELECT')
-  square.select = True; curve.select = True; 
-  curve1.select = True
+  square.select_set(True); curve.select_set(True); 
+  curve1.select_set(True)
   bpy.ops.object.delete()
   
 
@@ -151,7 +154,9 @@ def dotProd(v1,v2):
     return v1[0]*v2[0]+v1[1]*v2[1]+v1[2]*v2[2]
         
 def register():
-    bpy.utils.register_class(HexRod)
+    #bpy.utils.register_class(HexRod)
+    pass
     
 def unregister():
-    bpy.utils.unregister_class(HexRod)
+    #bpy.utils.unregister_class(HexRod)
+    pass
