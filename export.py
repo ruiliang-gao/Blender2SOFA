@@ -739,7 +739,9 @@ def collisionModelParts(o, opt, obstacle = False, group = None, bothSide = 0):
             objectTag = 'HapticSurfaceCurve'
     elif o.interactive and o.template == 'SAFETYSURFACE':
         objectTag = 'SafetySurface'
-    elif o.interactive and o.template in ('VOLUMETRIC', 'DEFORMABLE'):
+    elif o.interactive and o.template == 'VOLUMETRIC':
+        objectTag = 'HapticSurface HapticSurfaceVolume SafetyForceThreshold_' + str(o.safetyForceThreshold)
+    elif o.interactive and o.template == 'DEFORMABLE'
         # if o.safetyConcern: 
         #     objectTag = 'HapticSurface HapticSurfaceVolume SafetySurface'
         # else:
@@ -1362,7 +1364,7 @@ def exportHaptic(l, opt):
         nodes.append(ET.Element("PythonScriptController", filename = "sutureController.py", classname="SutureController", listening=1))
 
     # Prepare the instruments in the order of layers, they are included in each haptic 
-    for layer in range(10): # check layers 0 ~ 8
+    for layer in range(16): # check layers 0 ~ 15
         objs = [o for o in l if o.layers[layer]]
         layer = layer+1
         for o in objs:

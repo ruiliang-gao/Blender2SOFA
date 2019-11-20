@@ -107,7 +107,7 @@ def register_sofa_properties():
     bpy.types.Object.object1 = bpy.props.StringProperty(name='First Object', description='Name of the first object in the attachment')
     bpy.types.Object.object2 = bpy.props.StringProperty(name='Second Object', description='Name of the second object in the attachment')
     bpy.types.Object.attachThreshold = bpy.props.FloatProperty(name="Attach Threshold",default=0.02,min=0.001,max=1.0,step=0.001,precision=3,description='Maximum distance between connected vertices of two objects as a percentage of the size of object')
-    bpy.types.Object.tearingThreshold = bpy.props.FloatProperty(name="Tearing Threshold",default=3.0,min=1.0,max=100.0,step=0.1,precision=2,description='threshold of the deform ratio(deformedLength / restLength) for tearing the spring')
+    bpy.types.Object.tearingThreshold = bpy.props.FloatProperty(name="Spring Tearing Threshold",default=3.0,min=1.0,max=100.0,step=0.1,precision=2,description='threshold of the deform ratio(deformedLength / restLength) for tearing the spring')
 
     # Interactive features
     bpy.types.Object.carvable = bpy.props.BoolProperty(name='Carvable',description='Allow the object be interactively carved by mouse or a carving tool',default=False)
