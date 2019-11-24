@@ -741,7 +741,7 @@ def collisionModelParts(o, opt, obstacle = False, group = None, bothSide = 0):
         objectTag = 'SafetySurface'
     elif o.interactive and o.template == 'VOLUMETRIC':
         objectTag = 'HapticSurface HapticSurfaceVolume SafetyForceThreshold_' + str(o.safetyForceThreshold)
-    elif o.interactive and o.template == 'DEFORMABLE'
+    elif o.interactive and o.template == 'DEFORMABLE':
         # if o.safetyConcern: 
         #     objectTag = 'HapticSurface HapticSurfaceVolume SafetySurface'
         # else:
