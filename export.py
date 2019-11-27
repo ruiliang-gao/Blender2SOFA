@@ -1319,7 +1319,7 @@ def exportObject(opt, o):
 
 
 def addConnectionsBetween(t, o, q, opt):
-    t.append(ET.Element("RequiredPlugin", name = "SurfLabConnectingTissue"))
+    # t.append(ET.Element("RequiredPlugin", name = "SurfLabConnectingTissue"))
     if o.attachStiffness < 1000000 and o.tearingThreshold > 1:
       t.append(ET.Element("ConnectingTissue", object1='@' + fixName(o.name), object2='@' + fixName(q.name),useConstraint=o.useBilateralConstraint, threshold=o.attachThreshold, connectingStiffness=o.attachStiffness, naturalLength=o.naturalLength, thresholdTearing=o.tearingThreshold))
     else:
@@ -1352,7 +1352,8 @@ def exportHaptic(l, opt):
     nodes.append(ET.Element("RequiredPlugin", pluginName="SofaOpenglVisual"))
     nodes.append(ET.Element("RequiredPlugin", pluginName="SofaHaptics"))
     nodes.append(ET.Element("RequiredPlugin", pluginName="SofaPython")) 
-    
+    nodes.append(ET.Element("RequiredPlugin", pluginName = "SurfLabConnectingTissue"))
+   
     # nodes.append(ET.Element("LuaController", source = "changeInstrumentController.lua", listening=1))
     # replace Salua by SofaPython Plugin
     nodes.append(ET.Element("PythonScriptController", filename = "changeInstrumentController.py", classname="ChangeInstrumentController", listening=1))
