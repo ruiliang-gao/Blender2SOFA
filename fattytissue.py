@@ -31,7 +31,7 @@ class FattyTissue(bpy.types.Operator):
     internal_organ: bpy.props.StringProperty(name = 'Internal Structure', description = 'Pointer to the object of Internal Structure')
     @classmethod
     def poll(self, context):
-        return context.object is not None and context.object.type == 'EMPTY' and context.object.empty_draw_type == 'CUBE' and len(context.selected_objects) == 2
+        return context.object is not None and context.object.type == 'EMPTY' and context.object.empty_display_type == 'CUBE' and len(context.selected_objects) == 2
 
     def check(self, context):
         return True
@@ -80,7 +80,7 @@ class FattyTissue(bpy.types.Operator):
             int_organ = bpy.data.objects[self.internal_organ] 
             int_organInv = int_organ.matrix_world.inverted()
         listEdgeLenth = [cube.scale[0]/LX , cube.scale[1]/LY , cube.scale[2]/LZ]
-        minEdgeLength = min(listEdgeLenth) * cube.empty_draw_size #in cube's coord
+        minEdgeLength = min(listEdgeLenth) * cube.empty_display_size #in cube's coord
         # print("minEdgeLength",minEdgeLength)
         project = self.project_to_surface
         if project:
@@ -99,9 +99,9 @@ class FattyTissue(bpy.types.Operator):
         # organ, if outside then flag them and add them to the vertex list
         organInv = organ.matrix_world.inverted()    # formerly oinv
         cubeInv = cube.matrix_world.inverted()      # formerly cinv
-        #radius = cube.empty_draw_size * (cube.scale[0] + cube.scale[1] + cube.scale[2]) / meanL / 2.0
-        radius = cube.empty_draw_size * np.power((cube.scale[0] * cube.scale[1] * cube.scale[2]),1/3) / 2.0 # half of the diagonal
-        #minEdgeLength = cube.empty_draw_size * (cube.scale[0] + cube.scale[1] + cube.scale[2]) / MaxL / 2.0
+        #radius = cube.empty_display_size * (cube.scale[0] + cube.scale[1] + cube.scale[2]) / meanL / 2.0
+        radius = cube.empty_display_size * np.power((cube.scale[0] * cube.scale[1] * cube.scale[2]),1/3) / 2.0 # half of the diagonal
+        #minEdgeLength = cube.empty_display_size * (cube.scale[0] + cube.scale[1] + cube.scale[2]) / MaxL / 2.0
         if not self.step_length_to_boundary:
             stepLength = 0.2
         else:
@@ -111,12 +111,12 @@ class FattyTissue(bpy.types.Operator):
           for z in range(LZ+1):
             if self.add_perturbations:# dx,dy,dz are perturbations
                 dx, dy, dz = random.random()/3.0, random.random()/3.0, random.random()/3.0 # random floating point number in range [0.0, 1.0).
-                co = cube.empty_draw_size * ( (2.0 * Vector(((x+dx)/LX,(y+dy)/LY,(z+dz)/LZ))) - Vector((1,1,1)) )
+                co = cube.empty_display_size * ( (2.0 * Vector(((x+dx)/LX,(y+dy)/LY,(z+dz)/LZ))) - Vector((1,1,1)) )
             else:
-                co = cube.empty_draw_size * ( (2.0 * Vector((x/LX,y/LY,z/LZ))) - Vector((1,1,1)) ) # local coord of the cube, centered at the origin
-            v = organInv * cube.matrix_world * co #local coord of the organ
+                co = cube.empty_display_size * ( (2.0 * Vector((x/LX,y/LY,z/LZ))) - Vector((1,1,1)) ) # local coord of the cube, centered at the origin
+            v = organInv @ cube.matrix_world * co #local coord of the organ
             if self.add_internal_organ:
-                v2 = int_organInv * cube.matrix_world * co #local coord of the internal organ
+                v2 = int_organInv @ cube.matrix_world * co #local coord of the internal organ
             # version_string is a string composed of Blender version + "(sub 0)". E.g. "2.76 (sub 0)"
             # blenderVer stores the first 4 digits of the string, that is the version number.
             blenderVer = bpy.app.version_string[0:4]
@@ -129,15 +129,15 @@ class FattyTissue(bpy.types.Operator):
                 if self.add_internal_organ:
                     location2,normal2,_ = int_organ.closest_point_on_mesh(v)
             d = (organ.matrix_world * v - organ.matrix_world * location).length #distance of v to the nearest vertex on organ, in world coord
-            d_test =  (cubeInv * organ.matrix_world * (v - location)).length
-            d_cube = (cubeInv * organ.matrix_world * v - cubeInv * organ.matrix_world * location).length #distance in cube coord
+            d_test =  (cubeInv @ organ.matrix_world * (v - location)).length
+            d_cube = (cubeInv @ organ.matrix_world * v - cubeInv @ organ.matrix_world * location).length #distance in cube coord
             if self.add_internal_organ:
-                d2_cube = (cubeInv * int_organ.matrix_world * v2 - cubeInv * int_organ.matrix_world * location2).length
+                d2_cube = (cubeInv @ int_organ.matrix_world * v2 - cubeInv @ int_organ.matrix_world * location2).length
                 isInsideInternalOrgan = (normal2.dot(v2 - location2) < 0)
             if normal.dot(v - location) > 0: # if v is outside the organ
                 if d < D : #or d < radius/2: #or project and d < radius: 
                     if self.map_to_boundary and d_cube < minEdgeLength: # to make sure algorithm is stable, we need to make sure vertex is within minEdgeLength/2 to the organ
-                        co = co + (cubeInv * organ.matrix_world * location - cubeInv * organ.matrix_world * v) * stepLength
+                        co = co + (cubeInv @ organ.matrix_world * location - cubeInv @ organ.matrix_world * v) * stepLength
                         isNearParentOrgan[x,y,z] = True
                         vertexIndex[x,y,z] = len(M.vertices) 
                         M.vertices.add(1)
@@ -155,7 +155,7 @@ class FattyTissue(bpy.types.Operator):
                     isNearParentOrgan[x,y,z] = False
             else: # v is inside
                 if self.map_to_boundary and self.add_internal_organ and not isInsideInternalOrgan and d2_cube < minEdgeLength:
-                    co = co + (cubeInv * int_organ.matrix_world * location2 - cubeInv * int_organ.matrix_world * v2) * stepLength
+                    co = co + (cubeInv @ int_organ.matrix_world * location2 - cubeInv @ int_organ.matrix_world * v2) * stepLength
                     isNearParentOrgan[x,y,z] = True
                     vertexIndex[x,y,z] = len(M.vertices) 
                     M.vertices.add(1)
