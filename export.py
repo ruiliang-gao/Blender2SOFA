@@ -1317,8 +1317,9 @@ def exportObject(opt, o):
                 t.set("color", (o.data.color))
     return t
 
+
 def addConnectionsBetween(t, o, q, opt):
-    # t.append(ET.Element("RequiredPlugin", name = "SurfLabConnectingTissue"))
+    t.append(ET.Element("RequiredPlugin", name = "SurfLabConnectingTissue"))
     if o.attachStiffness < 1000000 and o.tearingThreshold > 1:
       t.append(ET.Element("ConnectingTissue", object1='@' + fixName(o.name), object2='@' + fixName(q.name),useConstraint=o.useBilateralConstraint, threshold=o.attachThreshold, connectingStiffness=o.attachStiffness, naturalLength=o.naturalLength, thresholdTearing=o.tearingThreshold))
     else:
@@ -1350,8 +1351,8 @@ def exportHaptic(l, opt):
     nodes.append(ET.Element("RequiredPlugin", pluginName="SurfLabHaptic"))
     nodes.append(ET.Element("RequiredPlugin", pluginName="SofaOpenglVisual"))
     nodes.append(ET.Element("RequiredPlugin", pluginName="SofaHaptics"))
-    nodes.append(ET.Element("RequiredPlugin", pluginName="SofaPython"))
-    nodes.append(ET.Element("RequiredPlugin", pluginName="SurfLabConnectingTissue")) 
+    nodes.append(ET.Element("RequiredPlugin", pluginName="SofaPython")) 
+    
     # nodes.append(ET.Element("LuaController", source = "changeInstrumentController.lua", listening=1))
     # replace Salua by SofaPython Plugin
     nodes.append(ET.Element("PythonScriptController", filename = "changeInstrumentController.py", classname="ChangeInstrumentController", listening=1))
@@ -1458,8 +1459,7 @@ def exportHaptic(l, opt):
 
 def objectNode(opt, t):
     if t != None and opt.separate:
-        if t.get('name') is not None:
-            return exportSeparateFile(opt, t, t.get('name'))
+        return exportSeparateFile(opt, t, t.get('name'))
     else:
         return t
 
@@ -1499,28 +1499,22 @@ def remove_others(objs):    # remove objects not contained in objs
     scene.update()
 
 def prepare_name(opt, name):
-    # replce the listed special chars to be underline 
     chars_to_replace = [ '.','/',':','*','?','"','<','>','|' ]
     for c in chars_to_replace:
         name = name.replace(c, '_')
     return  os.path.join(opt.directory, name + ".blend")
 
-def export2Blend(opt, l): # export the .blend files (for uploading Tips-Author)
-    scene = opt.scene
+def export2Blend(opt, l):
     names = [ o.name for o in l ]   # object names in scene as obj pointers are to be nullified in remove_others
     for name in names:
         obj = bpy.data.objects[name]
-        exportTemplates = [ 'VOLUMETRIC', 'CLOTH', 'THICKSHELL', 'THICKCURVE', 'DEFORMABLE', 'COLLISION', 'SAFETYSURFACE', 'VISUAL']
-        if not obj.hide_render and obj.template in exportTemplates:
+        if not obj.hide_render:
             bpy.ops.ed.undo_push(message="Delete others")           # set a restore point
             objs = get_obj_family(obj)                              # get object and its children
             remove_others(objs)                                     # remove other objects
-            path = prepare_name(opt, name)                      # get file name
+            path = prepare_name(opt, name)                          # get file name
             opt.filepath_list.append(path)							# add this blend file path to the list of exported files
             bpy.ops.wm.save_as_mainfile(filepath=path, copy=True,)  # save .blend file
-            if obj.template == 'DEFORMABLE':
-                objpath = scene.sharePath+ '\\'+name + ".obj"
-                mtlpath = scene.sharePath+ '\\'+name + ".mtl"
             bpy.ops.ed.undo()                                       # restore deleted objects
 
 def zipExportedFiles(opt):
@@ -1532,10 +1526,8 @@ def zipExportedFiles(opt):
             
     for i, prfx in enumerate(uniq_path_prfx):   # put all related files into one zip
         if len(filepath_list_nested[i]) > 1:
-            # print ('zip '+str(i))
             sub_archive = zipfile.ZipFile(prfx + ".zip", mode='w')
             for fname in filepath_list_nested[i]:
-                # print(fname)
                 sub_archive.write(fname,basename(fname))
                 os.remove(fname)
             sub_archive.close()
@@ -1606,9 +1598,7 @@ def exportScene(opt):
         if not o.hide_render and (o.object1 != '' or o.object2 != ''):
             addConnectionsToTissue(solverNode, o, opt)
         if not o.hide_render and o.template == 'ATTACHCONSTRAINT':
-            node = objectNode(opt, exportAttachConstraint(o, opt))
-            if node is not None:
-                solverNode.append(node)
+            solverNode.append( objectNode(opt, exportAttachConstraint(o, opt)) )
 
     if scene.enableSutureController:
         if scene.sutureOrgan1 == '':
