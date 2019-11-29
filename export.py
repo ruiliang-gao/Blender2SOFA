@@ -45,6 +45,7 @@ def vector_to_string(v):
     return t
 
 def stringify_etree(node):
+    print("STRINGIFY")
     for a in node.attrib:
         o = node.get(a)
         if isinstance(o, str):
@@ -303,7 +304,7 @@ def exportThickCurve(o, opt):
 
     # set massDensity later
     if opt.scene.versionSOFA == "18":
-        t.append(ET.Element("UniformMass", vertexMass = o.totalMass))
+        t.append(ET.Element("UniformMass", totalMass = o.totalMass))
     else:
         t.append(ET.Element("UniformMass", mass = o.totalMass))
     #h = ET.Element("HexahedronFEMForceField",template="Vec3d", method="large")
@@ -842,24 +843,25 @@ def exportDeformableGrid(o,opt):
         tex = "textures/"+o.texture2d
     else:
         tex = "textures/board.png"
+    v.append(ET.Element('MeshObjLoader', filename = 'mesh/TIPS/' + name_obj, name="visualloader"))
     if o.useShader:
         if not o.shaderFile:
             oglshd = ET.Element("OglShader", fileVertexShaders = "['shaders/TIPSShaders/organShader.glsl']", fileFragmentShaders = "['shaders/TIPSShaders/organShader.glsl']", printLog="1");
             v.append(oglshd)
-            v.append(ET.Element("OglModel", name="Visual", texturename = tex, fileMesh="mesh/TIPS/"+name_obj))
+            v.append(ET.Element("OglModel", name="Visual", texturename = tex, src="@visualloader"))
         elif o.useTessellation:
             oglshd = ET.Element("OglShader", fileVertexShaders = o.shaderFile, fileTessellationControlShaders = o.shaderFile,
                 fileTessellationEvaluationShaders = o.shaderFile, fileFragmentShaders = o.shaderFile, printLog="1");
             ogltesslvl = ET.Element("OglFloatVariable", name="TessellationLevel", value = "6")
             v.append(oglshd)
             v.append(ogltesslvl)
-            v.append(ET.Element("OglModel", name="Visual", texturename = tex, fileMesh="mesh/TIPS/"+name_obj, primitiveType = "PATCHES"))
+            v.append(ET.Element("OglModel", name="Visual", texturename = tex, src="@visualloader", primitiveType = "PATCHES"))
         elif not o.useTessellation:
             oglshd = ET.Element("OglShader", fileVertexShaders = o.shaderFile, fileFragmentShaders = o.shaderFile, printLog="1");
             v.append(oglshd)
-            v.append(ET.Element("OglModel", name="Visual", texturename = tex, fileMesh="mesh/TIPS/"+name_obj))
+            v.append(ET.Element("OglModel", name="Visual", texturename = tex, src="@visualloader"))
     else:
-        v.append(ET.Element("OglModel", texturename = tex, name="Visual", fileMesh="mesh/TIPS/"+name_obj))
+        v.append(ET.Element("OglModel", texturename = tex, name="Visual", src="@visualloader"))
     v.append(ET.Element("BarycentricMapping", input="@..", output="@Visual"))
     t.append(v)
     return t
@@ -1224,8 +1226,13 @@ def exportHaptic(l, opt):
         nodes.append(ET.Element("RequiredPlugin", pluginName="SofaMiscCollision"))
     nodes.append(ET.Element("RequiredPlugin", pluginName="Sensable"))
     nodes.append(ET.Element("RequiredPlugin", pluginName="SurfLabHaptic"))
-    nodes.append(ET.Element("RequiredPlugin", pluginName="SaLua"))
-    nodes.append(ET.Element("LuaController", source = "changeInstrumentController.lua", listening=1))
+    nodes.append(ET.Element("RequiredPlugin", pluginName="SofaOpenglVisual"))
+    nodes.append(ET.Element("RequiredPlugin", pluginName="SofaHaptics"))
+    # nodes.append(ET.Element("RequiredPlugin", pluginName="SaLua")) 
+    
+    # nodes.append(ET.Element("LuaController", source = "changeInstrumentController.lua", listening=1))
+    # replace Salua by SofaPython Plugin
+    nodes.append(ET.Element("PythonScriptController", filename = "changeInstrumentController.py", classname="ChangeInstrumentController", listening=1))
 
     # Prepare the instruments in the order of layers, they are included in each haptic
     
@@ -1275,9 +1282,9 @@ def exportHaptic(l, opt):
                                  tags= omniTag, scale = hp.scale * scaleBase , positionBase = positionBase, orientationBase = orientationBase, desirePosition = moveTo,
                                  permanent="true", listening="true", alignOmniWithCamera=scene.alignOmniWithCamera,
                                  forceScale = hp.forceScale));
-        rl.append(ET.Element("MechanicalObject", name="ToolRealPosition", tags=omniTag, template="Rigid", position="0 0 0 0 0 0 1",free_position="0 0 0 0 0 0 1"))
+        rl.append(ET.Element("MechanicalObject", name="ToolRealPosition", tags=omniTag, template="Rigid3d", position="0 0 0 0 0 0 1",free_position="0 0 0 0 0 0 1"))
         nt = ET.Element("Node",name = "Tool");
-        nt.append(ET.Element("MechanicalObject", template="Rigid", name="RealPosition"))
+        nt.append(ET.Element("MechanicalObject", template="Rigid3d", name="RealPosition"))
         nt.append(ET.Element("SubsetMapping", indices="0"));
         rl.append(nt);
         t.append(rl)
@@ -1299,9 +1306,9 @@ def exportHaptic(l, opt):
             isn.append(ET.Element("LCPForceFeedback", activate=hp.forceFeedback, tags=omniTag, forceCoef="0.25"))
         isn.extend(instruments)
         if opt.scene.versionSOFA == "18":
-            isn.append(ET.Element("RestShapeSpringsForceField", template="Rigid",stiffness="1e12",angularStiffness="1e12", external_rest_shape="@../RigidLayer/ToolRealPosition", points = "0"))
+            isn.append(ET.Element("RestShapeSpringsForceField", template="Rigid3d",stiffness="1e12",angularStiffness="1e12", external_rest_shape="@../RigidLayer/ToolRealPosition", points = "0"))
         else:
-            isn.append(ET.Element("RestShapeSpringsForceField", template="Rigid",stiffness="1e12",angularStiffness="1e12", external_rest_shape="../RigidLayer/ToolRealPosition", points = "0"))
+            isn.append(ET.Element("RestShapeSpringsForceField", template="Rigid3d",stiffness="1e12",angularStiffness="1e12", external_rest_shape="../RigidLayer/ToolRealPosition", points = "0"))
         isn.append(ET.Element("UncoupledConstraintCorrection"))
         t.append(isn)
 
@@ -1417,11 +1424,11 @@ def exportScene(opt):
     root.append(lcp)
 
     root.append(ET.Element('FreeMotionAnimationLoop'))
-    root.append(ET.Element("CollisionPipeline", depth="6"))
-    root.append(ET.Element("BruteForceDetection"))
+    root.append(ET.Element("CollisionPipeline", depth="6", name="CollisionPipeline"))
+    root.append(ET.Element("BruteForceDetection", name="N2"))
     root.append(ET.Element("LocalMinDistance", angleCone = "0.0", alarmDistance=scene.alarmDistance,contactDistance=scene.contactDistance))
     root.append(ET.Element("CollisionGroup"))
-    root.append(ET.Element('CollisionResponse', response="FrictionContact"))
+    root.append(ET.Element('CollisionResponse', response="FrictionContact", name="CollisionResponse"))
 
     solverNode = ET.Element("Node", name="SolverNode")
     addSolvers(solverNode)
@@ -1465,7 +1472,9 @@ def writeNodesToFile(root, filepath, opt):
     if opt.file_format == '.salua':
         writeElementTreeToLua(root, filepath)
     else:
+        print("WNTF")
         stringify_etree(root)
+        print("WRITEFP")
         ET.ElementTree(root).write(filepath)
 
 

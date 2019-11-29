@@ -44,9 +44,13 @@ class RunSofaOperator(bpy.types.Operator):
             opt.directory = os.path.dirname(self.filepath)
             opt.file_format = self.file_format
             print("HELLO2")
+            print(self.filepath)
             opt.pref = context.preferences.addons[__package__].preferences
+            print("HELLOO")
             root = exportScene(opt)
+            print("HELLOOO")
             writeNodesToFile(root,self.filepath, opt)
+            print("ASDF")
             if sys.platform == 'linux':
                 Popen(['xterm', '-e', 'runSofa', self.filepath])
             else: # if sys.platform == 'windows':
