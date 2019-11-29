@@ -234,7 +234,7 @@ class ExportObjToSofa(bpy.types.Operator):
 
     def execute(self, context):
         if not context.scene.sharePath:
-          self.report({'ERROR'}, "Export failed: needs to specify the mesh filepath in SOFA Scene Properties")
+            self.report({'ERROR'}, "Export failed: needs to specify the mesh filepath in SOFA Scene Properties")
         o=bpy.context.selected_objects[0]
         objname = o.name + '.obj'
         if bpy.context.scene.sharePath:

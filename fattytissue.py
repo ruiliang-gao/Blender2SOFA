@@ -56,14 +56,14 @@ class FattyTissue(bpy.types.Operator):
         l.prop(self, 'resolutionZ')
         l.prop(self, 'project_to_surface')
         if not self.project_to_surface:
-          l.prop(self, 'thickness_from_surface')
+            l.prop(self, 'thickness_from_surface')
         l.prop(self,'add_internal_organ')
         l.prop(self,'add_perturbations')
         l.prop(self,'preserve_interior')
         l.prop(self, 'smoothness')
         l.prop(self, 'map_to_boundary')
         if self.map_to_boundary:   
-          l.prop(self,'step_length_to_boundary')  
+            l.prop(self,'step_length_to_boundary')  
         l.prop(self, 'keep_the_cube')
 
     def execute(self, context):
@@ -84,9 +84,9 @@ class FattyTissue(bpy.types.Operator):
         # print("minEdgeLength",minEdgeLength)
         project = self.project_to_surface
         if project:
-          D = 0
+            D = 0
         else:
-          D = self.thickness_from_surface
+            D = self.thickness_from_surface
 
         # Create a new mesh to be associated with the empty object
         M = bpy.data.meshes.new(name = 'Fatty tissue around %s' % organ.name)
@@ -107,86 +107,86 @@ class FattyTissue(bpy.types.Operator):
         else:
             stepLength = self.step_length_to_boundary
         for x in range(LX+1):
-         for y in range(LY+1):
-          for z in range(LZ+1):
-            if self.add_perturbations:# dx,dy,dz are perturbations
-                dx, dy, dz = random.random()/3.0, random.random()/3.0, random.random()/3.0 # random floating point number in range [0.0, 1.0).
-                co = cube.empty_display_size * ( (2.0 * Vector(((x+dx)/LX,(y+dy)/LY,(z+dz)/LZ))) - Vector((1,1,1)) )
-            else:
-                co = cube.empty_display_size * ( (2.0 * Vector((x/LX,y/LY,z/LZ))) - Vector((1,1,1)) ) # local coord of the cube, centered at the origin
-            v = organInv @ cube.matrix_world * co #local coord of the organ
-            if self.add_internal_organ:
-                v2 = int_organInv @ cube.matrix_world * co #local coord of the internal organ
-            # version_string is a string composed of Blender version + "(sub 0)". E.g. "2.76 (sub 0)"
-            # blenderVer stores the first 4 digits of the string, that is the version number.
-            blenderVer = bpy.app.version_string[0:4]
-            if (float(blenderVer) >= 2.77):
-                result,location,normal,index = organ.closest_point_on_mesh(v)
-                if self.add_internal_organ:
-                    result2,location2,normal2,index2 = int_organ.closest_point_on_mesh(v2)
-            else:
-                location,normal,_ = organ.closest_point_on_mesh(v)
-                if self.add_internal_organ:
-                    location2,normal2,_ = int_organ.closest_point_on_mesh(v)
-            d = (organ.matrix_world * v - organ.matrix_world * location).length #distance of v to the nearest vertex on organ, in world coord
-            d_test =  (cubeInv @ organ.matrix_world * (v - location)).length
-            d_cube = (cubeInv @ organ.matrix_world * v - cubeInv @ organ.matrix_world * location).length #distance in cube coord
-            if self.add_internal_organ:
-                d2_cube = (cubeInv @ int_organ.matrix_world * v2 - cubeInv @ int_organ.matrix_world * location2).length
-                isInsideInternalOrgan = (normal2.dot(v2 - location2) < 0)
-            if normal.dot(v - location) > 0: # if v is outside the organ
-                if d < D : #or d < radius/2: #or project and d < radius: 
-                    if self.map_to_boundary and d_cube < minEdgeLength: # to make sure algorithm is stable, we need to make sure vertex is within minEdgeLength/2 to the organ
-                        co = co + (cubeInv @ organ.matrix_world * location - cubeInv @ organ.matrix_world * v) * stepLength
-                        isNearParentOrgan[x,y,z] = True
-                        vertexIndex[x,y,z] = len(M.vertices) 
-                        M.vertices.add(1)
-                        M.vertices[-1].co = co #idx '-1' means the last one
-                    elif not self.map_to_boundary:
-                        isNearParentOrgan[x,y,z] = True
-                        vertexIndex[x,y,z] = len(M.vertices) 
-                        M.vertices.add(1)
-                        M.vertices[-1].co = co #idx '-1' means the last one
+            for y in range(LY+1):
+                for z in range(LZ+1):
+                    if self.add_perturbations:# dx,dy,dz are perturbations
+                        dx, dy, dz = random.random()/3.0, random.random()/3.0, random.random()/3.0 # random floating point number in range [0.0, 1.0).
+                        co = cube.empty_display_size * ( (2.0 * Vector(((x+dx)/LX,(y+dy)/LY,(z+dz)/LZ))) - Vector((1,1,1)) )
                     else:
-                        vertexIndex[x,y,z] = -1
-                        isNearParentOrgan[x,y,z] = False   
-                else:
-                    vertexIndex[x,y,z] = -1
-                    isNearParentOrgan[x,y,z] = False
-            else: # v is inside
-                if self.map_to_boundary and self.add_internal_organ and not isInsideInternalOrgan and d2_cube < minEdgeLength:
-                    co = co + (cubeInv @ int_organ.matrix_world * location2 - cubeInv @ int_organ.matrix_world * v2) * stepLength
-                    isNearParentOrgan[x,y,z] = True
-                    vertexIndex[x,y,z] = len(M.vertices) 
-                    M.vertices.add(1)
-                    M.vertices[-1].co = co
-                elif self.add_internal_organ and isInsideInternalOrgan:
-                    vertexIndex[x,y,z] = -1
-                    isNearParentOrgan[x,y,z] = False
-                elif self.preserve_interior: #Make sure all inside vertices of a hex are in the M list
-                    isNearParentOrgan[x,y,z] = True
-                    vertexIndex[x,y,z] = len(M.vertices) 
-                    M.vertices.add(1)
-                    M.vertices[-1].co = co
-                elif d < 1.5 * D or d < radius: 
-                    isNearParentOrgan[x,y,z] = True
-                    vertexIndex[x,y,z] = len(M.vertices) 
-                    M.vertices.add(1)
-                    M.vertices[-1].co = co
-                else:
-                    vertexIndex[x,y,z] = -1
-                    isNearParentOrgan[x,y,z] = False
+                        co = cube.empty_display_size * ( (2.0 * Vector((x/LX,y/LY,z/LZ))) - Vector((1,1,1)) ) # local coord of the cube, centered at the origin
+                    v = organInv @ cube.matrix_world * co #local coord of the organ
+                    if self.add_internal_organ:
+                        v2 = int_organInv @ cube.matrix_world * co #local coord of the internal organ
+                    # version_string is a string composed of Blender version + "(sub 0)". E.g. "2.76 (sub 0)"
+                    # blenderVer stores the first 4 digits of the string, that is the version number.
+                    blenderVer = bpy.app.version_string[0:4]
+                    if (float(blenderVer) >= 2.77):
+                        result,location,normal,index = organ.closest_point_on_mesh(v)
+                        if self.add_internal_organ:
+                            result2,location2,normal2,index2 = int_organ.closest_point_on_mesh(v2)
+                    else:
+                        location,normal,_ = organ.closest_point_on_mesh(v)
+                        if self.add_internal_organ:
+                            location2,normal2,_ = int_organ.closest_point_on_mesh(v)
+                    d = (organ.matrix_world * v - organ.matrix_world * location).length #distance of v to the nearest vertex on organ, in world coord
+                    d_test =  (cubeInv @ organ.matrix_world * (v - location)).length
+                    d_cube = (cubeInv @ organ.matrix_world * v - cubeInv @ organ.matrix_world * location).length #distance in cube coord
+                    if self.add_internal_organ:
+                        d2_cube = (cubeInv @ int_organ.matrix_world * v2 - cubeInv @ int_organ.matrix_world * location2).length
+                        isInsideInternalOrgan = (normal2.dot(v2 - location2) < 0)
+                    if normal.dot(v - location) > 0: # if v is outside the organ
+                        if d < D : #or d < radius/2: #or project and d < radius: 
+                            if self.map_to_boundary and d_cube < minEdgeLength: # to make sure algorithm is stable, we need to make sure vertex is within minEdgeLength/2 to the organ
+                                co = co + (cubeInv @ organ.matrix_world * location - cubeInv @ organ.matrix_world * v) * stepLength
+                                isNearParentOrgan[x,y,z] = True
+                                vertexIndex[x,y,z] = len(M.vertices) 
+                                M.vertices.add(1)
+                                M.vertices[-1].co = co #idx '-1' means the last one
+                            elif not self.map_to_boundary:
+                                isNearParentOrgan[x,y,z] = True
+                                vertexIndex[x,y,z] = len(M.vertices) 
+                                M.vertices.add(1)
+                                M.vertices[-1].co = co #idx '-1' means the last one
+                            else:
+                                vertexIndex[x,y,z] = -1
+                                isNearParentOrgan[x,y,z] = False   
+                        else:
+                            vertexIndex[x,y,z] = -1
+                            isNearParentOrgan[x,y,z] = False
+                    else: # v is inside
+                        if self.map_to_boundary and self.add_internal_organ and not isInsideInternalOrgan and d2_cube < minEdgeLength:
+                            co = co + (cubeInv @ int_organ.matrix_world * location2 - cubeInv @ int_organ.matrix_world * v2) * stepLength
+                            isNearParentOrgan[x,y,z] = True
+                            vertexIndex[x,y,z] = len(M.vertices) 
+                            M.vertices.add(1)
+                            M.vertices[-1].co = co
+                        elif self.add_internal_organ and isInsideInternalOrgan:
+                            vertexIndex[x,y,z] = -1
+                            isNearParentOrgan[x,y,z] = False
+                        elif self.preserve_interior: #Make sure all inside vertices of a hex are in the M list
+                            isNearParentOrgan[x,y,z] = True
+                            vertexIndex[x,y,z] = len(M.vertices) 
+                            M.vertices.add(1)
+                            M.vertices[-1].co = co
+                        elif d < 1.5 * D or d < radius: 
+                            isNearParentOrgan[x,y,z] = True
+                            vertexIndex[x,y,z] = len(M.vertices) 
+                            M.vertices.add(1)
+                            M.vertices[-1].co = co
+                        else:
+                            vertexIndex[x,y,z] = -1
+                            isNearParentOrgan[x,y,z] = False
 
         for x in range(LX):
-         for y in range(LY):
-          for z in range(LZ):
-                # Check that all the vertices required for this hexa are available and outside
-                # the surface
-            verticesAvailable = all([ isNearParentOrgan[x+i,y+j,z+k] for i,j,k in HEX_VERTICES ])
-            # Build the hexa if all the vertices are available
-            if verticesAvailable:
-                h = M.hexahedra.add()
-                h.vertices = [ int(vertexIndex[x+i,y+j,z+k]) for i,j,k in HEX_VERTICES ]
+            for y in range(LY):
+                for z in range(LZ):
+                    # Check that all the vertices required for this hexa are available and outside
+                    # the surface
+                    verticesAvailable = all([ isNearParentOrgan[x+i,y+j,z+k] for i,j,k in HEX_VERTICES ])
+                    # Build the hexa if all the vertices are available
+                    if verticesAvailable:
+                        h = M.hexahedra.add()
+                        h.vertices = [ int(vertexIndex[x+i,y+j,z+k]) for i,j,k in HEX_VERTICES ]
 
         # Finish up the mesh and calculate the outer surface
         M.update()
@@ -222,7 +222,7 @@ class FattyTissue(bpy.types.Operator):
         bpy.context.view_layer.objects.active = fatObj
         bpy.ops.object.mode_set(mode = 'EDIT')
         for i in range (0, self.smoothness):
-          bpy.ops.mesh.vertices_smooth()
+            bpy.ops.mesh.vertices_smooth()
         bpy.ops.object.mode_set(mode = 'OBJECT')
         
         # Set the default values for the fatty tissue

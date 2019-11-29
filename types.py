@@ -95,7 +95,7 @@ def register_sofa_properties():
     bpy.types.Object.fixed_direction = bpy.props.StringProperty(name='Fixed Directions',description='Directions for fixed constraints, e.g 0 0 1 to fix along Z-axis')
     bpy.types.Object.local_gravity = bpy.props.StringProperty(name='Local Gravity',description='A Local force vector that will be applied on the object, like gravity. Input three numbers for XYZ, like "0 0 -9.8"')
     
-	#Rendering
+    #Rendering
     bpy.types.Object.texture3d = bpy.props.StringProperty(name='3D Texture',description='Filepath of the 3D texture, relative path of share/textures/')
     bpy.types.Object.texture2d = bpy.props.StringProperty(name='2D Texture',description='Filepath of the 2D texture, relative path of share/textures/')
     bpy.types.Object.useShader = bpy.props.BoolProperty(name='UseShader',description='Use our default shader for rendering this object',default=False)

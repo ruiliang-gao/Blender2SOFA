@@ -29,28 +29,28 @@ class AddThickCurve(bpy.types.Operator):
         l = self.layout
         l.prop(self, 'taper_curve')
         if self.taper_curve:
-          l.prop(self, 'radius1')
-          l.prop(self, 'radius2')
+            l.prop(self, 'radius1')
+            l.prop(self, 'radius2')
 
     def execute(self, context):
         
         if self.taper_curve:
-          R1 = self.radius1
-          R2 = self.radius2
-          #create and edit model curve for tapering
-          bpy.ops.curve.primitive_bezier_curve_add()
-          bpy.context.object.hide_render = True
-          for obj in bpy.context.selected_objects:
-            obj.name = 'ModelCurve' #rename curve
-            modelcurve = obj.name
-          bpy.ops.object.editmode_toggle()
-          bpy.ops.curve.select_all(action='TOGGLE')
-          bpy.context.active_object.data.splines[0].bezier_points[0].select_control_point = True
-          bpy.ops.transform.translate(value = (0, R1, 0))
-          bpy.context.active_object.data.splines[0].bezier_points[0].select_control_point = False
-          bpy.context.active_object.data.splines[0].bezier_points[1].select_control_point = True
-          bpy.ops.transform.translate(value = (0, R2, 0))
-          bpy.ops.object.editmode_toggle()
+            R1 = self.radius1
+            R2 = self.radius2
+            #create and edit model curve for tapering
+            bpy.ops.curve.primitive_bezier_curve_add()
+            bpy.context.object.hide_render = True
+            for obj in bpy.context.selected_objects:
+                obj.name = 'ModelCurve' #rename curve
+                modelcurve = obj.name
+            bpy.ops.object.editmode_toggle()
+            bpy.ops.curve.select_all(action='TOGGLE')
+            bpy.context.active_object.data.splines[0].bezier_points[0].select_control_point = True
+            bpy.ops.transform.translate(value = (0, R1, 0))
+            bpy.context.active_object.data.splines[0].bezier_points[0].select_control_point = False
+            bpy.context.active_object.data.splines[0].bezier_points[1].select_control_point = True
+            bpy.ops.transform.translate(value = (0, R2, 0))
+            bpy.ops.object.editmode_toggle()
         
         # Add a Bezier object
         bpy.ops.curve.primitive_bezier_curve_add()
@@ -64,8 +64,8 @@ class AddThickCurve(bpy.types.Operator):
         context.object.carvable = True
         
         if self.taper_curve:
-          # Taper the new object
-          bpy.context.object.data.taper_object = bpy.data.objects[modelcurve]
+            # Taper the new object
+            bpy.context.object.data.taper_object = bpy.data.objects[modelcurve]
           
         bpy.data.objects[modelcurve].select_set(True)
         bpy.data.objects[thickcurve].select_set(True)

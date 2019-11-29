@@ -164,12 +164,12 @@ class ReCalculateOuterSurface(bpy.types.Operator):
 
     @classmethod
     def poll(cls, context):
-      o = context.object
-      return o is not None and o.type == 'MESH' and len(o.data.tetrahedra) + len(o.data.hexahedra) > 0
+        o = context.object
+        return o is not None and o.type == 'MESH' and len(o.data.tetrahedra) + len(o.data.hexahedra) > 0
 
     def execute(self, context):
-      recalc_outer_surface(context.object.data)
-      return { 'FINISHED' }
+        recalc_outer_surface(context.object.data)
+        return { 'FINISHED' }
 
 def remove_degenerate_hexahedra(M):
     inverted_hexa = 0
