@@ -321,8 +321,15 @@ def exportThickCurve(o, opt):
     else:
         t.append(ET.Element("UniformMass", mass = o.totalMass))
     #h = ET.Element("HexahedronFEMForceField",template="Vec3d", method="large")
-    h = ET.Element("HexahedronFEMForceField", method="large")
-    addElasticityParameters(o,h)
+    if o.materialType == "ELASTIC":
+        h = ET.Element("HexahedronFEMForceField",method="large")
+        addElasticityParameters(o,h)
+    elif o.materialType == "PLASTIC":
+        h = ET.Element("TetrahedronFEMForceField",method="large")
+        addElasticityParameters(o,h)
+        addPlasticityParameters(o,h)
+    elif o.materialType == "HYPERELASTIC":
+        h = ET.Element("TetrahedronHyperelasticityFEMForceField", name="HyperelasticFEM", ParameterSet="3448.2759 31034.483", materialName=o.materialName)
     t.append(h)
     if o.damping > 0:
         dampstr = str(o.damping)+' '+str(o.damping)+' '+str(o.damping)+' '+str(o.damping)+' '+str(o.damping)+' '+str(o.damping)
@@ -405,8 +412,18 @@ def exportThickQuadShell(o, opt):
         t.append(ET.Element("UniformMass", totalMass = o.totalMass))
     else:
         t.append(ET.Element("UniformMass", mass = o.totalMass))
-    h = ET.Element("HexahedronFEMForceField", method="large")
-    addElasticityParameters(o,h)
+    
+    # FEM and materials   
+    if o.materialType == "ELASTIC":
+        h = ET.Element("HexahedronFEMForceField",method="large")
+        addElasticityParameters(o,h)
+    elif o.materialType == "PLASTIC":
+        h = ET.Element("TetrahedronFEMForceField",method="large")
+        addElasticityParameters(o,h)
+        addPlasticityParameters(o,h)
+    elif o.materialType == "HYPERELASTIC":
+        h = ET.Element("TetrahedronHyperelasticityFEMForceField", name="HyperelasticFEM", ParameterSet="3448.2759 31034.483", materialName=o.materialName)
+    
     t.append(h)
     if o.damping > 0:
         dmp = ET.Element("DiagonalVelocityDampingForceField", template="Vec3d",  dampingCoefficient="0.05 0.05 0.05 0.05 0.05 0.05")
@@ -490,10 +507,17 @@ def exportVolumetric(o, opt):
     t.append(ET.Element('TetrahedronSetGeometryAlgorithms', template = 'Vec3d'))
 
     # set massDensity later
-    t.append(ET.Element("UniformMass", mass = o.totalMass))
-    f = ET.Element('TetrahedralCorotationalFEMForceField')
-    addElasticityParameters(o,f)
-    t.append(f)
+    t.append(ET.Element("UniformMass", vertexMass = o.totalMass))
+    if o.materialType == "ELASTIC":
+        h = ET.Element('TetrahedralCorotationalFEMForceField')
+        addElasticityParameters(o,h)
+    elif o.materialType == "PLASTIC":
+        h = ET.Element("TetrahedronFEMForceField",method="large")
+        addElasticityParameters(o,h)
+        addPlasticityParameters(o,h)
+    elif o.materialType == "HYPERELASTIC":
+        h = ET.Element("TetrahedronHyperelasticityFEMForceField", name="HyperelasticFEM", ParameterSet="3448.2759 31034.483", materialName=o.materialName)
+    t.append(h)
     if o.damping > 0:
         dmp = ET.Element("DiagonalVelocityDampingForceField", template="Vec3d",  dampingCoefficient="0.05 0.05 0.05 0.05 0.05 0.05")
         t.append(dmp)
@@ -568,8 +592,15 @@ def exportHexVolumetric(o, opt):
         t.append(ET.Element("UniformMass", vertexMass = o.totalMass))
     else:
         t.append(ET.Element("UniformMass", mass = o.totalMass))
-    h = ET.Element("HexahedronFEMForceField",method="large")
-    addElasticityParameters(o,h)
+    if o.materialType == "ELASTIC":
+        h = ET.Element("HexahedronFEMForceField",method="large")
+        addElasticityParameters(o,h)
+    elif o.materialType == "PLASTIC":
+        h = ET.Element("TetrahedronFEMForceField",method="large")
+        addElasticityParameters(o,h)
+        addPlasticityParameters(o,h)
+    elif o.materialType == "HYPERELASTIC":
+        h = ET.Element("TetrahedronHyperelasticityFEMForceField", name="HyperelasticFEM", ParameterSet="3448.2759 31034.483", materialName=o.materialName)
     t.append(h)
     if o.damping > 0:
         dmp = ET.Element("DiagonalVelocityDampingForceField", template="Vec3d",  dampingCoefficient="0.05 0.05 0.05 0.05 0.05 0.05")
@@ -670,7 +701,7 @@ def collisionModelParts(o, opt, obstacle = False, group = None, bothSide = 0):
             objectTag = 'HapticSurface HapticSurfaceVolume SafetySurface'
         else:
             objectTag = 'HapticSurface HapticSurfaceVolume'
-    elif o.template == 'CLOTH':
+    elif o.interactive and o.template == 'CLOTH':
         objectTag = 'HapticSurface HapticCloth'
     elif o.interactive:
         objectTag = 'HapticSurface'
@@ -716,8 +747,11 @@ def exportInstrument(o, opt):
             tip_names.append(n)
             if i.type == 'MESH':
                 child.append(exportTriangularTopology(i, opt))
-            mo = createMechanicalObject(i)
-            mo.set('name', 'CM');
+            if o.toolFunction == 'CAMERA':
+                mo = ET.Element("MechanicalObject",template="Rigid3d",name="CameraRealPosition", position="0 0 0 0 0 0 1")
+            else:    
+                mo = createMechanicalObject(i)
+                mo.set('name', 'CM');
             child.append(mo)
             # the contactStiffness below used to be 0.01, Ruiliang changed to 2.0 to soften the organs.
             if scn.precompution:
@@ -742,11 +776,16 @@ def exportInstrument(o, opt):
                 pm.set('tags', 'ContainerTool '+ o.extraTag)
             elif o.toolFunction == 'CUT':
                 pm.set('tags', 'CuttingTool '+ o.extraTag)
+            elif o.toolFunction == 'CAMERA':
+                pm.set('tags', 'CameraTool '+ o.extraTag)
             else:
                 pm.set('tags', 'GraspingTool '+ o.extraTag)
 
             child.append(pm)
-            child.append(ET.Element("RigidMapping", input="@../../instrumentState",output="@CM",index= 0))
+            if o.toolFunction == 'CAMERA':
+                child.append(ET.Element("IdentityMapping", input="@../../../RigidLayer/ToolRealPosition",output="@CameraRealPosition"))
+            else:
+                child.append(ET.Element("RigidMapping", input="@../../instrumentState",output="@CM",index= 0))
             t.append(child)
         if i.template == 'INSTRUMENTCOLLISION':
             n = fixName(i.name)
@@ -770,17 +809,17 @@ def exportInstrument(o, opt):
             child.append(ET.Element("RigidMapping", input="@../../instrumentState",output="@CM",index= 0))
             t.append(child)
 
-    hm = ET.Element("HapticManager", omniDriver = '@../../RigidLayer/driver',
-        graspStiffness = "1e3", attachStiffness="1e5", grasp_force_scale = "-1e-3", duration = "50")
-
-    if len(tip_names) == 1:
-        hm.set('toolModel', '@'+ tip_names[0] + '/toolTip')
-    elif len(tip_names) == 2:
-        hm.set('upperJaw', '@'+ tip_names[0] + '/toolTip')
-        hm.set('lowerJaw', '@'+ tip_names[1] + '/toolTip')
-        hm.set('clampScale', '1 0.1 0.1')
-
-    t.append(hm)
+    # currently camera tool doesn't work with collision model and haptic manager        
+    if o.toolFunction != 'CAMERA':
+        hm = ET.Element("HapticManager", omniDriver = '@../../RigidLayer/driver',
+            graspStiffness = "1e3", attachStiffness="1e5", grasp_force_scale = "-1e-3", duration = "50")
+        if len(tip_names) == 1:
+            hm.set('toolModel', '@'+ tip_names[0] + '/toolTip')
+        elif len(tip_names) == 2:
+            hm.set('upperJaw', '@'+ tip_names[0] + '/toolTip')
+            hm.set('lowerJaw', '@'+ tip_names[1] + '/toolTip')
+            hm.set('clampScale', '1 0.1 0.1')
+        t.append(hm)
 
     # Visual parts of the instrument
     for i in o.children:
@@ -1007,6 +1046,13 @@ def addElasticityParameters(o, t):
     t.set("poissonRatio", o.poissonRatio)
     t.set("rayleighStiffness", o.rayleighStiffness)
     t.set("damping", o.damping)
+    return t
+
+def addPlasticityParameters(o, t):
+    t.set("plasticYieldThreshold", o.plasticYieldThreshold)
+    t.set("plasticMaxThreshold", o.plasticMaxThreshold)
+    t.set("plasticCreep", o.plasticCreep)
+    t.set("computeGlobalMatrix", "false")
     return t
 
 # default oglShader config
@@ -1247,6 +1293,7 @@ def exportHaptic(l, opt):
 
     nodes = []
     instruments = []
+    instrumentsWithCamera = []
 
     # Stuff at the root that are needed for a haptic scene
     if opt.scene.versionSOFA == "18":
@@ -1260,15 +1307,23 @@ def exportHaptic(l, opt):
     # nodes.append(ET.Element("LuaController", source = "changeInstrumentController.lua", listening=1))
     # replace Salua by SofaPython Plugin
     nodes.append(ET.Element("PythonScriptController", filename = "changeInstrumentController.py", classname="ChangeInstrumentController", listening=1))
-
+    
+    useEndoscope = opt.scene.enableEndoscope
+    if useEndoscope:
+        nodes.append(ET.Element("PythonScriptController", filename = "endoscopeController.py", classname="EndoscopeController", listening=1))
     # Prepare the instruments in the order of layers, they are included in each haptic
     
     for layer in range(10): # check layers 0 ~ 8
         objs = [o for o in l if o.layers[layer]]
         layer = layer+1
         for o in objs:
-            if not o.hide_render and o.template == 'INSTRUMENT':
+            # if o == endoscope  exportEndoscope(o, opt)
+            if not o.hide_render and o.template == 'INSTRUMENT' and o.toolFunction != 'CAMERA':
                 instruments.append(objectNode(opt, exportInstrument(o, opt)))
+                instrumentsWithCamera.append(objectNode(opt, exportInstrument(o, opt)))
+            elif o.template == 'INSTRUMENT' and o.toolFunction == 'CAMERA':
+                # instrumentsWithCamera.append(objectNode(opt, exportInstrument(o, opt)))
+                instrumentsWithCamera.insert(0,objectNode(opt, exportInstrument(o, opt)))
     # for o in l:
         # if not o.hide_render and o.template == 'INSTRUMENT' and o.name != scene.defaultInstrument:
             # instruments.append(objectNode(opt, exportInstrument(o, opt)))
@@ -1331,7 +1386,10 @@ def exportHaptic(l, opt):
             else:
                 isn.append(ET.Element("UniformMass", template = "Rigid3d", name="mass", totalmass="15.0"))
             isn.append(ET.Element("LCPForceFeedback", activate=hp.forceFeedback, tags=omniTag, forceCoef="0.25"))
-        isn.extend(instruments)
+        if hp.deviceName == "PHANToM 2":
+            isn.extend(instrumentsWithCamera)
+        else:
+            isn.extend(instruments)
         if opt.scene.versionSOFA == "18":
             isn.append(ET.Element("RestShapeSpringsForceField", template="Rigid3d",stiffness="1e12",angularStiffness="1e12", external_rest_shape="@../RigidLayer/ToolRealPosition", points = "0"))
         else:
@@ -1362,8 +1420,8 @@ def exportCamera(o, opt):
     position=o.location
     orientation=rotation_to_quaternion(o)
     lookAt = o.matrix_world @ Vector((0,0,-1))
-    return ET.Element("InteractiveCamera", name="interactiveCamera", position=position, orientation=orientation, fieldOfView=fov, distance=1)
-    
+    return ET.Element("InteractiveCamera", name="InteractiveCamera", position=position, orientation=orientation, fieldOfView=fov, distance=1, listening="false")
+
 def get_obj_family(obj):    # get object and its children
     objs = set()
     def add_obj(obj):
@@ -1445,9 +1503,6 @@ def exportScene(opt):
     root.set("dt",0.01)
     print("CAT2")
 
-    if scene.camera is not None:
-        root.append(exportCamera(scene.camera, opt))
-
     #lcp = ET.Element("LCPConstraintSolver", tolerance="1e-6", maxIt = "1000", mu = scene.mu, '1e-6'))
     lcp = ET.Element("GenericConstraintSolver", tolerance="1e-6", maxIterations = "1000")
     root.append(lcp)
@@ -1492,7 +1547,12 @@ def exportScene(opt):
         if not o.hide_render and o.template == 'ATTACHCONSTRAINT':
             solverNode.append( objectNode(opt, exportAttachConstraint(o, opt)) )
     root.append(solverNode)
-    print("CAT6")
+    
+    # To make sure the python sript 'endoscopeController.py' works properly,
+    # interactive Camera needs to be placed at the end of the scene
+    if scene.camera is not None:
+        root.append(exportCamera(scene.camera, opt))
+
     return root
 
 class ExportOptions:
