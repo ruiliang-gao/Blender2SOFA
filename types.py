@@ -16,8 +16,10 @@ def register_sofa_properties():
     bpy.types.Scene.useSpeechRecognition = bpy.props.BoolProperty(name="SpeechRecognition", description="check this if you want to use SpeechRecognition plugin", default=False)
     bpy.types.Scene.targetOrgan = bpy.props.StringProperty(name="Target Organ",description="The target organ for this procedure, will be used for triggering the completion")
     bpy.types.Scene.sharePath = bpy.props.StringProperty(name="SOFA mesh filepath",description="Specify SOFA's mesh/TIPS filepath here")
-    bpy.types.Scene.versionSOFA = bpy.props.StringProperty(name="SOFA version number",default="18",description="Specify SOFA's version number here, type ‘18’ for SOFA1812")
-    
+    bpy.types.Scene.versionSOFA = bpy.props.StringProperty(name="SOFA version number",default="18",description="Specify SOFA's version number here, type ‘18’ for SOFA1812 or later")    
+
+    bpy.types.Scene.enableEndoscope = bpy.props.BoolProperty(name="Use EndoscopeController",description="Check if you have included endoscope tool in the scene",default=False)
+    bpy.types.Scene.enableSutureController = bpy.props.BoolProperty(name="Use SutureController",description="Check if you have included the python SutureController in the scene",default=False)
 
     #"""SOFA properties and annotations for objects"""
     bpy.types.Object.template = bpy.props.EnumProperty(name="Template",default='VISUAL', items=[
@@ -35,9 +37,9 @@ def register_sofa_properties():
         ('INSTRUMENTTIP','Tip of Instrument','Active part of the instrument that performs actions', 'OOPS', 12),
         ('INSTRUMENTCOLLISION','Collision part of Instrument' ,'Collision part of the instrument along the shaft', 'OOPS', 13),
         ('SAFETYSURFACE', 'Safety surface','An surface object that used for safety detection', 'MOD_SUBSURF', 14),
-        ('DEFORMABLE', 'Defomable Grid ','An deformable surface object that is embeded in a grid structure: To use it, first export .obj to SOFA/share/mesh  ', 'LATTICE_DATA', 15)
+        ('DEFORMABLE', 'Defomable Grid ','An deformable surface object that is embeded in a grid structure: To use it, first export .obj to SOFA/share/mesh  ', 'LATTICE_DATA', 15),
         # Rigid does not work as expected. It is hidden until it is fixed
-        # ('RIGID', 'Rigid', '', 'SOLID', 13),
+        ('RIGID', 'Rigid', '', 'SOLID', 16)
         ])
 
     # Instrument properties
@@ -48,7 +50,8 @@ def register_sofa_properties():
         ('DISSECT','Dissect', 'An instrument that dissects both tissue and veins at contact'),
         ('CUT','Cut', 'An instrument that dissects tissue but does nothing on the veins'),
         ('CLAMP', 'Clamp', 'Apply clips to vessels to close them'),
-        ('CONTAIN', 'Contain', 'Container of the orgrans')
+        ('CONTAIN', 'Contain', 'Container of the orgrans'),
+        ('CAMERA', 'Camera', 'Endoscope tool')
         ])
     bpy.types.Object.instrumentPart = bpy.props.EnumProperty(name="Animated Part type",default='FIXED',items=[
         ('LEFTJAW', 'Left Jaw', 'left jaw of an instrument that rotate around Y-axis'),
@@ -58,8 +61,8 @@ def register_sofa_properties():
         ('RIGHTCLIP', 'Right clip', 'right jaw of clip applier that rotate around X-axis'),
         ('TOOLSHAFT', 'Tool shaft', 'shaft of the tool')
         ])
-    bpy.types.Object.proximity = bpy.props.FloatProperty(name="Proximity",description="Proximity for collision detection",min=0,default=0,max=10,step=0.001)
-    bpy.types.Object.extraTag = bpy.props.StringProperty(name="Extra Tag",description='Put extra tag to the object that SOFA will recognize it')
+    bpy.types.Object.proximity = bpy.props.FloatProperty(name="Proximity",description="Proximity: enlargement of its collision model",min=0,default=0,max=10,step=0.001)
+    bpy.types.Object.extraTag = bpy.props.StringProperty(name="Extra Tag",description='Put extra tag to the object that SOFA can access it')
 
     # Collision detection and response
     bpy.types.Object.collisionGroup = bpy.props.IntProperty(name="Collision Group",default=1,min=1,max=100,soft_max=10)
@@ -77,18 +80,37 @@ def register_sofa_properties():
     bpy.types.Object.precomputeConstraints = bpy.props.BoolProperty(name='Accurate Constraints',description='(Currently unstable)Better and more accurate constraints but requires lengthy precomputation',default=False)
     bpy.types.Object.totalMass = bpy.props.FloatProperty(name="Uniform Mass Density",default=0.05,min=0.001,max=100,step=0.01)
     
+    # Other Material Types & Params
+    bpy.types.Object.materialType = bpy.props.EnumProperty(name="Material type",default='ELASTIC',items=[
+        ('ELASTIC', 'Elasticity', 'use default elastic material with CorotationalFEM'),
+        ('PLASTIC', 'Plasticity', 'use plastic material'),
+        ('HYPERELASTIC', 'Hyperelasticity', 'use hyperelastic material')   
+        ])
+
+    bpy.types.Object.materialName = bpy.props.EnumProperty(name="Material name",default='StVenantKirchhoff',items=[
+        ('StVenantKirchhoff', 'StVenantKirchhoff', 'StVenantKirchhoff material'),
+        ('ArrudaBoyce', 'ArrudaBoyce', 'ArrudaBoyce material'),
+        ('NeoHookean', 'NeoHookean', 'NeoHookean material'),
+        ('MooneyRivlin', 'MooneyRivlin', 'MooneyRivlin material')
+        ])
+    bpy.types.Object.plasticYieldThreshold = bpy.props.FloatProperty(name="plasticYieldThreshold",description='plasticYieldThreshold',default=0.005,min=0,max=1,soft_min=0,step=0.001)
+    bpy.types.Object.plasticMaxThreshold = bpy.props.FloatProperty(name="plasticMaxThreshold",description='plasticMaxThreshold',default=0.5,min=0,max=1,soft_min=0,step=0.01)
+    bpy.types.Object.plasticCreep = bpy.props.FloatProperty(name="plasticCreep",description='plasticCreep',default=0.1,min=0,max=1,soft_min=0,step=0.01)
+    
+
     # Attachments
     bpy.types.Object.attachStiffness = bpy.props.FloatProperty(name="Attach Stiffness",default=10000,min=1,max=1e+6,soft_min=10,step=100)
     bpy.types.Object.naturalLength = bpy.props.FloatProperty(name="Spring Natural Length",default=0.5,min=0.1,max=10,step=0.1)
     bpy.types.Object.alwaysMatchForObject1 = bpy.props.BoolProperty(name='Always Match for First Object',default=False)
     bpy.types.Object.alwaysMatchForObject2 = bpy.props.BoolProperty(name='Always Match for Second Object',default=False)
+    bpy.types.Object.useBilateralConstraint = bpy.props.BoolProperty(name='use bilateralconstraint',description='if true, use bilateralconstraint instead of springs system',default=False)
     bpy.types.Object.object1 = bpy.props.StringProperty(name='First Object', description='Name of the first object in the attachment')
     bpy.types.Object.object2 = bpy.props.StringProperty(name='Second Object', description='Name of the second object in the attachment')
     bpy.types.Object.attachThreshold = bpy.props.FloatProperty(name="Attach Threshold",default=0.02,min=0.001,max=1.0,step=0.001,precision=3,description='Maximum distance between connected vertices of two objects as a percentage of the size of object')
 
     # Interactive features
     bpy.types.Object.carvable = bpy.props.BoolProperty(name='Carvable',description='Allow the object be interactively carved by mouse or a carving tool',default=False)
-    bpy.types.Object.suture = bpy.props.BoolProperty(name='Interactive',description='Allow the object to be interactively manipulated by the haptic tools',default=True)
+    bpy.types.Object.interactive = bpy.props.BoolProperty(name='Interactive',description='Allow the object to be interactively manipulated by the haptic tools',default=True)
     
     #Some Constraints
     bpy.types.Object.fixed_indices = bpy.props.StringProperty(name='Fixed_Indices',description='Vertex indices used for fixed constraints')
@@ -161,7 +183,7 @@ def unregister_sofa_properties():
 
     # Interactive features
     del bpy.types.Object.carvable
-    del bpy.types.Object.suture
+    del bpy.types.Object.interactive
     del bpy.types.Object.fixed_indices
     del bpy.types.Object.fixed_direction
     del bpy.types.Object.local_gravity
