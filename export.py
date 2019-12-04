@@ -23,6 +23,7 @@ class ExportException(Exception):
         self.message = message
 
 def ndarray_to_flat_string(a):
+    print("NDSTART")
     b = StringIO()
     f = a.reshape(a.size)
     for i in f:
@@ -30,18 +31,30 @@ def ndarray_to_flat_string(a):
         b.write(' ')
     s = b.getvalue()
     b.close()
+    print("NDEND")
     return s
 
 def iterable(o):
     return hasattr(o, '__getitem__') and hasattr(o, '__len__')
 
 def vector_to_string(v):
+    print("VECSTART")
+    print(len(v))
+    print(v)
+    print("OK")
+    print(type(v))
+    if(len(v) > 0):
+        print(v[0])
     t = ""
     for i in v :
+        print("ITER")
         if iterable(i):
+            print("PUSH VTS", i)
             t += vector_to_string(i) + ' '
         else:
+            print("PUSH STR", i)
             t += str(i) + ' '
+    print("VECEND")
     return t
 
 def stringify_etree(node):
@@ -364,7 +377,7 @@ def exportThickCurve(o, opt):
 
         v = ET.Element('Node', name="Visual")
         v.append(exportVisual(o, opt, name = name + "-visual"))
-        v.append(ET.Element("BarycentricMapping",template="Vec3d,ExtVec3f",input="@../MO",output= '@' + name + "-visual"))
+        v.append(ET.Element("BarycentricMapping",template="Vec3d,ExtVec3d",input="@../MO",output= '@' + name + "-visual"))
         t.append(v)
 
     return t
@@ -457,7 +470,7 @@ def exportThickQuadShell(o, opt):
             #vt.append(exportVisual(o, opt, name = name + "-triSurf-visual"))
     else:
         v.append(exportVisual(o, opt, name = name + "-visual"))
-        v.append(ET.Element("BarycentricMapping",template="Vec3d,ExtVec3f",input="@../MO",output='@' + name + "-visual"))
+        v.append(ET.Element("BarycentricMapping",template="Vec3d,ExtVec3d",input="@../MO",output='@' + name + "-visual"))
     t.append(v)
     return t
 
@@ -528,18 +541,10 @@ def exportVolumetric(o, opt):
         t.append(n)
 
         v = ET.Element('Node', name="Visual")
-        if o.useShader:
-            if not o.shaderFile:
-                print("no default shader for tetrahedra exists!")
-            else:
-                oglshd = ET.Element("OglShader", fileVertexShaders = o.shaderFile, fileTessellationControlShaders = o.shaderFile,
-                 fileTessellationEvaluationShaders = o.shaderFile, fileFragmentShaders = o.shaderFile, printLog="1");
-                ogltesslvl = ET.Element("OglFloatVariable", name="TessellationLevel", value = "8")
-                v.append(oglshd)
-                v.append(ogltesslvl)
+        addShadertoVisual(o,v)
 
         v.append(exportVisual(o, opt, name = name + "-visual"))
-        v.append(ET.Element("BarycentricMapping",template="Vec3d,ExtVec3f",object1="../MO",object2=name + "-visual"))
+        v.append(ET.Element("BarycentricMapping",template="Vec3d,ExtVec3d",object1="../MO",object2=name + "-visual"))
         t.append(v)
 
     addConnectionsToTissue(t, o, opt)
@@ -620,7 +625,7 @@ def exportHexVolumetric(o, opt):
 
         v = ET.Element('Node', name="Visual")
         v.append(exportVisual(o, opt, name = name + "-visual"))
-        v.append(ET.Element("BarycentricMapping",template="Vec3d,ExtVec3f",object1="../MO",object2=name + "-visual"))
+        v.append(ET.Element("BarycentricMapping",template="Vec3d,ExtVec3d",object1="../MO",object2=name + "-visual"))
         t.append(v)
 
     return t
@@ -653,30 +658,28 @@ def addConstraints(o, t):
                     t.append(ET.Element("FixedConstraint", indices="@%s.indices" % n))
 
 def collisionModelParts(o, opt, obstacle = False, group = None, bothSide = 0):
-    if o.suture and o.template == 'THICKCURVE':
+    if o.interactive and o.template == 'THICKCURVE':
         if any(c in o.name for c in ("vein", "Vein", "artery", "Artery")):
-            sutureTag = 'HapticSurfaceVein SafetyForceThreshold_' + str(o.safetyForceThreshold)
-        elif o.name == opt.scene.targetOrgan:
-            sutureTag = 'HapticSurfaceCurve TargetOrgan'
+            objectTag = 'HapticSurfaceVein SafetyForceThreshold_' + str(o.safetyForceThreshold)
         else:
-            sutureTag = 'HapticSurfaceCurve'
-    elif o.suture and o.template == 'SAFETYSURFACE':
-        sutureTag = 'SafetySurface'
-    elif o.suture and o.template in ('VOLUMETRIC', 'DEFORMABLE'):
-        if o.name == opt.scene.targetOrgan:
-            sutureTag = 'HapticSurface HapticSurfaceVolume TargetOrgan'
-        elif o.safetyConcern: 
-            sutureTag = 'HapticSurface HapticSurfaceVolume SafetySurface'
+            objectTag = 'HapticSurfaceCurve'
+    elif o.interactive and o.template == 'SAFETYSURFACE':
+        objectTag = 'SafetySurface'
+    elif o.interactive and o.template in ('VOLUMETRIC', 'DEFORMABLE'):
+        if o.safetyConcern: 
+            objectTag = 'HapticSurface HapticSurfaceVolume SafetySurface'
         else:
-            sutureTag = 'HapticSurface HapticSurfaceVolume'
-    elif o.suture and o.name == opt.scene.targetOrgan:
-        sutureTag = 'HapticSurface TargetOrgan'
-    elif o.suture:
-        sutureTag = 'HapticSurface'
+            objectTag = 'HapticSurface HapticSurfaceVolume'
+    elif o.template == 'CLOTH':
+        objectTag = 'HapticSurface HapticCloth'
+    elif o.interactive:
+        objectTag = 'HapticSurface'
     else:
-        sutureTag = ''
+        objectTag = ''
+    if o.interactive and o.name == opt.scene.targetOrgan:
+        objectTag = objectTag + ' TargetOrgan'
     if o.extraTag:
-        sutureTag = sutureTag + o.extraTag
+        objectTag = objectTag + o.extraTag
     M = not obstacle
     sc = o.selfCollision
     if group == None:  group = o.collisionGroup
@@ -685,14 +688,14 @@ def collisionModelParts(o, opt, obstacle = False, group = None, bothSide = 0):
             #ET.Element("PointModel",selfCollision=sc, contactFriction = o.contactFriction, contactStiffness = o.contactStiffness, group=group, moving = M, simulated = M, bothSide= bothSide ),
             ET.Element("PointModel",selfCollision=sc, contactFriction = o.contactFriction, active = "0", contactStiffness = o.contactStiffness, group=group, moving = M, simulated = M, bothSide= bothSide ),
             ET.Element("LineModel",selfCollision=sc,  contactFriction = o.contactFriction, contactStiffness = o.contactStiffness, group=group, moving = M, simulated = M, bothSide= bothSide ),
-            ET.Element("TriangleModel", tags = sutureTag, selfCollision=sc, contactFriction = o.contactFriction, contactStiffness = o.contactStiffness, group=group, moving = M, simulated = M, bothSide= bothSide )
+            ET.Element("TriangleModel", tags = objectTag, selfCollision=sc, contactFriction = o.contactFriction, contactStiffness = o.contactStiffness, group=group, moving = M, simulated = M, bothSide= bothSide )
         ]
     else:
         return [
             # ET.Element("PointModel",selfCollision=sc, contactFriction = o.contactFriction, contactStiffness = o.contactStiffness, group=group, moving = M, simulated = M, bothSide= bothSide ),
             ET.Element("PointModel",selfCollision=sc, contactFriction = o.contactFriction, active = "0", contactStiffness = o.contactStiffness, group=group, moving = M, simulated = M, bothSide= bothSide ),
             ET.Element("LineModel",selfCollision=sc, proximity=o.proximity, contactFriction = o.contactFriction, contactStiffness = o.contactStiffness, group=group, moving = M, simulated = M, bothSide= bothSide ),
-            ET.Element("TriangleModel", tags = sutureTag,selfCollision=sc, contactFriction = o.contactFriction, contactStiffness = o.contactStiffness, group=group, moving = M, simulated = M, bothSide= bothSide )
+            ET.Element("TriangleModel", tags = objectTag,selfCollision=sc, contactFriction = o.contactFriction, contactStiffness = o.contactStiffness, group=group, moving = M, simulated = M, bothSide= bothSide )
         ]
     
 
@@ -886,11 +889,15 @@ def exportCloth(o, opt):
     t.append(ET.Element("DiagonalMass"))
 
     # Force fields
-    tfff=ET.Element("TriangularFEMForceField", method="large" )
-    addElasticityParameters(o,tfff)
+    tfff=ET.Element("TriangularFEMForceField", method="large", rayleighStiffness="0.1" )
+    tfff.set("youngModulus", o.youngModulus)
+    tfff.set("poissonRatio", o.poissonRatio)
     t.append(tfff)
+    if o.damping:
+        dampstr = str(o.damping)+' '+str(o.damping)+' '+str(o.damping)+' '+str(o.damping)+' '+str(o.damping)+' '+str(o.damping)
+        t.append(ET.Element("DiagonalVelocityDampingForceField", template="Vec3d",  dampingCoefficient= dampstr))
     t.append(ET.Element("TriangularBendingSprings",
-        stiffness= o.bendingStiffness, damping = o.damping))
+        stiffness= o.bendingStiffness, damping="1.0"))
 
     # Collision and Constraints
     addConstraints(o,t)
@@ -901,7 +908,7 @@ def exportCloth(o, opt):
     ogl = ET.Element("OglModel", name= name + '-visual');
     addMaterial(o, ogl);
     t.append(ogl)
-    t.append(ET.Element("IdentityMapping",template="Vec3d,ExtVec3f",input="@MO",output='@' + name + "-visual"))
+    t.append(ET.Element("IdentityMapping",template="Vec3d,ExtVec3d",input="@MO",output='@' + name + "-visual"))
     return t
 
 def pointInsideSphere(v,s,f):
@@ -1002,23 +1009,29 @@ def addElasticityParameters(o, t):
     t.set("damping", o.damping)
     return t
 
-def exportObstacle(o, opt):
-    name=fixName(o.name)
-    t = ET.Element("Node",name=name)
-    t.set('author-parent', 'root')
-    t.set('author-order', 1)
+# default oglShader config
+def addShadertoVisual(o,v):
     if o.useShader:
         if not o.shaderFile:
             print("no default shader for obstacle exists!")
         elif not o.useTessellation:
             oglshd = ET.Element("OglShader", fileVertexShaders = o.shaderFile, fileFragmentShaders = o.shaderFile, printLog="1");
-            t.append(oglshd);
+            v.append(oglshd);
         else:
             oglshd = ET.Element("OglShader", fileVertexShaders = o.shaderFile, fileTessellationControlShaders = o.shaderFile,
-             fileTessellationEvaluationShaders = o.shaderFile, fileFragmentShaders = o.shaderFile, printLog="1");
+            fileTessellationEvaluationShaders = o.shaderFile, fileFragmentShaders = o.shaderFile, printLog="1");
             ogltesslvl = ET.Element("OglFloatVariable", name="TessellationLevel", value = "4")
-            t.append(oglshd)
-            t.append(ogltesslvl)
+            v.append(oglshd)
+            v.append(ogltesslvl)
+    return v
+
+
+def exportObstacle(o, opt):
+    name=fixName(o.name)
+    t = ET.Element("Node",name=name)
+    t.set('author-parent', 'root')
+    t.set('author-order', 1)
+    addShadertoVisual(0,t)
     t.append(exportVisual(o, opt, name = name+'-visual', with_transform = True))
     t.append(exportTriangularTopologyContainer(o,opt))
     t.append(createMechanicalObject(o))
@@ -1026,22 +1039,36 @@ def exportObstacle(o, opt):
     t.append(ET.Element('UncoupledConstraintCorrection'))
     return t
 
-# TODO: debug this and make it work
+# Note: currently the Rigid type only works with meshObjLoader
 def exportRigid(o, opt):
     name=fixName(o.name)
     t = ET.Element("Node",name=name)
     t.set('author-parent', 'SolverNode')
     t.set('author-order', 1)
 
-    t.append(exportVisual(o, opt, name = name + '-visual', with_transform = False))
-    t.append(exportTriangularTopology(o,opt))
-
-    mo = createMechanicalObject(o)
-
-    mo.set('template','Rigid')
-    t.append(mo)
-    t.append(ET.Element("RigidMapping",template='Rigid,ExtVec3f',input="@MO",output='@' + name + "-visual"))
-    t.extend(collisionModelParts(o,opt, obstacle = False))
+    if o.local_gravity:
+        t.append(ET.Element('Gravity', gravity = o.local_gravity))
+    name = fixName(o.name)
+    name_obj = name + ".obj"
+    t.append(ET.Element('MeshObjLoader', filename = 'mesh/TIPS/' + name_obj, name="loader"))
+    t.append(ET.Element('MeshTopology', src="@loader"))
+    t.append(ET.Element('MechanicalObject', src="@loader", name="MO", template="Rigid3d"))
+    ogl = ET.Element('OglModel', src="@loader", name=name + "-visual")   
+    addMaterial(o, ogl);
+    t.append(ogl)
+    addShadertoVisual(o,t)
+    if o.totalMass:
+        t.append(ET.Element("UniformMass", totalMass = o.totalMass, template="Rigid3d"))
+    if o.damping:
+        dampstr = str(o.damping)+' '+str(o.damping)+' '+str(o.damping)+' '+str(o.damping)+' '+str(o.damping)+' '+str(o.damping)
+        t.append(ET.Element("DiagonalVelocityDampingForceField", template="Rigid3d",  dampingCoefficient= dampstr))
+    t.append(ET.Element("RigidMapping",template='Rigid3d,ExtVec3d',input="@MO",output='@' + name + "-visual"))
+    col = ET.Element("Node", name="Collision")
+    col.append(ET.Element("MechanicalObject", name="CollisModel", src="@../loader"))
+    col.append(ET.Element("TriangleSetTopologyContainer", src="@../loader"))
+    col.extend(collisionModelParts(o,opt, obstacle = False))
+    col.append(ET.Element("RigidMapping",template='Rigid3d,Vec3d',input="@..",output="@."))
+    t.append(col)
     t.append(ET.Element('UncoupledConstraintCorrection'))
     return t
 
@@ -1228,7 +1255,7 @@ def exportHaptic(l, opt):
     nodes.append(ET.Element("RequiredPlugin", pluginName="SurfLabHaptic"))
     nodes.append(ET.Element("RequiredPlugin", pluginName="SofaOpenglVisual"))
     nodes.append(ET.Element("RequiredPlugin", pluginName="SofaHaptics"))
-    # nodes.append(ET.Element("RequiredPlugin", pluginName="SaLua")) 
+    nodes.append(ET.Element("RequiredPlugin", pluginName="SofaPython")) 
     
     # nodes.append(ET.Element("LuaController", source = "changeInstrumentController.lua", listening=1))
     # replace Salua by SofaPython Plugin
@@ -1335,8 +1362,8 @@ def exportCamera(o, opt):
     position=o.location
     orientation=rotation_to_quaternion(o)
     lookAt = o.matrix_world @ Vector((0,0,-1))
-    return ET.Element("InteractiveCamera", position=position, orientation=orientation, fieldOfView=fov, distance=1)
-
+    return ET.Element("InteractiveCamera", name="interactiveCamera", position=position, orientation=orientation, fieldOfView=fov, distance=1)
+    
 def get_obj_family(obj):    # get object and its children
     objs = set()
     def add_obj(obj):
@@ -1406,6 +1433,7 @@ def exportScene(opt):
     selection = opt.selection_only
     separate = opt.separate
     dir = opt.directory
+    print("CAT1")
 
     root= ET.Element("Node")
     root.set("name", "root")
@@ -1415,6 +1443,7 @@ def exportScene(opt):
     # else:
         # root.set("gravity",[0,0,0])
     root.set("dt",0.01)
+    print("CAT2")
 
     if scene.camera is not None:
         root.append(exportCamera(scene.camera, opt))
@@ -1429,7 +1458,7 @@ def exportScene(opt):
     root.append(ET.Element("LocalMinDistance", angleCone = "0.0", alarmDistance=scene.alarmDistance,contactDistance=scene.contactDistance))
     root.append(ET.Element("CollisionGroup"))
     root.append(ET.Element('CollisionResponse', response="FrictionContact", name="CollisionResponse"))
-
+    print("CAT3")
     solverNode = ET.Element("Node", name="SolverNode")
     addSolvers(solverNode)
 
@@ -1445,24 +1474,25 @@ def exportScene(opt):
     else:
         l = list(scene.objects)
     l.reverse()
-
+    print("CAT4")
     root.extend(exportHaptic(l, opt))
-
+    print("CAT4.1")
     for o in l:
         t = objectNode(opt, exportObject(opt, o))
+        print("CAT4.2")
         if t != None:
             if o.template == 'COLLISION' or o.template == 'SAFETYSURFACE':
                 root.append(t)
             else:
                 solverNode.append(t)
-
+    print("CAT5")
     for o in l:
         if not o.hide_render and (o.object1 != '' or o.object2 != ''):
             addConnectionsToTissue(solverNode, o, opt)
         if not o.hide_render and o.template == 'ATTACHCONSTRAINT':
             solverNode.append( objectNode(opt, exportAttachConstraint(o, opt)) )
     root.append(solverNode)
-
+    print("CAT6")
     return root
 
 class ExportOptions:
