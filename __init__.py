@@ -37,6 +37,8 @@ classes = (
 def register():
     for c in classes:
         bpy.utils.register_class(c)
+    # Add SOFA properties to scene and objects
+    types.register_sofa_properties()
     # Register UI
     ui.register_other()
     # Register properties in io_msh
@@ -45,8 +47,7 @@ def register():
     io_zip.register_other()
     # Register properties in export
     export.register_other()
-    # Add SOFA properties to scene and objects
-    types.register_sofa_properties()
+    
     # Add keyboard shortcut F5 for invoking RunSofa
     km = bpy.context.window_manager.keyconfigs.addon.keymaps.new(name='Object Mode', space_type='EMPTY')
     kmi = km.keymap_items.new(runsofa.RunSofaOperator.bl_idname, 'F5', 'PRESS')

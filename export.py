@@ -14,7 +14,7 @@ import math
 import bmesh
 import zipfile
 from os.path import basename
-from .io_msh import
+from .io_msh import recalc_outer_surface     
 
 FILEFORMATS = [ ('.salua', 'SaLua', 'Lua based scene file'), ('.scn', 'XML', 'XML scene file') ]
 
@@ -24,7 +24,6 @@ class ExportException(Exception):
         self.message = message
 
 def ndarray_to_flat_string(a):
-    print("NDSTART")
     b = StringIO()
     f = a.reshape(a.size)
     for i in f:
@@ -32,30 +31,22 @@ def ndarray_to_flat_string(a):
         b.write(' ')
     s = b.getvalue()
     b.close()
-    print("NDEND")
     return s
 
 def iterable(o):
     return hasattr(o, '__getitem__') and hasattr(o, '__len__')
 
 def vector_to_string(v):
-    print("VECSTART")
-    print(len(v))
-    print(v)
-    print("OK")
-    print(type(v))
-    if(len(v) > 0):
-        print(v[0])
+    print("vector_to_string")
+    print("object length: " + len(v))
+    print("object: " + v)
+    print("object type: " + type(v))
     t = ""
     for i in v :
-        print("ITER")
         if iterable(i):
-            print("PUSH VTS", i)
             t += vector_to_string(i) + ' '
         else:
-            print("PUSH STR", i)
             t += str(i) + ' '
-    print("VECEND")
     return t
 
 def stringify_etree(node):
@@ -251,7 +242,7 @@ def exportThickShellCollision(o, opt, name):
     
 def exportThickShellTopologies(o, opt, name): #currently using triangle for visual model since quad mesh may not be planar
     # bpy.ops.object.select_all(action='DESELECT')
-    m = o.to_mesh(opt.scene, True, 'PREVIEW')
+    #m = o.to_mesh(opt.scene, True, 'PREVIEW')
     m = o.to_mesh()
     if hasattr(o.data, "hexahedra") and len(o.data.hexahedra) > 0: raise ExportException("Object '%s' can not have volumetric data for a thick shell topology" % o.name)
     # o.select = True;
@@ -325,7 +316,8 @@ def exportThickCurveTopology(o, opt, name):
     if hasattr(o.data, 'bevel_resolution') and o.data.bevel_resolution>0 : 
         raise ExportException("The bevel_resolution of '%s' has to be 0 for a thick curve topology" % o.name)
     o.data.bevel_resolution = 0
-    m = o.to_mesh(opt.scene, True, 'PREVIEW')
+    #m = o.to_mesh(opt.scene, True, 'PREVIEW')
+    m = o.to_mesh()
 
     points =  np.empty([len(m.vertices),3], dtype=float)
     for i, v in enumerate(m.vertices):
@@ -446,11 +438,7 @@ def exportThickQuadShell(o, opt):
     t.append(ET.Element('HexahedronSetTopologyAlgorithms'))
     t.append(ET.Element('HexahedronSetGeometryAlgorithms'))
 
-    # TODO: set massDensity later
-    if opt.scene.versionSOFA == "18":
-        t.append(ET.Element("UniformMass", totalMass = o.totalMass))
-    else:
-        t.append(ET.Element("UniformMass", mass = o.totalMass))
+    t.append(ET.Element("DiagonalMass", massDensity = o.totalMass, name="diagonalMass"))
     
     # FEM and materials   
     if o.materialType == "ELASTIC":
@@ -493,7 +481,8 @@ def exportThickQuadShell(o, opt):
         vt.append(ET.Element("TriangleSetTopologyContainer", name= name + "-triSurf", src = "@../" + tp.get('name')))
         if o.shaderFile and o.useTessellation:
             oglshd = ET.Element("OglShader", fileVertexShaders = o.shaderFile, fileTessellationControlShaders = o.shaderFile,
-                fileTessellationEvaluationShaders = o.shaderFile, fileFragmentShaders = o.shaderFile, printLog="1")            ogltesslvl = ET.Element("OglFloatVariable", name="TessellationLevel", value = "6")
+                fileTessellationEvaluationShaders = o.shaderFile, fileFragmentShaders = o.shaderFile, printLog="1")
+            ogltesslvl = ET.Element("OglFloatVariable", name="TessellationLevel", value = "6")
             vt.append(oglshd)
             vt.append(ogltesslvl)
             ogl = ET.Element("OglModel", primitiveType = "PATCHES", name= name + '-triSurf-visual')
@@ -870,14 +859,19 @@ def exportInstrument(o, opt):
                                contactStiffness="4.7", contactFriction="500.0", proximity = i.proximity,
                                group= o.collisionGroup, moving="1", selfCollision="0", simulated="1"
                                )
+            if o.toolFunction == 'CAMERA':
+                pm.set('tags', 'CameraTool')
             child.append(pm)
             child.append(ET.Element("RigidMapping", input="@../../instrumentState",output="@CM",index= 0))
             t.append(child)
 
-    # currently camera tool doesn't work with collision model and haptic manager        
-    if o.toolFunction != 'CAMERA':
-        hm = ET.Element("HapticManager", omniDriver = '@../../RigidLayer/driver',
-            graspStiffness = "1e3", attachStiffness="1e5", grasp_force_scale = "-1e-3", duration = "50")
+    # currently camera tool doesn't work with collision model and haptic manager
+    hm = ET.Element("HapticManager", omniDriver = '@../../RigidLayer/driver',
+            graspStiffness = "1e3", attachStiffness="1e5", grasp_force_scale = "-1e-3", duration = "50")        
+    if o.toolFunction == 'CAMERA':
+        hm.set('toolModel', "@testCollisionPart_endoscope/toolCollision")
+        t.append(hm)
+    else:
         if len(tip_names) == 1:
             hm.set('toolModel', '@'+ tip_names[0] + '/toolTip')
         elif len(tip_names) == 2:
@@ -1143,7 +1137,7 @@ def exportObstacle(o, opt):
     t = ET.Element("Node",name=name)
     t.set('author-parent', 'root')
     t.set('author-order', 1)
-    addShadertoVisual(0,t)
+    addShadertoVisual(o,t)
     t.append(exportVisual(o, opt, name = name+'-visual', with_transform = True))
     # t.append(exportTriangularTopologyContainer(o,opt))
     t.append(exportTriangularTopology(o,opt))
@@ -1350,8 +1344,6 @@ def addConnectionsToTissue(t, o, opt):
 def exportHaptic(l, opt):
     scene = opt.scene
     return []
-    print("GOODBYE")
-    print(opt.pref)
 
     hapticDevices = opt.pref.hapticDevices
     # If there are no haptic devices, then haptic is not enabled
@@ -1562,7 +1554,6 @@ def exportScene(opt):
     selection = opt.selection_only
     separate = opt.separate
     dir = opt.directory
-    print("CAT1")
 
     root= ET.Element("Node")
     root.set("name", "root")
@@ -1572,7 +1563,6 @@ def exportScene(opt):
     # else:
         # root.set("gravity",[0,0,0])
     root.set("dt",0.01)
-    print("CAT2")
 
     #lcp = ET.Element("LCPConstraintSolver", tolerance="1e-6", maxIt = "1000", mu = scene.mu, '1e-6'))
     lcp = ET.Element("GenericConstraintSolver", tolerance="1e-6", maxIterations = "1000")
@@ -1584,7 +1574,7 @@ def exportScene(opt):
     root.append(ET.Element("LocalMinDistance", angleCone = "0.0", alarmDistance=scene.alarmDistance,contactDistance=scene.contactDistance))
     root.append(ET.Element("CollisionGroup"))
     root.append(ET.Element('CollisionResponse', response="FrictionContact", name="CollisionResponse"))
-    print("CAT3")
+
     solverNode = ET.Element("Node", name="SolverNode")
     addSolvers(solverNode)
 
@@ -1600,18 +1590,15 @@ def exportScene(opt):
     else:
         l = list(scene.objects)
     l.reverse()
-    print("CAT4")
     root.extend(exportHaptic(l, opt))
-    print("CAT4.1")
+
     for o in l:
         t = objectNode(opt, exportObject(opt, o))
-        print("CAT4.2")
         if t != None:
             if o.template == 'COLLISION' or o.template == 'SAFETYSURFACE':
                 root.append(t)
             else:
                 solverNode.append(t)
-    print("CAT5")
     for o in l:
         if not o.hide_render and (o.object1 != '' or o.object2 != ''):
             addConnectionsToTissue(solverNode, o, opt)
@@ -1638,9 +1625,7 @@ def writeNodesToFile(root, filepath, opt):
     if opt.file_format == '.salua':
         writeElementTreeToLua(root, filepath)
     else:
-        print("WNTF")
         stringify_etree(root)
-        print("WRITEFP")
         ET.ElementTree(root).write(filepath)
 
 
