@@ -876,17 +876,21 @@ def exportInstrument(o, opt):
 
     # Visual parts of the instrument
     for i in o.children:
-      if i.type == 'MESH':
-        INSTRUMENT_PART_MAP = { 'LEFTJAW': 1, 'RIGHTJAW': 2, 'FIXED': 3, 'LEFTCLIP': 4, 'RIGHTCLIP': 5, 'TOOLSHAFT': 3 }
-        idx = INSTRUMENT_PART_MAP[i.instrumentPart]
-        name = fixName(i.name)
-        child =  ET.Element("Node", name = name + '-visualNode')
-        if i.template == 'INSTRUMENTPART'and i.instrumentPart != 'TOOLSHAFT':# and o.toolFunction not in ['GRASP', 'CLAMP']:
-          OglShd = ET.Element("OglShader", fileVertexShaders = "['shaders/TIPSShaders/instrument.glsl']" , fileFragmentShaders = "['shaders/TIPSShaders/instrument.glsl']", printLog="1");
-          child.append(OglShd)
-        child.append(exportVisual(i, opt, name = name + '-visual', with_transform = True))
-        child.append(ET.Element("RigidMapping", input="@../../instrumentState", output="@"+name+"-visual", index= idx))
-        t.append(child)
+        if i.type == 'MESH':
+            INSTRUMENT_PART_MAP = { 'LEFTJAW': 1, 'RIGHTJAW': 2, 'FIXED': 3, 'LEFTCLIP': 4, 'RIGHTCLIP': 5, 'TOOLSHAFT': 3, 'TOOLVISUALEFFECT':3 }
+            idx = INSTRUMENT_PART_MAP[i.instrumentPart]
+            name = fixName(i.name)
+            child =  ET.Element("Node", name = name + '-visualNode')
+            if i.template == 'INSTRUMENTPART'and i.instrumentPart == 'TOOLVISUALEFFECT':
+                OglShd = ET.Element("OglShader", fileVertexShaders = "['shaders/TIPSShaders/burningiron.glsl']" , fileFragmentShaders = "['shaders/TIPSShaders/burningiron.glsl']", printLog="1");
+                child.append(OglShd)
+                # child.set('activated', 'false')
+            elif i.template == 'INSTRUMENTPART'and i.instrumentPart != 'TOOLSHAFT':# and o.toolFunction not in ['GRASP', 'CLAMP']:
+                OglShd = ET.Element("OglShader", fileVertexShaders = "['shaders/TIPSShaders/instrument.glsl']" , fileFragmentShaders = "['shaders/TIPSShaders/instrument.glsl']", printLog="1");
+                child.append(OglShd) 
+            child.append(exportVisual(i, opt, name = name + '-visual', with_transform = True))
+            child.append(ET.Element("RigidMapping", input="@../../instrumentState", output="@"+name+"-visual", index= idx))
+            t.append(child)
 
     return t
 
@@ -953,6 +957,7 @@ def exportDeformableGrid(o,opt):
           oglshd = ET.Element("OglShader", fileVertexShaders = o.shaderFile, fileTessellationControlShaders = o.shaderFile,
 				   fileTessellationEvaluationShaders = o.shaderFile, fileFragmentShaders = o.shaderFile, printLog="1");
           ogltesslvl = ET.Element("OglFloatVariable", name="TessellationLevel", value = "6")
+
           v.append(oglshd)
           v.append(ogltesslvl)
           v.append(ET.Element("OglModel", name="Visual", texturename = tex, src="@visualloader", primitiveType = "PATCHES"))

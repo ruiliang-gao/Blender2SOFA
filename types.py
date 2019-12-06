@@ -60,7 +60,8 @@ def register_sofa_properties():
         ('FIXED', 'Fixed', 'Fixed part of the tool that moves with the handle'),
         ('LEFTCLIP', 'Left clip', 'left jaw of clip applier that rotate around X-axis'),
         ('RIGHTCLIP', 'Right clip', 'right jaw of clip applier that rotate around X-axis'),
-        ('TOOLSHAFT', 'Tool shaft', 'shaft of the tool')
+        ('TOOLSHAFT', 'Tool shaft', 'shaft of the tool'),
+        ('TOOLVISUALEFFECT', 'Tool visual effect', 'the part that renders the visual effects')
         ])
     bpy.types.Object.proximity = bpy.props.FloatProperty(name="Proximity",description="Proximity: enlargement of its collision model",min=0,default=0,max=10,step=0.001)
     bpy.types.Object.extraTag = bpy.props.StringProperty(name="Extra Tag",description='Put extra tag to the object that SOFA can access it')
