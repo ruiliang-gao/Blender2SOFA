@@ -1222,11 +1222,11 @@ def addMaterial(o, t):
 
         t.set("material", text)
 
-        if len(mat.texture_slots) >= 1 and mat.texture_slots[0] != None :
-            tex = mat.texture_slots[0].texture
-            if tex.type == 'IMAGE' :
-                t.set("texturename", bpy.path.abspath(tex.image.filepath))
-                t.set("material","")
+        # if len(mat.texture_slots) >= 1 and mat.texture_slots[0] != None :
+        #     tex = mat.texture_slots[0].texture
+        #     if tex.type == 'IMAGE' :
+        #         t.set("texturename", bpy.path.abspath(tex.image.filepath))
+        #         t.set("material","")
     if o.texture2d != '':
         t.set("texturename", "textures/"+o.texture2d)
     if o.texture3d != '':
