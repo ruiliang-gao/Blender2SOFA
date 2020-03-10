@@ -29,6 +29,7 @@ class FattyTissue(bpy.types.Operator):
     step_length_to_boundary = bpy.props.FloatProperty(name='Step Length', default=0.8, description='step length (0.0~1.0） for shifting the boudary vertices to approximate the organ surface mesh')
     add_internal_organ = bpy.props.BoolProperty(name = 'Add internal structure',default=False,description='Add internal structures')
     internal_organ = bpy.props.StringProperty(name = 'Internal Structure', description = 'Pointer to the object of Internal Structure')
+    test_int_og_bary = bpy.props.FloatVectorProperty(name="Internal Structure Position", description="Internal Structure Position", default=(0.0, 0.0, 0.0), min=-1.0, max=1.0, step=2, precision=2)
     @classmethod
     def poll(self, context):
         return context.object is not None and context.object.type == 'EMPTY' and context.object.empty_draw_type == 'CUBE' and len(context.selected_objects) == 2
@@ -50,6 +51,7 @@ class FattyTissue(bpy.types.Operator):
         l.prop_search(self, 'organ', context.scene, 'objects')
         if self.add_internal_organ:
             l.prop_search(self,'internal_organ', context.scene, 'objects')
+            l.prop(self, 'test_int_og_bary')
         # l.prop(self, 'resolution')
         l.prop(self, 'resolutionX')
         l.prop(self, 'resolutionY')
@@ -76,6 +78,11 @@ class FattyTissue(bpy.types.Operator):
         maxL = max(listL)
         organ = bpy.data.objects[self.organ]    # formerly o
         cube = bpy.data.objects[self.cube]      # formerly c
+
+        listX = [] # for inisotropic hex meshing
+        listY = []
+        listZ = []
+        
         if self.add_internal_organ:
             int_organ = bpy.data.objects[self.internal_organ] 
             int_organInv = int_organ.matrix_world.inverted()
