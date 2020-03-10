@@ -745,7 +745,7 @@ def collisionModelParts(o, opt, obstacle = False, group = None, bothSide = 0):
         # if o.safetyConcern: 
         #     objectTag = 'HapticSurface HapticSurfaceVolume SafetySurface'
         # else:
-        objectTag = 'HapticSurface HapticSurfaceVolume'
+        objectTag = 'HapticSurface HapticSurfaceVolume SafetyForceThreshold_' + str(o.safetyForceThreshold)
     elif o.interactive and o.template == 'CLOTH':
         objectTag = 'HapticSurface HapticCloth'
     elif o.interactive:
@@ -957,7 +957,6 @@ def exportDeformableGrid(o,opt):
           oglshd = ET.Element("OglShader", fileVertexShaders = o.shaderFile, fileTessellationControlShaders = o.shaderFile,
 				   fileTessellationEvaluationShaders = o.shaderFile, fileFragmentShaders = o.shaderFile, printLog="1");
           ogltesslvl = ET.Element("OglFloatVariable", name="TessellationLevel", value = "6")
-
           v.append(oglshd)
           v.append(ogltesslvl)
           v.append(ET.Element("OglModel", name="Visual", texturename = tex, src="@visualloader", primitiveType = "PATCHES"))

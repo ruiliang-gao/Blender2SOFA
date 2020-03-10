@@ -38,7 +38,7 @@ def register_sofa_properties():
         ('INSTRUMENTTIP','Tip of Instrument','Active part of the instrument that performs actions', 'OOPS', 12),
         ('INSTRUMENTCOLLISION','Collision part of Instrument' ,'Collision part of the instrument along the shaft', 'OOPS', 13),
         ('SAFETYSURFACE', 'Safety surface','An surface object that used for safety detection', 'MOD_SUBSURF', 14),
-        ('DEFORMABLE', 'Defomable Grid ','An deformable surface object that is embeded in a grid structure: To use it, first export .obj to SOFA/share/mesh  ', 'LATTICE_DATA', 15),
+        ('DEFORMABLE', 'Defomable Grid ','An deformable surface object that is embeded in a grid structure: To use it, first export .obj to SOFA/share/mesh/TIPS. Also make sure there is no spaces in object name as SOFA visual loader can not parse that', 'LATTICE_DATA', 15),
         # Rigid does not work as expected. It is hidden until it is fixed
         ('RIGID', 'Rigid', '', 'SOLID', 16)
         ])

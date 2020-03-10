@@ -27,9 +27,9 @@ class FattyTissue(bpy.types.Operator):
     preserve_interior = bpy.props.BoolProperty(name = 'Preserve interior volume',default=True, description='The output hex mesh will preserve the volume that are inside the organ')
     map_to_boundary = bpy.props.BoolProperty(name = 'Map to boundary',default=False, description='Try to approximate the boundary surface of the organ ')
     step_length_to_boundary = bpy.props.FloatProperty(name='Step Length', default=0.8, description='step length (0.0~1.0） for shifting the boudary vertices to approximate the organ surface mesh')
-    add_internal_organ = bpy.props.BoolProperty(name = 'Add internal structure',default=False,description='Add internal structures')
+    add_internal_organ = bpy.props.BoolProperty(name = 'Add internal structure',default=True,description='Add internal structures')
     internal_organ = bpy.props.StringProperty(name = 'Internal Structure', description = 'Pointer to the object of Internal Structure')
-    test_int_og_bary = bpy.props.FloatVectorProperty(name="Internal Structure Position", description="Internal Structure Position", default=(0.0, 0.0, 0.0), min=-1.0, max=1.0, step=2, precision=2)
+    test_int_bary = bpy.props.FloatVectorProperty(name="Internal Structure Position", description="Internal Structure Position", default=(0.0, 0.0, 0.0), min=-1.00, max=1.00, step=10, precision=3)
     @classmethod
     def poll(self, context):
         return context.object is not None and context.object.type == 'EMPTY' and context.object.empty_draw_type == 'CUBE' and len(context.selected_objects) == 2
@@ -51,7 +51,7 @@ class FattyTissue(bpy.types.Operator):
         l.prop_search(self, 'organ', context.scene, 'objects')
         if self.add_internal_organ:
             l.prop_search(self,'internal_organ', context.scene, 'objects')
-            l.prop(self, 'test_int_og_bary')
+            l.prop(self, 'test_int_bary')
         # l.prop(self, 'resolution')
         l.prop(self, 'resolutionX')
         l.prop(self, 'resolutionY')
@@ -79,13 +79,65 @@ class FattyTissue(bpy.types.Operator):
         organ = bpy.data.objects[self.organ]    # formerly o
         cube = bpy.data.objects[self.cube]      # formerly c
 
-        listX = [] # for inisotropic hex meshing
-        listY = []
-        listZ = []
+        listX = [-1] # length = LX+1, range = (-1,1), for inisotropic hex meshing
+        listY = [-1]
+        listZ = [-1]
+        
+        organInv = organ.matrix_world.inverted()    # formerly oinv
+        cubeInv = cube.matrix_world.inverted()      # formerly cinv
         
         if self.add_internal_organ:
-            int_organ = bpy.data.objects[self.internal_organ] 
+            int_organ = bpy.data.objects[self.internal_organ]
+            int_organ_center_global = int_organ.matrix_world * 0.125 * sum((Vector(b) for b in int_organ.bound_box), Vector())
+            cube_center_global = cube.matrix_world * 0.125 * sum((Vector(b) for b in cube.bound_box), Vector())
+            # print("int_organ center_global: ", int_organ_center_global)
+            # print("cube_center_global: ", cube_center_global)
+            int_organ_center_cube = cubeInv*int_organ_center_global
+            # print("relative center of the internal in the cube: ",int_organ_center_cube)
+            # print("and: ",int_organ_center_cube)
+
             int_organInv = int_organ.matrix_world.inverted()
+            
+            #compute listX:
+            nLeft = np.floor((self.test_int_bary[0]+1)*(LX+1)/2)-1
+            sumLeft = nLeft*(nLeft+1)/2
+            nRight = LX-nLeft-2
+            sumRight = nRight*(nRight+1)/2
+            listX.append(-0.9)
+            for i in range(int(nLeft),0,-1):
+                listX.append(listX[len(listX)-1]+0.9*i/sumLeft)
+            for i in range(1, int(nRight+1)):
+                listX.append(listX[len(listX)-1]+0.9*i/sumRight)
+            listX.append(listX[len(listX)-1]+0.1)
+
+            #compute listY:
+            nLeft = np.floor((self.test_int_bary[1]+1)*(LY+1)/2)-1
+            sumLeft = nLeft*(nLeft+1)/2
+            nRight = LY-nLeft-2
+            sumRight = nRight*(nRight+1)/2
+            listY.append(-0.9)
+            for i in range(int(nLeft),0,-1):
+                listY.append(listY[len(listY)-1]+0.9*i/sumLeft)
+            for i in range(1, int(nRight+1)):
+                listY.append(listY[len(listY)-1]+0.9*i/sumRight)
+            listY.append(listY[len(listY)-1]+0.1)
+
+            #compute listZ:
+            nLeft = np.floor((self.test_int_bary[2]+1)*(LZ+1)/2)-1
+            sumLeft = nLeft*(nLeft+1)/2
+            nRight = LZ-nLeft-2
+            sumRight = nRight*(nRight+1)/2
+            listZ.append(-0.9)
+            for i in range(int(nLeft),0,-1):
+                listZ.append(listZ[len(listZ)-1]+0.9*i/sumLeft)
+            for i in range(1, int(nRight+1)):
+                listZ.append(listZ[len(listZ)-1]+0.9*i/sumRight)
+            listZ.append(listZ[len(listZ)-1]+0.1)
+
+            print("ListX ", listX)
+            print("ListY ", listY)
+            print("ListZ ", listZ)
+
         listEdgeLenth = [cube.scale[0]/LX , cube.scale[1]/LY , cube.scale[2]/LZ]
         minEdgeLength = min(listEdgeLenth) * cube.empty_draw_size #in cube's coord
         # print("minEdgeLength",minEdgeLength)
@@ -104,8 +156,7 @@ class FattyTissue(bpy.types.Operator):
         vertexIndex = np.zeros([LX+1,LY+1,LZ+1],dtype=int)
         # Generate vertices for the points, test each one against the
         # organ, if outside then flag them and add them to the vertex list
-        organInv = organ.matrix_world.inverted()    # formerly oinv
-        cubeInv = cube.matrix_world.inverted()      # formerly cinv
+        
         #radius = cube.empty_draw_size * (cube.scale[0] + cube.scale[1] + cube.scale[2]) / meanL / 2.0
         radius = cube.empty_draw_size * np.power((cube.scale[0] * cube.scale[1] * cube.scale[2]),1/3) / 2.0 # half of the diagonal
         #minEdgeLength = cube.empty_draw_size * (cube.scale[0] + cube.scale[1] + cube.scale[2]) / MaxL / 2.0
@@ -116,7 +167,9 @@ class FattyTissue(bpy.types.Operator):
         for x in range(LX+1):
          for y in range(LY+1):
           for z in range(LZ+1):
-            if self.add_perturbations:# dx,dy,dz are perturbations
+            if self.add_internal_organ:
+                co = cube.empty_draw_size * Vector((listX[x],listY[y],listZ[z]))
+            elif self.add_perturbations:# dx,dy,dz are perturbations
                 dx, dy, dz = random.random()/3.0, random.random()/3.0, random.random()/3.0 # random floating point number in range [0.0, 1.0).
                 co = cube.empty_draw_size * ( (2.0 * Vector(((x+dx)/LX,(y+dy)/LY,(z+dz)/LZ))) - Vector((1,1,1)) )
             else:
