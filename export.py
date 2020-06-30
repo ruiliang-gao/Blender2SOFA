@@ -342,10 +342,10 @@ def exportThickCurve(o, opt):
         t.append(ET.Element("UniformMass", mass = o.totalMass))
     #h = ET.Element("HexahedronFEMForceField",template="Vec3d", method="large")
     if o.materialType == "ELASTIC":
-        h = ET.Element("HexahedronFEMForceField",method="large")
+        h = ET.Element("HexahedralFEMForceField",method="large")
         addElasticityParameters(o,h)
     elif o.materialType == "PLASTIC":
-        h = ET.Element("TetrahedronFEMForceField",method="large")
+        h = ET.Element("HexahedralFEMForceField",method="large")
         addElasticityParameters(o,h)
         addPlasticityParameters(o,h)
     elif o.materialType == "HYPERELASTIC":
@@ -434,7 +434,7 @@ def exportThickQuadShell(o, opt):
         h = ET.Element("HexahedronFEMForceField",method="large")
         addElasticityParameters(o,h)
     elif o.materialType == "PLASTIC":
-        h = ET.Element("TetrahedronFEMForceField",method="large")
+        h = ET.Element("HexahedronFEMForceField",method="large")
         addElasticityParameters(o,h)
         addPlasticityParameters(o,h)
     elif o.materialType == "HYPERELASTIC":
@@ -583,7 +583,7 @@ def exportVolumetric(o, opt):
           if not o.shaderFile:
             print("no default shader for volumetric exists!")
           elif o.useTessellation:
-            oglshd = ET.Element("OglShader", fileVertexShaders = o.shaderFile, fileTessellationControlShaders = o.shaderFile,
+            oglshd = ET.Element("OglShader", fileVertexShaders = o.shaderFile, fileGeometryShaders=o.shaderFile, fileTessellationControlShaders = o.shaderFile,
              fileTessellationEvaluationShaders = o.shaderFile, fileFragmentShaders = o.shaderFile, printLog="1");
             ogltesslvl = ET.Element("OglFloatVariable", name="TessellationLevel", value = "8")
             n.append(oglshd)
@@ -639,7 +639,7 @@ def exportHexVolumetric(o, opt):
         h = ET.Element("HexahedronFEMForceField",method="large")
         addElasticityParameters(o,h)
     elif o.materialType == "PLASTIC":
-        h = ET.Element("TetrahedronFEMForceField",method="large")
+        h = ET.Element("HexahedralFEMForceField",method="large")
         addElasticityParameters(o,h)
         addPlasticityParameters(o,h)
     elif o.materialType == "HYPERELASTIC":
@@ -1112,7 +1112,6 @@ def addPlasticityParameters(o, t):
     t.set("plasticYieldThreshold", o.plasticYieldThreshold)
     t.set("plasticMaxThreshold", o.plasticMaxThreshold)
     t.set("plasticCreep", o.plasticCreep)
-    t.set("computeGlobalMatrix", "false")
     return t
 
 # default oglShader config
@@ -1419,12 +1418,18 @@ def exportHaptic(l, opt):
                                permanent="true", listening="true", alignOmniWithCamera=scene.alignOmniWithCamera,
                                forceScale = 1));
         else:
-          rl.append(ET.Element("SurfLabHapticDevice",
+            hapticDriverNode = ET.Element("SurfLabHapticDevice",
                                  name = 'driver',
                                  deviceName = hp.deviceName,
                                  tags= omniTag, scale = hp.scale * scaleBase , positionBase = positionBase, orientationBase = orientationBase, desirePosition = moveTo,
                                  permanent="true", listening="true", alignOmniWithCamera=scene.alignOmniWithCamera,
-                                 forceScale = hp.forceScale));
+                                 forceScale = hp.forceScale);
+            if hp.enableAndroidController:
+                hapticDriverNode.set("enableUDPServer", "true")
+                hapticDriverNode.set("inServerIPAddr", hp.serverIPAddr)
+                hapticDriverNode.set("inServerPortNum", hp.serverPortNum)
+                hapticDriverNode.set("orientationBase", "0.0 0.0 0.0 1.0")
+            rl.append(hapticDriverNode);
         rl.append(ET.Element("MechanicalObject", name="ToolRealPosition", tags=omniTag, template="Rigid3d", position="0 0 0 0 0 0 1",free_position="0 0 0 0 0 0 1"))
         nt = ET.Element("Node",name = "Tool");
         nt.append(ET.Element("MechanicalObject", template="Rigid3d", name="RealPosition"))

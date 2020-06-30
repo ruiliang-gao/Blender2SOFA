@@ -206,4 +206,7 @@ class HapticProperties(bpy.types.PropertyGroup):
     scale = bpy.props.FloatProperty(name='Workspace Scale',description='Scaling applied to the workspace box of the haptic',default=25,min=1,max=10000,step=10)
     forceScale = bpy.props.FloatProperty(name='Force-feedback Scale',description='Scaling applied to force feedback',default=0.0008,min=0,precision=5,max=10000,soft_max=1)
     forceFeedback = bpy.props.BoolProperty(name='Force-feedback enabled',description='Enable force-feedback for this haptic device',default=False)
-    deviceName = bpy.props.StringProperty(name='Device Name',description='Name of the haptic device name as registered in the Geomagic Touch Setup application')
+    deviceName = bpy.props.StringProperty(name='Device Name',description='Name of the haptic device name as registered in the Geomagic Touch Setup application', default='PHANToM')
+    enableAndroidController = bpy.props.BoolProperty(name='Android Controller enabled',description='Enable the TIPS Android Controller',default=False)
+    serverIPAddr = bpy.props.StringProperty(name='Server IP Addr',description='Server IP Address', default='0.0.0.0')
+    serverPortNum = bpy.props.StringProperty(name='Server Port Num',description='Server Port Number', default='5555')
