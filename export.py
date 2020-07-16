@@ -337,7 +337,7 @@ def exportThickCurve(o, opt):
 
     # set massDensity later
     if opt.scene.versionSOFA == "18":
-        t.append(ET.Element("UniformMass", vertexMass = o.totalMass))
+        t.append(ET.Element("UniformMass", vertexMass = o.totalMass, handleTopoChange="true"))
     else:
         t.append(ET.Element("UniformMass", mass = o.totalMass))
     #h = ET.Element("HexahedronFEMForceField",template="Vec3d", method="large")
@@ -434,7 +434,7 @@ def exportThickQuadShell(o, opt):
         h = ET.Element("HexahedronFEMForceField",method="large")
         addElasticityParameters(o,h)
     elif o.materialType == "PLASTIC":
-        h = ET.Element("HexahedronFEMForceField",method="large")
+        h = ET.Element("HexahedralFEMForceField",method="large")
         addElasticityParameters(o,h)
         addPlasticityParameters(o,h)
     elif o.materialType == "HYPERELASTIC":
@@ -550,7 +550,7 @@ def exportVolumetric(o, opt):
     t.append(ET.Element('TetrahedronSetGeometryAlgorithms', template = 'Vec3d'))
 
     # set massDensity later
-    t.append(ET.Element("UniformMass", vertexMass = o.totalMass))
+    t.append(ET.Element("UniformMass", vertexMass = o.totalMass, handleTopoChange="true"))
     if o.materialType == "ELASTIC":
         h = ET.Element('TetrahedralCorotationalFEMForceField')
         addElasticityParameters(o,h)
@@ -632,7 +632,7 @@ def exportHexVolumetric(o, opt):
 
     # set massDensity later
     if opt.scene.versionSOFA == "18":
-        t.append(ET.Element("UniformMass", vertexMass = o.totalMass))
+        t.append(ET.Element("UniformMass", vertexMass = o.totalMass, handleTopoChange="true"))
     else:
         t.append(ET.Element("UniformMass", mass = o.totalMass))
     if o.materialType == "ELASTIC":
