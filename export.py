@@ -1429,6 +1429,7 @@ def exportHaptic(l, opt):
                 hapticDriverNode.set("inServerIPAddr", hp.serverIPAddr)
                 hapticDriverNode.set("inServerPortNum", hp.serverPortNum)
                 hapticDriverNode.set("orientationBase", "0.0 0.0 0.0 1.0")
+                hapticDriverNode.set("alignOmniWithCamera","true")
             rl.append(hapticDriverNode);
         rl.append(ET.Element("MechanicalObject", name="ToolRealPosition", tags=omniTag, template="Rigid3d", position="0 0 0 0 0 0 1",free_position="0 0 0 0 0 0 1"))
         nt = ET.Element("Node",name = "Tool");
