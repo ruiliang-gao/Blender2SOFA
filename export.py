@@ -1569,7 +1569,7 @@ def exportScene(opt):
     root.set("dt",0.01)
 
     #lcp = ET.Element("LCPConstraintSolver", tolerance="1e-6", maxIt = "1000", mu = scene.mu, '1e-6'))
-    lcp = ET.Element("GenericConstraintSolver", tolerance="1e-6", maxIterations = "1000")
+    lcp = ET.Element("GenericConstraintSolver", tolerance="1e-6", maxIterations = "10000")
     root.append(lcp)
 
     root.append(ET.Element('FreeMotionAnimationLoop'))
