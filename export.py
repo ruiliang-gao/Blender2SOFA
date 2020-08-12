@@ -465,9 +465,36 @@ def exportThickQuadShell(o, opt):
       n.extend(collisionModelParts(o, opt, group = o.collisionGroup, bothSide = 0))
       n.append(ET.Element("BarycentricMapping",input="@../MO",output="@MOC"))
 
+      # #Visual Model: triangle surface
+      # vt = ET.Element('Node', name="Visual_trisurf")
+      # vt.append(ET.Element("TriangleSetTopologyContainer", name= name + "-triSurf", src = "@../" + tp.get('name')))
+      # if o.shaderFile and o.useTessellation:
+      #     oglshd = ET.Element("OglShader", fileVertexShaders = o.shaderFile, fileTessellationControlShaders = o.shaderFile,
+      #            fileTessellationEvaluationShaders = o.shaderFile, fileFragmentShaders = o.shaderFile, printLog="1")
+      #     ogltesslvl = ET.Element("OglFloatVariable", name="TessellationLevel", value = "6")
+      #     vt.append(oglshd)
+      #     vt.append(ogltesslvl)
+      #     ogl = ET.Element("OglModel", primitiveType = "PATCHES", name= name + '-triSurf-visual')
+      #     addMaterial(o, ogl)
+      #     vt.append(ogl)
+      #     vt.append(ET.Element("IdentityMapping", input="@../../MO", output='@' + name + "-triSurf-visual"))
+      # elif o.shaderFile and not o.useTessellation:
+      #     oglshd = ET.Element("OglShader", fileVertexShaders = o.shaderFile, fileFragmentShaders = o.shaderFile, printLog="1");
+      #     vt.append(oglshd)
+      #     ogl = ET.Element("OglModel", name= name + '-triSurf-visual');
+      #     addMaterial(o, ogl);
+      #     vt.append(ogl)
+      #     vt.append(ET.Element("IdentityMapping", input="@../../MO", output='@' + name + "-triSurf-visual"))
+      # else:
+      #     vt.append(exportVisual(o, opt, name = name + "-visual"))
+      #     vt.append(ET.Element("BarycentricMapping",template="Vec3d,ExtVec3d",input="@../../MO",output='@' + name + "-visual"))
+      # n.append(vt)
+      t.append(n)
+
       #Visual Model: triangle surface
       vt = ET.Element('Node', name="Visual_trisurf")
-      vt.append(ET.Element("TriangleSetTopologyContainer", name= name + "-triSurf", src = "@../" + tp.get('name')))
+      vt.append(oshell)
+      vt.append(ET.Element("TriangleSetTopologyContainer", name= name + "-triSurf", src = "@" + oshell.get('name')))
       if o.shaderFile and o.useTessellation:
           oglshd = ET.Element("OglShader", fileVertexShaders = o.shaderFile, fileTessellationControlShaders = o.shaderFile,
                  fileTessellationEvaluationShaders = o.shaderFile, fileFragmentShaders = o.shaderFile, printLog="1")
@@ -477,19 +504,18 @@ def exportThickQuadShell(o, opt):
           ogl = ET.Element("OglModel", primitiveType = "PATCHES", name= name + '-triSurf-visual')
           addMaterial(o, ogl)
           vt.append(ogl)
-          vt.append(ET.Element("IdentityMapping", input="@../../MO", output='@' + name + "-triSurf-visual"))
+          vt.append(ET.Element("IdentityMapping", input="@../MO", output='@' + name + "-triSurf-visual"))
       elif o.shaderFile and not o.useTessellation:
           oglshd = ET.Element("OglShader", fileVertexShaders = o.shaderFile, fileFragmentShaders = o.shaderFile, printLog="1");
           vt.append(oglshd)
           ogl = ET.Element("OglModel", name= name + '-triSurf-visual');
           addMaterial(o, ogl);
           vt.append(ogl)
-          vt.append(ET.Element("IdentityMapping", input="@../../MO", output='@' + name + "-triSurf-visual"))
+          vt.append(ET.Element("IdentityMapping", input="@../MO", output='@' + name + "-triSurf-visual"))
       else:
           vt.append(exportVisual(o, opt, name = name + "-visual"))
-          vt.append(ET.Element("BarycentricMapping",template="Vec3d,ExtVec3d",input="@../../MO",output='@' + name + "-visual"))
-      n.append(vt)
-      t.append(n)
+          vt.append(ET.Element("BarycentricMapping",template="Vec3d,ExtVec3d",input="@../MO",output='@' + name + "-visual"))
+      t.append(vt)
     # The Following been commented out since we only want the visual from outter collision shell
     # Visual: currently using triangle for visual model since quad mesh may not be planar
     # v = ET.Element('Node', name="Visual")
@@ -1428,8 +1454,8 @@ def exportHaptic(l, opt):
                 hapticDriverNode.set("enableUDPServer", "true")
                 hapticDriverNode.set("inServerIPAddr", hp.serverIPAddr)
                 hapticDriverNode.set("inServerPortNum", hp.serverPortNum)
-                hapticDriverNode.set("orientationBase", "0.0 0.0 0.0 1.0")
-                hapticDriverNode.set("alignOmniWithCamera","true")
+                # hapticDriverNode.set("orientationBase", "0.0 0.0 0.0 1.0")
+                # hapticDriverNode.set("alignOmniWithCamera","true")
             rl.append(hapticDriverNode);
         rl.append(ET.Element("MechanicalObject", name="ToolRealPosition", tags=omniTag, template="Rigid3d", position="0 0 0 0 0 0 1",free_position="0 0 0 0 0 0 1"))
         nt = ET.Element("Node",name = "Tool");
