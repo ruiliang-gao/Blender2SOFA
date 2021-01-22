@@ -24,6 +24,7 @@ For more help, look at `Installation intstructions with pictures`_
 Documentation
 -------------
 Tutorials and documentation are avaliable at http://www.cise.ufl.edu/~dxie/mastersproject/index.shtml
+short demo: https://www.youtube.com/watch?v=LSszJ8AzXio
 
 License
 -------
