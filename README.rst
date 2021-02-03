@@ -24,7 +24,10 @@ For more help, look at `Installation intstructions with pictures`_
 Documentation
 -------------
 Tutorials and documentation are avaliable at http://www.cise.ufl.edu/~dxie/mastersproject/index.shtml
+
 short demo: https://www.youtube.com/watch?v=LSszJ8AzXio
+
+generate hexahedral fatty tissue: https://drive.google.com/file/d/1xSis_aq4juAdgKX0e2KWAoqGn2VFsYiq/view?usp=sharing
 
 License
 -------
