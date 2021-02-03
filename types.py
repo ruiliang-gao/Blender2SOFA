@@ -85,8 +85,23 @@ def register_sofa_properties():
     # Other Material Types & Params
     bpy.types.Object.materialType = bpy.props.EnumProperty(name="Material type",default='ELASTIC',items=[
         ('ELASTIC', 'Elasticity', 'use default elastic material with CorotationalFEM'),
-        ('PLASTIC', 'Plasticity', 'use plastic material'),
-        ('HYPERELASTIC', 'Hyperelasticity', 'use hyperelastic material')   
+        ('PLASTIC', 'Plasticity', 'use plastic material')
+        # ('SOFAPLASTIC', 'SOFAPlasticity', 'use default plastic material of SOFA tetrahedralFEM')   
+        ])
+
+    bpy.types.Object.displacementMethod = bpy.props.EnumProperty(name="DisplacementMethod",default='polar',items=[
+        ('polar', 'polar', 'use Polar method to compute displacements'),
+        ('large', 'large', 'use QR method to compute displacements')  
+        ])
+
+    bpy.types.Object.plasticityMethods = bpy.props.EnumProperty(name="PlasticityMethods",default='ConstantCenter',items=[
+        ('SOFA', 'SOFA', 'SOFA default plastic material of SOFA tetrahedralFEM'),
+        ('ConstantCenter', 'ConstantCenter', 'piecewise constant center plastic deformation material'),
+        ('PhongCenter', 'PhongCenter', 'Phong Deformation with transform applied per cellToVertex'),
+        ('PhongVertex', 'PhongVertex', 'Phong Deformation with transform applied per vertex'),
+        ('TrilinearVertexVolumeMethod1', 'TrilinearVertexVolumeMethod1', 'Phong Deformation with transform applied per vertex perserving element volume'),
+        ('TrilinearVertexVolumeMethod2', 'TrilinearVertexVolumeMethod2', 'Phong Deformation with transform applied per vertex perserving element volume'),
+        ('TrilinearVertexVolumeMethod3', 'TrilinearVertexVolumeMethod3', 'Phong Deformation with transform applied per vertex perserving element volume')
         ])
 
     bpy.types.Object.materialName = bpy.props.EnumProperty(name="Material name",default='StVenantKirchhoff',items=[
