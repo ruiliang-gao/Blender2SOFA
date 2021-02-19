@@ -346,31 +346,14 @@ def exportThickCurve(o, opt):
         addElasticityParameters(o,h)
     elif o.materialType == "PLASTIC":
         if o.plasticityMethods == "SOFA":
-            h = ET.Element("TetrahedronFEMForceField",method="large")
+            h = ET.Element("TetrahedronFEMForceField",method=o.displacementMethod)
             addElasticityParameters(o,h)
             addPlasticityParameters(o,h)
-        elif o.plasticityMethods == "ConstantCenter":
-            h = ET.Element("HexahedralFEMForceField",method="large")
-            addElasticityParameters(o,h)
-            addPlasticityParameters(o,h)
-        elif o.plasticityMethods == "PhongVertex":
-            h = ET.Element("HexahedralFEMForceField",method="large", useVertexPlasticity="true")
-            addElasticityParameters(o,h)
-            addPlasticityParameters(o,h)
-        elif o.plasticityMethods == "TrilinearVertexVolumeMethod1":
-            h = ET.Element("HexahedralFEMForceField",method="large", useVertexPlasticity="true", preserveElementVolume="true", debugPlasticMethod="0")
-            addElasticityParameters(o,h)
-            addPlasticityParameters(o,h)
-        elif o.plasticityMethods == "TrilinearVertexVolumeMethod2":
-            h = ET.Element("HexahedralFEMForceField",method="large", useVertexPlasticity="true", preserveElementVolume="true", debugPlasticMethod="1")
-            addElasticityParameters(o,h)
-            addPlasticityParameters(o,h)
-        elif o.plasticityMethods == "TrilinearVertexVolumeMethod3":
-            h = ET.Element("HexahedralFEMForceField",method="large", useVertexPlasticity="true", preserveElementVolume="true", debugPlasticMethod="2")
-            addElasticityParameters(o,h)
-            addPlasticityParameters(o,h)    
         else:
-            self.report({'ERROR'}, "Methods not implemented...")
+            h = ET.Element("HexahedralFEMForceField",method=o.displacementMethod, preserveElementVolume="true")
+            addElasticityParameters(o,h)
+            addPlasticityParameters(o,h)  
+    
     t.append(h)
     # unstable hyperelastic below , commented out
     # elif o.materialType == "HYPERELASTIC":
@@ -459,52 +442,10 @@ def exportThickQuadShell(o, opt):
         h = ET.Element("HexahedronFEMForceField",method=o.displacementMethod)
         addElasticityParameters(o,h)
     elif o.materialType == "PLASTIC":
-        if o.plasticityMethods == "SOFA":
-            h = ET.Element("TetrahedronFEMForceField",method="polar")
-            addElasticityParameters(o,h)
-            addPlasticityParameters(o,h)
-        elif o.plasticityMethods == "ConstantCenter":
-            h = ET.Element("HexahedralFEMForceField",method="polar")
-            addElasticityParameters(o,h)
-            addPlasticityParameters(o,h)
-        elif o.plasticityMethods == "PhongVertex":
-            h = ET.Element("HexahedralFEMForceField",method="polar", useVertexPlasticity="true")
-            addElasticityParameters(o,h)
-            addPlasticityParameters(o,h)
-        elif o.plasticityMethods == "TrilinearVertexVolumeMethod1":
-            h = ET.Element("HexahedralFEMForceField",method="polar", useVertexPlasticity="true", preserveElementVolume="true", debugPlasticMethod="0")
-            addElasticityParameters(o,h)
-            addPlasticityParameters(o,h)
-        elif o.plasticityMethods == "TrilinearVertexVolumeMethod2":
-            h = ET.Element("HexahedralFEMForceField",method="polar", useVertexPlasticity="true", preserveElementVolume="true", debugPlasticMethod="1")
-            addElasticityParameters(o,h)
-            addPlasticityParameters(o,h)
-        elif o.plasticityMethods == "TrilinearVertexVolumeMethod3":
-            h = ET.Element("HexahedralFEMForceField",method="polar", useVertexPlasticity="true", preserveElementVolume="true", debugPlasticMethod="2")
-            addElasticityParameters(o,h)
-            addPlasticityParameters(o,h)    
-        else:
-            self.report({'ERROR'}, "Methods not implemented...")
+        h = ET.Element("HexahedralFEMForceField",method=o.displacementMethod, preserveElementVolume="true")
+        addElasticityParameters(o,h)
+        addPlasticityParameters(o,h)
     t.append(h)
-         
-    # if o.materialType == "ELASTIC":
-    #     h = ET.Element("HexahedronFEMForceField",method="large")
-    #     addElasticityParameters(o,h)
-    # elif o.materialType == "PLASTIC":
-    #     if o.plasticityMethods == "SOFA":
-    #         h = ET.Element("TetrahedronFEMForceField",method="large")
-    #         addElasticityParameters(o,h)
-    #         addPlasticityParameters(o,h)
-    #     elif o.plasticityMethods == "ConstantCenter":
-    #         h = ET.Element("HexahedralFEMForceField",method="large")
-    #         addElasticityParameters(o,h)
-    #         addPlasticityParameters(o,h)
-    #     elif o.plasticityMethods == "PhongVertex":
-    #         h = ET.Element("HexahedralFEMForceField",method="large", useVertexPlasticity="true")
-    #         addElasticityParameters(o,h)
-    #         addPlasticityParameters(o,h)
-    #     else:
-    #         self.report({'ERROR'}, "Methods not implemented...")
 
     # t.append(h)
     if o.damping > 0:
@@ -736,7 +677,7 @@ def exportHexVolumetric(o, opt):
             addElasticityParameters(o,h)
             addPlasticityParameters(o,h)
         elif o.plasticityMethods == "ConstantCenter":
-            h = ET.Element("HexahedralFEMForceField",method=o.displacementMethod)
+            h = ET.Element("HexahedralFEMForceField",method=o.displacementMethod, preserveElementVolume="true")
             addElasticityParameters(o,h)
             addPlasticityParameters(o,h)
         elif o.plasticityMethods == "PhongVertex":
@@ -1026,7 +967,7 @@ def exportDeformableGrid(o,opt):
         h = ET.Element("HexahedronFEMForceField",method="large",updateStiffnessMatrix="false")
         addElasticityParameters(o,h)
     elif o.materialType == "PLASTIC":
-        h = ET.Element("TetrahedronFEMForceField",method="large")
+        h = ET.Element("HexahedralFEMForceField",method=o.displacementMethod, preserveElementVolume="true")
         addElasticityParameters(o,h)
         addPlasticityParameters(o,h)
     t.append(h)
