@@ -1,40 +1,47 @@
-# Changelog 2.79 - 2.80
+# Changelog 2.80 - 2.90 (Updated 3/7/2021)
 
 ## Version
-In __init__.py:
-'blender': (2, 80, 0)
 
-## Registration
-To register a class, add the class to the ```classes``` list in __init__.py, the class will be registered and unregistered in the for loops
+In **init**.py:
 
-```
-for c in classes:
-        bpy.utils.register_class(c)
-```
+- Line 5: Changed to `'blender': (2, 90, 0)`
+- Changed deprecated `wiki_url` to `doc_url`
 
-Some classes still need to call a function to register more (register_other())
+## Error Fixes
 
-## Naming conventions
-context.user_preferences is now just context.preferences
+In export.py:
 
-INFO_MT_ is now TOPBAR_MT_ (this was not documented in Blender's API changes)
-
-* labels (and other functions) now require keyword arguments, for example:
-```
-layout.label('Haptic properties')
-is now
-layout.label(text='Haptic properties')
-```
-
-* class variables now must be annotations
-```
-cube = bpy.props.StringProperty(name = 'Sampling Cube', description = 'The cube used for sampling')
-is now
-cube: bpy.props.StringProperty(name = 'Sampling Cube', description = 'The cube used for sampling')
-```
-
-## Math
-Matrix multiply is now @ instead of *, you can see this change on export.py near line 1316
-```
-lookAt = o.matrix_world @ Vector((0,0,-1))
-```
+- Fixed light color exporting
+- Update 'points' parameter name to 'position' for HexahedronSetTopologyContainer
+- Remove deprecated object HexahedronSetTopologyAlgorithms
+- Do not apply unrelated attribute 'damping' to HexahedronFEMForceField
+- Fixed material/color exporting for objects
+- Update data templates for several nodes
+- Change several aliasas to the actual classes prevent issues when they are removed in the future
+- Update addConstraints matrix-vector multiplication format
+- Remove unused attribute "removeIsolated" for TriangleSetTopologyModifier
+- Improved vector_to_string, export\*, and stringify_tree functions to avoid/handle exceptions better
+- Improve memory safety when handling vectors
+- Remove unecessary author-\* tags from AttachConstraints
+- Prevent duplicate RequirePlugin nodes
+- Change exportVisual to handle tris/quads better and prevent blender crashes
+- Always add tearing threshold to ConnectingTissue to prevent SOFA issues
+- Double check that with_transform is True while using exportVisual
+- Correct object1/object2 to input/output for certain uses of BarycentricMapping
+- Use to_mesh_clear after using to_mesh to prevent blender crashes
+  In runsofa.py:
+- Add opt.pluginAddedCT boolean to track whether the connecting tissue plugin has been added
+  In thick_curve.py:
+- Initialize bevel_resolution to 0
+  In io_msh.py:
+- Fix crash from using icon that no longer exists
+  In ui.py:
+- Remove out unused operator `option.convert_hex_to_tet`
+- Fix .label() to use `text=` for hyperelastic
+  In fattytissue.py:
+- Update execute matrix-vector multiplication format
+- Assume the Empty Cube is part of a collection rather than free in the scene
+- Lower attachThreshold to prevent SOFA crash when points are projected
+  In conn_tissue.py:
+- Update to use new matrix-vector multiplication format
+- Remove invalid line `ct.suture = True`

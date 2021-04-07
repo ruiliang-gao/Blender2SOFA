@@ -25,7 +25,7 @@ class SOFA_PT_Actions(bpy.types.Panel):
         layout.separator()
         layout.operator("option.export_obj", icon='EXPORT')
         layout.separator()
-        layout.operator("option.convert_hex_to_tet", icon='DRIVER')
+        #layout.operator("option.convert_hex_to_tet", icon='DRIVER')
         layout.label(text='SOFA Create')
         c = layout.column(align=True)
         #c.operator("mesh.construct_connecting_tissue", icon='OUTLINER_OB_META', text='Connecting Tissue')
@@ -73,7 +73,7 @@ class SOFA_PT_AnnotationPanel(bpy.types.Panel):
                 c.prop(p,'plasticCreep')
             elif (p.materialType == 'HYPERELASTIC'):
                 c.prop(p, 'materialName')
-                layout.label('To use hyperelasticity, this object needs to be tetrahedral mesh', icon='ARROW_LEFTRIGHT')
+                layout.label(text='To use hyperelasticity, this object needs to be tetrahedral mesh', icon='ARROW_LEFTRIGHT')
             c.prop(p, 'youngModulus')
             c.prop(p, 'poissonRatio')
             c.prop(p, 'damping')

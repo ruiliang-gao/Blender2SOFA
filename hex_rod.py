@@ -1,162 +1,361 @@
+# This file can be used as a stand-alone plugin
+# but here it is used in the Blened2SOFA package
+bl_info = {
+    'name': "GMSH Import/Export plugin",
+    'author': "Saleh Dindar",
+    'version': (0, 1, 0),
+    'blender': (2, 80, 0),
+    'location': "https://bitbucket.org/surflab/blender2sofa/src/default/io_msh.py",
+    'warning': "",
+    'description': "Import/export tetrahedral meshes from/to GMSH files",
+    'wiki_url': "https://bitbucket.org/surflab/blender2sofa/wiki/IO_MSH",
+    'tracker_url': "https://bitbucket.org/surflab/blender2sofa/issues",
+    'category': "Import-Export",
+}
+
 import bpy
-import math
-import numpy as np
-from mathutils import Vector
+import bpy_extras
+import re
+import os
+import bmesh
 
-class HexRod(bpy.types.Operator):
-    bl_idname = "mesh.construct_hex_rod"
-    bl_label = "Construct Hex Rod"
-    bl_options = { 'UNDO' }
-    bl_description = "Create a rod made of hexahedra (one per unit length) along the input curve"    
-    hex_number: bpy.props.IntProperty(name="Number of hexahedra (default = 20)", description = "Number of hexahedra to construct")    
-    rod_radius: bpy.props.FloatProperty(name="Radius of the rod (default = curve length/30)", description = "Radius of the rod")
-    rod_bevel_factor: bpy.props.FloatProperty(name="Bevel Factor(default = 0)", description = "For taper only, enter -1 if no taper needed")     
-    
-    def invoke(self, context, event):
-        return context.window_manager.invoke_props_dialog(self)
+def encodeTriFacet(a, b, c):
+    if a < b:
+        if a < c:
+            i,j,k = a,b,c
+        else:
+            i,j,k = c,a,b
+    else:
+        if b < c:
+            i,j,k = b,c,a
+        else:
+            i,j,k = c,a,b
 
-    def draw(self, context):        
-        layout = self.layout
-        col = layout.column_flow(align=True, columns=1)        
-        col.prop(self,"hex_number")
-        rad = layout.column_flow(align=True, columns=1)        
-        rad.prop(self,"rod_radius")
-        bev = layout.column_flow(align=True, columns=1)
-        bev.prop(self,"rod_bevel_factor")
-        
-    
+    return i << 40 | j << 20 | k
+
+def decodeTriFacet(f):
+    a = f >> 40 & ( (1 << 20) - 1 )
+    b = f >> 20 & ( (1 << 20) - 1 )
+    c = f       & ( (1 << 20) - 1 )
+    return [int(a),int(b),int(c)]
+
+
+def encodeQuadFacet(a, b, c, d):
+    # rearrange the vertices so that: the first is the smallest, orientation is preserved
+    vt = [a,b,c,d]
+    vf = map(float,[a,b,c,d])
+    mv = min(vf)
+    minIdx = -1
+    for vi,v in enumerate(vt):
+        if abs(mv-v)<.1:
+            minIdx = vi; break
+    if minIdx == 0:
+        i,j,k,l = a,b,c,d
+    elif minIdx == 1:
+        i,j,k,l = b,c,d,a
+    elif minIdx == 2:
+        i,j,k,l = c,d,a,b
+    elif minIdx == 3:
+        i,j,k,l = d,a,b,c
+    # assert(max(vf) < 32768) # max index < 2^15
+    return i << 45 | j << 30 | k << 15 | l
+
+def decodeQuadFacet(f):
+    a = f >> 45 & ( (1 << 15) - 1 )
+    b = f >> 30 & ( (1 << 15) - 1 )
+    c = f >> 15 & ( (1 << 15) - 1 )
+    d = f       & ( (1 << 15) - 1 )
+    return [int(a),int(b),int(c),int(d)]
+
+hex_faces = [ [0,1,2,3],[4,7,6,5],[0,4,5,1],[1,5,6,2],[3,2,6,7],[0,3,7,4] ]
+tet_faces = [ [1,3,2], [0,2,3], [0,3,1], [0,1,2] ]
+def recalc_outer_surface(M):
+    triFaceSet = set()
+    for t in M.tetrahedra:
+        for l in tet_faces:
+            f = encodeTriFacet(t.vertices[l[0]],t.vertices[l[1]],t.vertices[l[2]])
+            rf = encodeTriFacet(t.vertices[l[0]],t.vertices[l[2]],t.vertices[l[1]])
+            if rf in triFaceSet:
+                triFaceSet.remove(rf)
+            else:
+                triFaceSet.add(f)
+
+    quadFaceSet = set()
+    for t in M.hexahedra:
+        for l in hex_faces:
+            f = encodeQuadFacet(t.vertices[l[0]],t.vertices[l[1]],t.vertices[l[2]],t.vertices[l[3]])
+            rf = encodeQuadFacet(t.vertices[l[0]],t.vertices[l[3]],t.vertices[l[2]],t.vertices[l[1]])
+            if rf in quadFaceSet:
+                quadFaceSet.remove(rf)
+            else:
+                quadFaceSet.add(f)
+
+    bm = bmesh.new()
+    bm.from_mesh(M)
+
+    # Remove all the faces created previously,
+    # since we are recalculating the outer surface
+    for f in bm.faces:
+        bm.faces.remove(f)
+    for e in bm.edges:
+        bm.edges.remove(e)
+
+    if hasattr(bm.verts, 'ensure_lookup_table'):
+        bm.verts.ensure_lookup_table()
+        bm.edges.ensure_lookup_table()
+        bm.faces.ensure_lookup_table()
+
+    # Add all the triangular faces
+    for f in triFaceSet:
+        a, b, c = decodeTriFacet(f)
+        bm.faces.new([bm.verts[a],bm.verts[b],bm.verts[c]])
+
+    # Add all the quad faces
+    for f in quadFaceSet:
+        # for some reason we have to reverse the faces
+        # All the logic here is sound but without inverting
+        # the order the surfaces look inside out
+        c, b, a, d = decodeQuadFacet(f)
+        bm.faces.new([bm.verts[a],bm.verts[b],bm.verts[c],bm.verts[d]])
+
+    # Update the data structures
+    bm.faces.index_update()
+    bm.to_mesh(M)
+    bm.free()
+    M.update(calc_edges=True)
+    M.calc_normals()
+
+
+class MeshTetrahedron(bpy.types.PropertyGroup):
+    """Represent a tetrahedron in a mesh"""
+    vertices: bpy.props.IntVectorProperty(size=4)
+
+class MeshHexahedron(bpy.types.PropertyGroup):
+    """Represent a hexahedron in a mesh"""
+    vertices: bpy.props.IntVectorProperty(size=8)
+
+# A panel will give us a permanent place in the data tab for meshes
+class VolumetricMeshPanel(bpy.types.Panel):
+    """A panel to edit tetrahedral and hexahedral mesh properties"""
+    bl_label = "Volumetric Mesh"
+    bl_idname = "MESH_PT_Volumetric"
+    bl_space_type = 'PROPERTIES'
+    bl_region_type = 'WINDOW'
+    bl_context = "data"
+
     @classmethod
     def poll(self, context):
-        # return (context.object is not None and context.object.type == 'MESH')
-        return (context.object is not None)
-    
+        return (context.object is not None and context.object.type == 'MESH')
+
+    def check(self, context):
+        return True
+    def draw(self, context):
+        layout = self.layout
+        M = context.object.data
+        layout.label(text=("Tetrahedron count: %d" % len(M.tetrahedra)))
+        layout.label(text=("Hexahedron count: %d" % len(M.hexahedra)))
+        layout.operator('mesh.recalculate_outer_surface', icon='OVERLAY')
+        layout.operator('mesh.remove_degenerate_hexa')
+
+class ReCalculateOuterSurface(bpy.types.Operator):
+    bl_idname = "mesh.recalculate_outer_surface"
+    bl_label = "Recalculate outer surfaces of a volumetric mesh"
+    bl_description = "Remove all the polygons of the mesh and re-calcualte the outer surface by going through all tetrahedra and hexahedra"
+
+    @classmethod
+    def poll(cls, context):
+        o = context.object
+        return o is not None and o.type == 'MESH' and len(o.data.tetrahedra) + len(o.data.hexahedra) > 0
+
     def execute(self, context):
-        construct(context, self)
-        return {'FINISHED'}
-    
-    def cancel(self,context):
-        return {'CANCELLED'}
+        recalc_outer_surface(context.object.data)
+        return { 'FINISHED' }
 
-def constructSegments(context,options):
-    # return a piecewise linear curve from the original curve 
-    curve = context.selected_objects[0]     
-    # m = curve.to_mesh(context.scene, True, 'PREVIEW')  
-    m = curve.to_mesh()  
-    return m
+def remove_degenerate_hexahedra(M):
+    inverted_hexa = 0
+    degenerate_hexa = []
+    for i, h in enumerate(M.hexahedra):
+        v = []
+        for j in h.vertices:
+            v.append(M.vertices[j].co)
+        a = v[1] - v[0]
+        b = v[3] - v[0]
+        c = v[4] - v[0]
+        V = a.cross(b).dot(c)
+        if (abs(V) < 0.01 * (a.length**3 + b.length**3 + c.length**3)):
+            degenerate_hexa.append(i)
+        elif V < 0.0:
+            w = h.vertices
+            h.vertices = [ w[4], w[5], w[6], w[7], w[0], w[1], w[2], w[3] ]
+            inverted_hexa = inverted_hexa + 1
 
-def construct(context, options):
-    # m = constructSegments(context, options)
-    curve = context.selected_objects[0]   
+    degenerate_hexa.reverse()
+    for i in degenerate_hexa:
+        M.hexahedra.remove(i)
+    recalc_outer_surface(M)
+    return
 
-    # duplicate to just calculate length and default values 
-    bpy.ops.object.duplicate()
-    curve1 = context.selected_objects[0]     
-    curve1.data.splines[0].resolution_u = 20
-    # m = curve1.to_mesh(context.scene,True,"PREVIEW")
-    m = curve1.to_mesh()
-    nE = len(m.edges)
-    curveLen = 0
-    for i in range(nE):
-        curveLen = curveLen + (m.vertices[m.edges[i].vertices[0]].co - m.vertices[m.edges[i].vertices[1]].co).length
-    if options.rod_radius==0:
-        options.rod_radius = curveLen/30
-    if options.hex_number==0:
-        options.hex_number = 20
-  
-    
-    curve.data.splines[0].resolution_u = options.hex_number
+class RemoveDegenerateHexahedra(bpy.types.Operator):
+    bl_idname = "mesh.remove_degenerate_hexa"
+    bl_label = "Remove degenerate hexahedra"
+    bl_description = "Find all the hexahedra with very small volume and remove them, also find inverted hexahehdra and fix them"
+    bl_options = { 'UNDO' }
 
-    # create a square 
-    bpy.ops.curve.primitive_bezier_circle_add(radius=options.rod_radius)  
-    square = context.selected_objects[0]
-    square.data.splines[0].resolution_u = 1
+    @classmethod
+    def poll(cls, context):
+        o = context.object
+        return o is not None and o.type == 'MESH' and len(o.data.tetrahedra) + len(o.data.hexahedra) > 0
 
-    curve.data.bevel_object = bpy.data.objects[square.name]
-    if options.rod_bevel_factor != -1:
-        curve.data.taper_object = bpy.data.objects[square.name]
-        curve.data.bevel_factor_start = options.rod_bevel_factor
-    #curve.data.use_fill_caps = True
-    # m.data.bevel_object = bpy.data.objects[square.name]
+    def execute(self, context):
+        M = context.object.data
 
-    # outcome mesh from the bevel object 
-    # tube = curve.to_mesh(context.scene,True,"PREVIEW")
-    tube = curve.to_mesh()
-    nMvert = len(tube.vertices)
-    nHex = int(len(tube.polygons)/4)
-    # now construct the hex rod 
-    M = bpy.data.meshes.new(name = "hex_mesh")
-    bpy.ops.object.transform_apply(location=True, rotation=True, scale=True)
-    M.vertices.add(nMvert)
-    for i in range(nMvert):
-        M.vertices[i].co = curve.matrix_world * tube.vertices[i].co
-        # bpy.ops.mesh.primitive_ico_sphere_add(size=.1,location=M.vertices[i].co)    
+    def execute(self, context):
+        M = context.object.data
 
-    # check if the orientation defined by 4 first vertices of the first 4 quads 
-    # is the same as the direction pointing into the volume
-    vec1 = tube.vertices[tube.polygons[1].vertices[0]].co 
-    vec0 = tube.vertices[tube.polygons[0].vertices[0]].co
-    vec3 = tube.vertices[tube.polygons[3].vertices[0]].co         
-    vec01 = Vector((vec1[0]-vec0[0],vec1[1]-vec0[1],vec1[2]-vec0[2]))
-    vec03 = Vector((vec3[0]-vec0[0],vec3[1]-vec0[1],vec3[2]-vec0[2]))            
-    dir0123 =  crossProd(vec01,vec03)  
-    out0 = tube.vertices[tube.polygons[0].vertices[0]].co
-    in0  = tube.vertices[tube.polygons[4].vertices[0]].co
-    out2in = Vector((in0[0]-out0[0],in0[1]-out0[1],in0[2]-out0[2]))            
-    dotp = dotProd(dir0123,out2in)  
-    if dotp>0:
-        pointIn  = True 
-    elif dotp<0:
-        pointIn = False 
-    else:
-        print("the test hex is too distorted"); assert(False)
-     
-    # here assume that tube.polygons[0].vertices[3] = tube.polygons[4].vertices[0]
-    if (tube.vertices[tube.polygons[0].vertices[1]].co-tube.vertices[tube.polygons[4].vertices[0]].co).length > 1e-9:
-        print("hex_rod.py: convention not satisfied"); assert(False)
-              
-    for i in range(nHex):
-        hex = M.hexahedra.add()
-        for j in range(4):
-            hex.vertices[j] = tube.polygons[4*i + j].vertices[0]
-            hex.vertices[4+j] = tube.polygons[4*i + j].vertices[1]
-    
-    # make_hex_outer_surface(M)
+        inverted_hexa = 0
+        degenerate_hexa = []
+        for i, h in enumerate(M.hexahedra):
+            v = []
+            for j in h.vertices:
+                v.append(M.vertices[j].co)
+            a = v[1] - v[0]
+            b = v[3] - v[0]
+            c = v[4] - v[0]
+            V = a.cross(b).dot(c)
+            if (abs(V) < 0.01 * (a.length**3 + b.length**3 + c.length**3)):
+                degenerate_hexa.append(i)
+            elif V < 0.0:
+                w = h.vertices
+                h.vertices = [ w[4], w[5], w[6], w[7], w[0], w[1], w[2], w[3] ]
+                inverted_hexa = inverted_hexa + 1
 
-    # create the outcome rod 
-    bpy.ops.object.add(type='MESH')
-    bpy.ops.object.transform_apply(location=True, rotation=True, scale=True)
-    rod = bpy.context.object  
-    rod.name = 'rod'
-    rod.data = M
-    rod['annotated_type'] = 'VOLUMETRIC'
-    rod['carvable'] = 1       
-    rod['collisionGroup'] = 1       
-    rod['contactFriction'] = 0.010  
-    rod['contactStiffness'] = 500
-    rod['damping'] = 0.100
-    rod['poissonRatio'] = 0.450
-    rod['precomputeConstraints'] = 0
-    rod['selfCollision'] = 0
-    rod['suture'] = 0
-    rod['youngModulus'] = 300
-    rod['color'] = "white"
+        degenerate_hexa.reverse()
+        for i in degenerate_hexa:
+            M.hexahedra.remove(i)
+        self.report({ 'INFO' }, "Removed %d degenerate hexahedra and inverted %d hexahedra" % (len(degenerate_hexa),inverted_hexa))
+        recalc_outer_surface(M)
+        return { 'FINISHED' }
 
-    bpy.ops.object.select_all(action='DESELECT')
-    square.select_set(True); curve.select_set(True); 
-    curve1.select_set(True)
-    bpy.ops.object.delete()
-  
+class ExportMSHOperator(bpy.types.Operator, bpy_extras.io_utils.ExportHelper):
+    bl_idname = "export_mesh.msh"
+    bl_label = "Export MSH"
 
-def crossProd(v1,v2):
-    return [v1[1]*v2[2] - v1[2]*v2[1],-(v1[0]*v2[2] - v1[2]*v2[0]),v1[0]*v2[1] - v1[1]*v2[0]]    
-        
-def dotProd(v1,v2):
-    return v1[0]*v2[0]+v1[1]*v2[1]+v1[2]*v2[2]
-        
+    filename_ext = ".msh"
+    filter_glob: bpy.props.StringProperty(default="*.msh", options={'HIDDEN'})
+    @classmethod
+    def poll(cls, context):
+        """
+        Enabled only for tetrahedral and hexahedral meshes
+        """
+        o = context.object
+        return o is not None and o.type == 'MESH' \
+            and len(o.data.hexahedra) + len(o.data.tetrahedra) > 0
+
+    def execute(self, context):
+        self.report({'ERROR'}, "Not implemented yet")
+        return { 'ERROR' }
+
+class IO_OT_import_mesh(bpy.types.Operator, bpy_extras.io_utils.ImportHelper):
+    """Load a tetrahedral mesh from GMSH file, make sure to reverse the normals of the mesh if necessary"""
+    bl_idname = "io.import_mesh"
+    bl_label = "Import MSH"
+    bl_options = {'UNDO'}
+ 
+    filename_ext = ".msh"
+    filter_glob: bpy.props.StringProperty(default="*.msh", options={'HIDDEN'})
+
+
+    def execute(self, context):
+        objName = bpy.path.display_name(os.path.basename(self.filepath))
+        M = bpy.data.meshes.new(name = objName)
+        lineno = 0; mode = ''
+        f = open(self.filepath, 'r')
+        for line in f:
+            lineno += 1
+            line = line.strip()
+            if mode == '':
+                if line == '$NOD':
+                    mode = 'NOD-first'
+                elif line == '$ELM':
+                    mode = 'ELM-first'
+                else:
+                    self.report({'ERROR'}, "%s:%d: Unexpected %s" % (objName,line, lineno))
+                    return {'CANCELLED'}
+            elif mode == 'NOD-first':
+                if re.match('^\d+\s*$', line):
+                    M.vertices.add(int(line))
+                    mode = 'NOD'
+                else:
+                    self.report({'ERROR'}, "%s:%d: Expected number of nodes here got '%s'" %(objName,lineno, line))
+                    return {'CANCELLED'}
+            elif mode == 'NOD':
+                if re.match('^\d+(\s+[+-]?\d+(\.\d*([eE][+-]?\d+)?)?){3}\s*$', line):
+                    i, x, y, z = line.split()
+                    M.vertices[int(i)-1].co[0] = float(x)
+                    M.vertices[int(i)-1].co[1] = float(y)
+                    M.vertices[int(i)-1].co[2] = float(z)
+                elif line == '$ENDNOD':
+                    mode = ''
+                else:
+                    self.report({'ERROR'}, "%s:%d: Line of node def expected here '%s'" % (objName, lineno, line))
+                    return {'CANCELLED'}
+            elif mode == 'ELM-first':
+                if re.match('^\d+\s*$', line):
+                    # Tthere is no way to resize the tetrahedra collection
+                    mode = 'ELM'
+                else:
+                    self.report({'ERROR'}, "%s:%d: Expected number of elements here got '%s'" %(objName, lineno, line))
+                    return {'CANCELLED'}
+            elif mode == 'ELM':
+                if re.match('^\d+(\s+\d+)+\s*$', line):
+                    idx, count, _, _, _, a, b, c, d = line.split()
+                    # TODO: what about triangle elements count=3
+                    # TODO: what about hexahedral elements count=8
+                    if count == '4':   
+                        i = int(idx)
+                        t = M.tetrahedra.add()
+                        if i != len(M.tetrahedra):
+                            self.report({'ERROR'}, "%s:%d: Elements must come in proper order, %d" %(objName,lineno,i))
+                            return {'CANCELLED'}
+                        t.vertices[0] = int(a) - 1
+                        t.vertices[1] = int(b) - 1
+                        t.vertices[2] = int(c) - 1
+                        t.vertices[3] = int(d) - 1  
+                elif line == '$ENDELM':
+                    mode = ''
+                else:
+                    self.report({'ERROR'}, "%s:%d: Line of element def expected here '%s'" % (objName, lineno,line))
+                    return {'CANCELLED'}
+            else:
+                assert("This line" == "Never reached")
+        f.close()
+        recalc_outer_surface(M)
+        o = bpy.data.objects.new(objName, M)
+        context.scene.collection.objects.link(o)
+        o.select_set(True)
+        return { 'FINISHED' }
+
+
+
+
+
+def menu_func_import(self, context):
+    self.layout.operator(IO_OT_import_mesh.bl_idname, text="GMSH (.msh)")
+
+def register_other():
+    bpy.types.TOPBAR_MT_file_import.append(menu_func_import)
+    bpy.types.Mesh.tetrahedra = bpy.props.CollectionProperty(name="Tetrahedra", type=MeshTetrahedron)
+    bpy.types.Mesh.hexahedra = bpy.props.CollectionProperty(name="Hexahedra", type=MeshHexahedron)
+
+def unregister_other():
+    bpy.types.TOPBAR_MT_file_import.remove(menu_func_import)
+    del bpy.types.Mesh.tetrahedra
+    del bpy.types.Mesh.hexahedra
+
 def register():
-    #bpy.utils.register_class(HexRod)
-    pass
-    
+    register_other()
+    bpy.utils.register_module(__name__)
+
 def unregister():
-    #bpy.utils.unregister_class(HexRod)
-    pass
+    unregister_other()
+    bpy.utils.unregister_module(__name__)

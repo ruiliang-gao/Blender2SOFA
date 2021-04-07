@@ -114,9 +114,9 @@ class FattyTissue(bpy.types.Operator):
                         co = cube.empty_display_size * ( (2.0 * Vector(((x+dx)/LX,(y+dy)/LY,(z+dz)/LZ))) - Vector((1,1,1)) )
                     else:
                         co = cube.empty_display_size * ( (2.0 * Vector((x/LX,y/LY,z/LZ))) - Vector((1,1,1)) ) # local coord of the cube, centered at the origin
-                    v = organInv @ cube.matrix_world * co #local coord of the organ
+                    v = (organInv @ cube.matrix_world) @ co #local coord of the organ
                     if self.add_internal_organ:
-                        v2 = int_organInv @ cube.matrix_world * co #local coord of the internal organ
+                        v2 = (int_organInv @ cube.matrix_world) @ co #local coord of the internal organ
                     # version_string is a string composed of Blender version + "(sub 0)". E.g. "2.76 (sub 0)"
                     # blenderVer stores the first 4 digits of the string, that is the version number.
                     blenderVer = bpy.app.version_string[0:4]
@@ -128,16 +128,16 @@ class FattyTissue(bpy.types.Operator):
                         location,normal,_ = organ.closest_point_on_mesh(v)
                         if self.add_internal_organ:
                             location2,normal2,_ = int_organ.closest_point_on_mesh(v)
-                    d = (organ.matrix_world * v - organ.matrix_world * location).length #distance of v to the nearest vertex on organ, in world coord
-                    d_test =  (cubeInv @ organ.matrix_world * (v - location)).length
-                    d_cube = (cubeInv @ organ.matrix_world * v - cubeInv @ organ.matrix_world * location).length #distance in cube coord
+                    d = (organ.matrix_world @ v - organ.matrix_world @ location).length #distance of v to the nearest vertex on organ, in world coord
+                    d_test =  ((cubeInv @ organ.matrix_world) @ (v - location)).length
+                    d_cube = ((cubeInv @ organ.matrix_world) @ v - (cubeInv @ organ.matrix_world) @ location).length #distance in cube coord
                     if self.add_internal_organ:
-                        d2_cube = (cubeInv @ int_organ.matrix_world * v2 - cubeInv @ int_organ.matrix_world * location2).length
+                        d2_cube = ((cubeInv @ int_organ.matrix_world) @ v2 - (cubeInv @ int_organ.matrix_world) @ location2).length
                         isInsideInternalOrgan = (normal2.dot(v2 - location2) < 0)
                     if normal.dot(v - location) > 0: # if v is outside the organ
                         if d < D : #or d < radius/2: #or project and d < radius: 
                             if self.map_to_boundary and d_cube < minEdgeLength: # to make sure algorithm is stable, we need to make sure vertex is within minEdgeLength/2 to the organ
-                                co = co + (cubeInv @ organ.matrix_world * location - cubeInv @ organ.matrix_world * v) * stepLength
+                                co = co + ((cubeInv @ organ.matrix_world) @ location - (cubeInv @ organ.matrix_world) @ v) * stepLength
                                 isNearParentOrgan[x,y,z] = True
                                 vertexIndex[x,y,z] = len(M.vertices) 
                                 M.vertices.add(1)
@@ -155,7 +155,7 @@ class FattyTissue(bpy.types.Operator):
                             isNearParentOrgan[x,y,z] = False
                     else: # v is inside
                         if self.map_to_boundary and self.add_internal_organ and not isInsideInternalOrgan and d2_cube < minEdgeLength:
-                            co = co + (cubeInv @ int_organ.matrix_world * location2 - cubeInv @ int_organ.matrix_world * v2) * stepLength
+                            co = co + ((cubeInv @ int_organ.matrix_world) @ location2 - (cubeInv @ int_organ.matrix_world) @ v2) * stepLength
                             isNearParentOrgan[x,y,z] = True
                             vertexIndex[x,y,z] = len(M.vertices) 
                             M.vertices.add(1)
@@ -213,7 +213,7 @@ class FattyTissue(bpy.types.Operator):
         
         # Remove the cube
         if not self.keep_the_cube:
-            context.scene.collection.objects.unlink(cube)
+            context.scene.collection.children[0].objects.unlink(cube)
             bpy.data.objects.remove(cube)
             
         # Select the fatty tissue object and runs the smooth function the number of times specified by the user in Blender
@@ -232,5 +232,7 @@ class FattyTissue(bpy.types.Operator):
         fatObj.carvable = True
         # Attaches the fatty tissue to the organ
         fatObj.object1 = organ.name
+        if project:
+            fatObj.attachThreshold = 0.001
 
         return { 'FINISHED' }

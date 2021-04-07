@@ -134,8 +134,9 @@ class OBJECT_OT_ConnectingTissue(bpy.types.Operator):
             sh.target = obj
             sh.use_negative_direction = True
             sh.use_positive_direction = True
-            # M = map.to_mesh(context.scene, True, 'PREVIEW')
-            M = map.to_mesh()
+            dg = context.evaluated_depsgraph_get()
+            map_eval = dg.objects.get(map.name)
+            M = map_eval.to_mesh()
             return M
 
         # Meshes of the map objects
@@ -156,7 +157,7 @@ class OBJECT_OT_ConnectingTissue(bpy.types.Operator):
         for l in range(0, L+1): #L+1 replaced by 2 for testing peritonim generation, but failed <- some bugs unfixed 
             for i in range(0, N):
                 u = l / float(L)
-                M.vertices[l * N + i].co = (1-u) * mat1 * shm1.vertices[i].co + u * mat2 * shm2.vertices[i].co
+                M.vertices[l * N + i].co = ((1-u) * mat1 @ shm1.vertices[i].co) + (u * mat2 @ shm2.vertices[i].co)
 
         # Create hexas in the new mesh object
         for l in range(0, L):
@@ -180,7 +181,6 @@ class OBJECT_OT_ConnectingTissue(bpy.types.Operator):
         ct.object1 = c1.name
         ct.object2 = c2.name
         ct.carvable = True
-        ct.suture = True
 
         # Delete the mapping objects
         bpy.ops.object.select_all(action='DESELECT')
@@ -189,7 +189,6 @@ class OBJECT_OT_ConnectingTissue(bpy.types.Operator):
         bpy.ops.object.delete()
 
         # Select the newly created object
-        m2.select_set(False)
         c1.select_set(False)
         c2.select_set(False)
         ct.select_set(True)

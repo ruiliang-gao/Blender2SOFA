@@ -43,6 +43,7 @@ class AddThickCurve(bpy.types.Operator):
             for obj in bpy.context.selected_objects:
                 obj.name = 'ModelCurve' #rename curve
                 modelcurve = obj.name
+                obj.data.bevel_resolution = 0 #set curve resolution
             bpy.ops.object.editmode_toggle()
             bpy.ops.curve.select_all(action='TOGGLE')
             bpy.context.active_object.data.splines[0].bezier_points[0].select_control_point = True
@@ -57,6 +58,7 @@ class AddThickCurve(bpy.types.Operator):
         for obj in bpy.context.selected_objects:
             obj.name = 'ThickCurve' #rename curve
             thickcurve = obj.name
+            obj.data.bevel_resolution = 0 #set curve resolution
         c1 = context.object.data
         c1.bevel_depth = 0.1
         c1.fill_mode = 'FULL'

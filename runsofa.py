@@ -43,6 +43,7 @@ class RunSofaOperator(bpy.types.Operator):
             opt.selection_only = False
             opt.directory = os.path.dirname(self.filepath)
             opt.file_format = self.file_format
+            opt.pluginAddedCT = False
             print("HELLO2")
             print(self.filepath)
             opt.pref = context.preferences.addons[__package__].preferences
