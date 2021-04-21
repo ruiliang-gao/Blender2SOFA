@@ -25,6 +25,10 @@ Documentation
 -------------
 Tutorials and documentation are avaliable at http://www.cise.ufl.edu/~dxie/mastersproject/index.shtml
 
+short demo: https://www.youtube.com/watch?v=LSszJ8AzXio
+
+generate hexahedral fatty tissue: https://drive.google.com/file/d/1xSis_aq4juAdgKX0e2KWAoqGn2VFsYiq/view?usp=sharing
+
 License
 -------
 This program is free for educational/research purpose. You will need to gain permissions from authors before you can use this program or any part of the source code for commercial usage.

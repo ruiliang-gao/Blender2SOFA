@@ -37,7 +37,7 @@ def register_sofa_properties():
         ('INSTRUMENTTIP','Tip of Instrument','Active part of the instrument that performs actions', 'OOPS', 12),
         ('INSTRUMENTCOLLISION','Collision part of Instrument' ,'Collision part of the instrument along the shaft', 'OOPS', 13),
         ('SAFETYSURFACE', 'Safety surface','An surface object that used for safety detection', 'MOD_SUBSURF', 14),
-        ('DEFORMABLE', 'Defomable Grid ','An deformable surface object that is embeded in a grid structure: To use it, first export .obj to SOFA/share/mesh  ', 'LATTICE_DATA', 15),
+        ('DEFORMABLE', 'Defomable Grid ','An deformable surface object that is embeded in a grid structure: To use it, first export .obj to SOFA/share/mesh/TIPS. Also make sure there is no spaces in object name as SOFA visual loader can not parse that', 'LATTICE_DATA', 15),
         # Rigid does not work as expected. It is hidden until it is fixed
         ('RIGID', 'Rigid', '', 'SOLID', 16)
         ])
@@ -59,7 +59,8 @@ def register_sofa_properties():
         ('FIXED', 'Fixed', 'Fixed part of the tool that moves with the handle'),
         ('LEFTCLIP', 'Left clip', 'left jaw of clip applier that rotate around X-axis'),
         ('RIGHTCLIP', 'Right clip', 'right jaw of clip applier that rotate around X-axis'),
-        ('TOOLSHAFT', 'Tool shaft', 'shaft of the tool')
+        ('TOOLSHAFT', 'Tool shaft', 'shaft of the tool'),
+        ('TOOLVISUALEFFECT', 'Tool visual effect', 'the part that renders the visual effects')
         ])
     bpy.types.Object.proximity = bpy.props.FloatProperty(name="Proximity",description="Proximity: enlargement of its collision model",min=0,default=0,max=10,step=0.001)
     bpy.types.Object.extraTag = bpy.props.StringProperty(name="Extra Tag",description='Put extra tag to the object that SOFA can access it')
@@ -83,8 +84,23 @@ def register_sofa_properties():
     # Other Material Types & Params
     bpy.types.Object.materialType = bpy.props.EnumProperty(name="Material type",default='ELASTIC',items=[
         ('ELASTIC', 'Elasticity', 'use default elastic material with CorotationalFEM'),
-        ('PLASTIC', 'Plasticity', 'use plastic material'),
-        ('HYPERELASTIC', 'Hyperelasticity', 'use hyperelastic material')   
+        ('PLASTIC', 'Plasticity', 'use plastic material')
+        # ('SOFAPLASTIC', 'SOFAPlasticity', 'use default plastic material of SOFA tetrahedralFEM')   
+        ])
+
+    bpy.types.Object.displacementMethod = bpy.props.EnumProperty(name="DisplacementMethod",default='polar',items=[
+        ('polar', 'polar', 'use Polar method to compute displacements'),
+        ('large', 'large', 'use QR method to compute displacements')  
+        ])
+
+    bpy.types.Object.plasticityMethods = bpy.props.EnumProperty(name="PlasticityMethods",default='ConstantCenter',items=[
+        ('SOFA', 'SOFA', 'SOFA default plastic material of SOFA tetrahedralFEM'),
+        ('ConstantCenter', 'ConstantCenter', 'piecewise constant center plastic deformation material'),
+        ('PhongCenter', 'PhongCenter', 'Phong Deformation with transform applied per cellToVertex'),
+        ('PhongVertex', 'PhongVertex', 'Phong Deformation with transform applied per vertex'),
+        ('TrilinearVertexVolumeMethod1', 'TrilinearVertexVolumeMethod1', 'Phong Deformation with transform applied per vertex perserving element volume'),
+        ('TrilinearVertexVolumeMethod2', 'TrilinearVertexVolumeMethod2', 'Phong Deformation with transform applied per vertex perserving element volume'),
+        ('TrilinearVertexVolumeMethod3', 'TrilinearVertexVolumeMethod3', 'Phong Deformation with transform applied per vertex perserving element volume')
         ])
 
     bpy.types.Object.materialName = bpy.props.EnumProperty(name="Material name",default='StVenantKirchhoff',items=[
@@ -107,6 +123,7 @@ def register_sofa_properties():
     bpy.types.Object.object1 = bpy.props.StringProperty(name='First Object', description='Name of the first object in the attachment')
     bpy.types.Object.object2 = bpy.props.StringProperty(name='Second Object', description='Name of the second object in the attachment')
     bpy.types.Object.attachThreshold = bpy.props.FloatProperty(name="Attach Threshold",default=0.02,min=0.001,max=1.0,step=0.001,precision=3,description='Maximum distance between connected vertices of two objects as a percentage of the size of object')
+    bpy.types.Object.tearingThreshold = bpy.props.FloatProperty(name="Spring Tearing Threshold",default=3.0,min=1.0,max=100.0,step=0.1,precision=2,description='threshold of the deform ratio(deformedLength / restLength) for tearing the spring')
 
     # Interactive features
     bpy.types.Object.carvable = bpy.props.BoolProperty(name='Carvable',description='Allow the object be interactively carved by mouse or a carving tool',default=False)
@@ -200,7 +217,10 @@ def unregister_sofa_properties():
     del bpy.types.Object.safetyConcern
     
 class HapticProperties(bpy.types.PropertyGroup):
-    scale: bpy.props.FloatProperty(name='Workspace Scale',description='Scaling applied to the workspace box of the haptic',default=25,min=1,max=10000,step=10)
-    forceScale: bpy.props.FloatProperty(name='Force-feedback Scale',description='Scaling applied to force feedback',default=0.0008,min=0,precision=5,max=10000,soft_max=1)
-    forceFeedback: bpy.props.BoolProperty(name='Force-feedback enabled',description='Enable force-feedback for this haptic device',default=False)
-    deviceName: bpy.props.StringProperty(name='Device Name',description='Name of the haptic device name as registered in the Geomagic Touch Setup application')
+    scale = bpy.props.FloatProperty(name='Workspace Scale',description='Scaling applied to the workspace box of the haptic',default=25,min=1,max=10000,step=10)
+    forceScale = bpy.props.FloatProperty(name='Force-feedback Scale',description='Scaling applied to force feedback',default=0.0008,min=0,precision=5,max=10000,soft_max=1)
+    forceFeedback = bpy.props.BoolProperty(name='Force-feedback enabled',description='Enable force-feedback for this haptic device',default=False)
+    deviceName = bpy.props.StringProperty(name='Device Name',description='Name of the haptic device name as registered in the Geomagic Touch Setup application', default='PHANToM')
+    enableAndroidController = bpy.props.BoolProperty(name='Android Controller enabled',description='Enable the TIPS Android Controller',default=False)
+    serverIPAddr = bpy.props.StringProperty(name='Server IP Addr',description='Server IP Address', default='0.0.0.0')
+    serverPortNum = bpy.props.StringProperty(name='Server Port Num',description='Server Port Number', default='5555')

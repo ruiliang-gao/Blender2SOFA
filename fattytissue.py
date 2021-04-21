@@ -43,6 +43,7 @@ class FattyTissue(bpy.types.Operator):
     step_length_to_boundary: bpy.props.FloatProperty(name='Step Length', default=0.8, description='step length (0.0~1.0） for shifting the boudary vertices to approximate the organ surface mesh')
     add_internal_organ: bpy.props.BoolProperty(name = 'Add internal structure',default=False,description='Add internal structures')
     internal_organ: bpy.props.StringProperty(name = 'Internal Structure', description = 'Pointer to the object of Internal Structure')
+
     @classmethod
     def poll(self, context):
         return context.object is not None and context.object.type == 'EMPTY' and context.object.empty_display_type == 'CUBE' and len(context.selected_objects) == 2
@@ -64,6 +65,7 @@ class FattyTissue(bpy.types.Operator):
         l.prop_search(self, 'organ', context.scene, 'objects')
         if self.add_internal_organ:
             l.prop_search(self,'internal_organ', context.scene, 'objects')
+            l.prop(self, 'test_int_bary')
         # l.prop(self, 'resolution')
         l.prop(self, 'resolutionX')
         l.prop(self, 'resolutionY')
@@ -92,10 +94,72 @@ class FattyTissue(bpy.types.Operator):
         organ = bpy.data.objects[self.organ].evaluated_get(depsgraph)    # formerly o
         organ_m = organ.to_mesh()
         cube = bpy.data.objects[self.cube]      # formerly c
+
+        listX = [-1] # length = LX+1, range = (-1,1), for inisotropic hex meshing
+        listY = [-1]
+        listZ = [-1]
+        
+        organInv = organ.matrix_world.inverted()    # formerly oinv
+        cubeInv = cube.matrix_world.inverted()      # formerly cinv
+        
         if self.add_internal_organ:
-            int_organ = bpy.data.objects[self.internal_organ].evaluated_get(depsgraph) 
+# <<<<<<< HEAD
+#             int_organ = bpy.data.objects[self.internal_organ].evaluated_get(depsgraph) 
+#             int_organInv = int_organ.matrix_world.inverted()
+#             int_organ_m = int_organ.to_mesh()
+# =======
+            int_organ = bpy.data.objects[self.internal_organ]
+            int_organ_center_global = int_organ.matrix_world * 0.125 * sum((Vector(b) for b in int_organ.bound_box), Vector())
+            cube_center_global = cube.matrix_world * 0.125 * sum((Vector(b) for b in cube.bound_box), Vector())
+            # print("int_organ center_global: ", int_organ_center_global)
+            # print("cube_center_global: ", cube_center_global)
+            int_organ_center_cube = cubeInv*int_organ_center_global
+            # print("relative center of the internal in the cube: ",int_organ_center_cube)
+            # print("and: ",int_organ_center_cube)
+
             int_organInv = int_organ.matrix_world.inverted()
-            int_organ_m = int_organ.to_mesh()
+            
+            #compute listX:
+            nLeft = np.floor((self.test_int_bary[0]+1)*(LX+1)/2)-1
+            sumLeft = nLeft*(nLeft+1)/2
+            nRight = LX-nLeft-2
+            sumRight = nRight*(nRight+1)/2
+            listX.append(-0.9)
+            for i in range(int(nLeft),0,-1):
+                listX.append(listX[len(listX)-1]+0.9*i/sumLeft)
+            for i in range(1, int(nRight+1)):
+                listX.append(listX[len(listX)-1]+0.9*i/sumRight)
+            listX.append(listX[len(listX)-1]+0.1)
+
+            #compute listY:
+            nLeft = np.floor((self.test_int_bary[1]+1)*(LY+1)/2)-1
+            sumLeft = nLeft*(nLeft+1)/2
+            nRight = LY-nLeft-2
+            sumRight = nRight*(nRight+1)/2
+            listY.append(-0.9)
+            for i in range(int(nLeft),0,-1):
+                listY.append(listY[len(listY)-1]+0.9*i/sumLeft)
+            for i in range(1, int(nRight+1)):
+                listY.append(listY[len(listY)-1]+0.9*i/sumRight)
+            listY.append(listY[len(listY)-1]+0.1)
+
+            #compute listZ:
+            nLeft = np.floor((self.test_int_bary[2]+1)*(LZ+1)/2)-1
+            sumLeft = nLeft*(nLeft+1)/2
+            nRight = LZ-nLeft-2
+            sumRight = nRight*(nRight+1)/2
+            listZ.append(-0.9)
+            for i in range(int(nLeft),0,-1):
+                listZ.append(listZ[len(listZ)-1]+0.9*i/sumLeft)
+            for i in range(1, int(nRight+1)):
+                listZ.append(listZ[len(listZ)-1]+0.9*i/sumRight)
+            listZ.append(listZ[len(listZ)-1]+0.1)
+
+            print("ListX ", listX)
+            print("ListY ", listY)
+            print("ListZ ", listZ)
+
+# >>>>>>> origin/debugPlasticity
         listEdgeLenth = [cube.scale[0]/LX , cube.scale[1]/LY , cube.scale[2]/LZ]
         minEdgeLength = min(listEdgeLenth) * cube.empty_display_size #in cube's coord
         # print("minEdgeLength",minEdgeLength)
@@ -114,16 +178,24 @@ class FattyTissue(bpy.types.Operator):
         vertexIndex = np.zeros([LX+1,LY+1,LZ+1],dtype=int)
         # Generate vertices for the points, test each one against the
         # organ, if outside then flag them and add them to the vertex list
-        organInv = organ.matrix_world.inverted()    # formerly oinv
-        cubeInv = cube.matrix_world.inverted()      # formerly cinv
-        #radius = cube.empty_display_size * (cube.scale[0] + cube.scale[1] + cube.scale[2]) / meanL / 2.0
+# <<<<<<< HEAD
+#         organInv = organ.matrix_world.inverted()    # formerly oinv
+#         cubeInv = cube.matrix_world.inverted()      # formerly cinv
+#         #radius = cube.empty_display_size * (cube.scale[0] + cube.scale[1] + cube.scale[2]) / meanL / 2.0
+#         radius = cube.empty_display_size * np.power((cube.scale[0] * cube.scale[1] * cube.scale[2]),1/3) / 2.0 # half of the diagonal
+#         #minEdgeLength = cube.empty_display_size * (cube.scale[0] + cube.scale[1] + cube.scale[2]) / MaxL / 2.0
+# =======
+        
+        #radius = cube.empty_draw_size * (cube.scale[0] + cube.scale[1] + cube.scale[2]) / meanL / 2.0
         radius = cube.empty_display_size * np.power((cube.scale[0] * cube.scale[1] * cube.scale[2]),1/3) / 2.0 # half of the diagonal
-        #minEdgeLength = cube.empty_display_size * (cube.scale[0] + cube.scale[1] + cube.scale[2]) / MaxL / 2.0
+        #minEdgeLength = cube.empty_draw_size * (cube.scale[0] + cube.scale[1] + cube.scale[2]) / MaxL / 2.0
+# >>>>>>> origin/debugPlasticity
         if not self.step_length_to_boundary:
             stepLength = 0.2
         else:
             stepLength = self.step_length_to_boundary
         for x in range(LX+1):
+# <<<<<<< HEAD
             for y in range(LY+1):
                 for z in range(LZ+1):
                     if self.add_perturbations:# dx,dy,dz are perturbations
@@ -141,6 +213,50 @@ class FattyTissue(bpy.types.Operator):
                         result,location,normal,index = closest_point_on_mesh(organ_m, v)
                         if self.add_internal_organ:
                             result2,location2,normal2,index2 = closest_point_on_mesh(int_organ_m, v2)
+ # =======
+ #         for y in range(LY+1):
+ #          for z in range(LZ+1):
+ #            if self.add_internal_organ:
+ #                co = cube.empty_display_size * Vector((listX[x],listY[y],listZ[z]))
+ #            elif self.add_perturbations:# dx,dy,dz are perturbations
+ #                dx, dy, dz = random.random()/3.0, random.random()/3.0, random.random()/3.0 # random floating point number in range [0.0, 1.0).
+ #                co = cube.empty_display_size * ( (2.0 * Vector(((x+dx)/LX,(y+dy)/LY,(z+dz)/LZ))) - Vector((1,1,1)) )
+ #            else:
+ #                co = cube.empty_display_size * ( (2.0 * Vector((x/LX,y/LY,z/LZ))) - Vector((1,1,1)) ) # local coord of the cube, centered at the origin
+ #            v = organInv * cube.matrix_world * co #local coord of the organ
+ #            if self.add_internal_organ:
+ #                v2 = int_organInv * cube.matrix_world * co #local coord of the internal organ
+ #            # version_string is a string composed of Blender version + "(sub 0)". E.g. "2.76 (sub 0)"
+ #            # blenderVer stores the first 4 digits of the string, that is the version number.
+ #            blenderVer = bpy.app.version_string[0:4]
+ #            if (float(blenderVer) >= 2.77):
+ #                result,location,normal,index = organ.closest_point_on_mesh(v)
+ #                if self.add_internal_organ:
+ #                    result2,location2,normal2,index2 = int_organ.closest_point_on_mesh(v2)
+ #            else:
+ #                location,normal,_ = organ.closest_point_on_mesh(v)
+ #                if self.add_internal_organ:
+ #                    location2,normal2,_ = int_organ.closest_point_on_mesh(v)
+ #            d = (organ.matrix_world * v - organ.matrix_world * location).length #distance of v to the nearest vertex on organ, in world coord
+ #            d_test =  (cubeInv * organ.matrix_world * (v - location)).length
+ #            d_cube = (cubeInv * organ.matrix_world * v - cubeInv * organ.matrix_world * location).length #distance in cube coord
+ #            if self.add_internal_organ:
+ #                d2_cube = (cubeInv * int_organ.matrix_world * v2 - cubeInv * int_organ.matrix_world * location2).length
+ #                isInsideInternalOrgan = (normal2.dot(v2 - location2) < 0)
+ #            if normal.dot(v - location) > 0: # if v is outside the organ
+ #                if d < D : #or d < radius/2: #or project and d < radius: 
+ #                    if self.map_to_boundary and d_cube < minEdgeLength: # to make sure algorithm is stable, we need to make sure vertex is within minEdgeLength/2 to the organ
+ #                        co = co + (cubeInv * organ.matrix_world * location - cubeInv * organ.matrix_world * v) * stepLength
+ #                        isNearParentOrgan[x,y,z] = True
+ #                        vertexIndex[x,y,z] = len(M.vertices) 
+ #                        M.vertices.add(1)
+ #                        M.vertices[-1].co = co #idx '-1' means the last one
+ #                    elif not self.map_to_boundary:
+ #                        isNearParentOrgan[x,y,z] = True
+ #                        vertexIndex[x,y,z] = len(M.vertices) 
+ #                        M.vertices.add(1)
+ #                        M.vertices[-1].co = co #idx '-1' means the last one
+ # >>>>>>> origin/debugPlasticity
                     else:
                         location,normal,_ = closest_point_on_mesh(organ_m, v)
                         if self.add_internal_organ:

@@ -67,13 +67,15 @@ class SOFA_PT_AnnotationPanel(bpy.types.Panel):
             c.prop(p, 'proximity')
         elif t in [ 'VOLUMETRIC', 'THICKSHELL', 'THICKCURVE', 'DEFORMABLE']:
             c.prop(p,'materialType')
+            c.prop(p,'displacementMethod')
             if (p.materialType == 'PLASTIC'):
+                c.prop(p,'plasticityMethods')
                 c.prop(p,'plasticYieldThreshold')
                 c.prop(p,'plasticMaxThreshold')
                 c.prop(p,'plasticCreep')
-            elif (p.materialType == 'HYPERELASTIC'):
-                c.prop(p, 'materialName')
-                layout.label(text='To use hyperelasticity, this object needs to be tetrahedral mesh', icon='ARROW_LEFTRIGHT')
+            # elif (p.materialType == 'HYPERELASTIC'):
+            #     c.prop(p, 'materialName')
+            #     layout.label('To use hyperelasticity, this object needs to be tetrahedral mesh', icon='ARROW_LEFTRIGHT')            
             c.prop(p, 'youngModulus')
             c.prop(p, 'poissonRatio')
             c.prop(p, 'damping')
@@ -279,7 +281,7 @@ class ExportObjToSofa(bpy.types.Operator):
             if not p.endswith('\\'):
                 p = p + '\\'
             target_path = os.path.join(p, objname)
-            bpy.ops.export_scene.obj(filepath=target_path, check_existing=True, axis_forward='Y', axis_up='Z', filter_glob="*.obj;*.mtl", use_selection=True, use_animation=False, use_mesh_modifiers=False, use_edges=False, use_smooth_groups=False, use_smooth_groups_bitflags=False, use_normals=True, use_uvs=True, use_materials=True, use_triangles=True, use_nurbs=False, use_vertex_groups=False, use_blen_objects=True, group_by_object=False, group_by_material=False, keep_vertex_order=False, global_scale=1, path_mode='AUTO')
+            bpy.ops.export_scene.obj(filepath=target_path, check_existing=True, axis_forward='Y', axis_up='Z', filter_glob="*.obj;*.mtl", use_selection=True, use_animation=False, use_mesh_modifiers=False, use_edges=False, use_smooth_groups=False, use_smooth_groups_bitflags=False, use_normals=False, use_uvs=True, use_materials=True, use_triangles=True, use_nurbs=False, use_vertex_groups=False, use_blen_objects=True, group_by_object=False, group_by_material=False, keep_vertex_order=False, global_scale=1, path_mode='AUTO')
         else:
             print("Please specify the SOFA meshpath first.")
         return { 'FINISHED' }
