@@ -25,7 +25,7 @@ classes = (
     conn_tiss.OBJECT_PT_ConnectingTissuePanel, conn_tiss.OBJECT_OT_ShrinkwrapTest, conn_tiss.OBJECT_OT_ConnectingTissue, 
     ui.SOFA_PT_Actions, ui.SOFA_PT_AnnotationPanel, ui.SOFA_PT_PropertyPanel, ui.GenerateFixedConstraints, ui.ExportObjToSofa, ui.ConvertFromCustomProperties, 
     fattytissue.FattyTissue, 
-    hex_rod.HexRod, 
+    # hex_rod.HexRod, 
     io_msh.MeshTetrahedron, io_msh.MeshHexahedron, io_msh.VolumetricMeshPanel, io_msh.ReCalculateOuterSurface, io_msh.RemoveDegenerateHexahedra, io_msh.ExportMSHOperator, io_msh.IO_OT_import_mesh, 
     io_zip.ImportZIP, 
     preferences.HAPTIC_UL_DeviceList, preferences.AddHapticDevice, preferences.RemoveHapticDevice, 
