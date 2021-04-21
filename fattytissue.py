@@ -7,6 +7,20 @@ from mathutils import Vector
 # Relative vertex indices of a hexahedron
 HEX_VERTICES = [ (0,0,0), (1,0,0), (1,1,0), (0,1,0), (0,0,1), (1,0,1), (1,1,1), (0,1,1) ]
 
+def closest_point_on_mesh(m, v):
+    minlen = 10000000000000000
+    loc = None
+    norm = None
+    idx = -1
+    for v2idx in range(len(m.vertices)):
+        v2 = m.vertices[v2idx]
+        if (v - v2.co).length < minlen:
+            minlen = (v - v2.co).length
+            loc = v2.co
+            norm = v2.normal
+            idx = v2.index
+    return (idx == -1), loc, norm, idx
+
 class FattyTissue(bpy.types.Operator):
     bl_idname = "mesh.construct_fatty_tissue"
     bl_label = "Construt Fatty Tissue"
@@ -74,11 +88,14 @@ class FattyTissue(bpy.types.Operator):
         meanL = (LX + LY + LZ)/3
         listL = [LX, LY, LZ]
         maxL = max(listL)
-        organ = bpy.data.objects[self.organ]    # formerly o
+        depsgraph = context.evaluated_depsgraph_get()
+        organ = bpy.data.objects[self.organ].evaluated_get(depsgraph)    # formerly o
+        organ_m = organ.to_mesh()
         cube = bpy.data.objects[self.cube]      # formerly c
         if self.add_internal_organ:
-            int_organ = bpy.data.objects[self.internal_organ] 
+            int_organ = bpy.data.objects[self.internal_organ].evaluated_get(depsgraph) 
             int_organInv = int_organ.matrix_world.inverted()
+            int_organ_m = int_organ.to_mesh()
         listEdgeLenth = [cube.scale[0]/LX , cube.scale[1]/LY , cube.scale[2]/LZ]
         minEdgeLength = min(listEdgeLenth) * cube.empty_display_size #in cube's coord
         # print("minEdgeLength",minEdgeLength)
@@ -121,13 +138,13 @@ class FattyTissue(bpy.types.Operator):
                     # blenderVer stores the first 4 digits of the string, that is the version number.
                     blenderVer = bpy.app.version_string[0:4]
                     if (float(blenderVer) >= 2.77):
-                        result,location,normal,index = organ.closest_point_on_mesh(v)
+                        result,location,normal,index = closest_point_on_mesh(organ_m, v)
                         if self.add_internal_organ:
-                            result2,location2,normal2,index2 = int_organ.closest_point_on_mesh(v2)
+                            result2,location2,normal2,index2 = closest_point_on_mesh(int_organ_m, v2)
                     else:
-                        location,normal,_ = organ.closest_point_on_mesh(v)
+                        location,normal,_ = closest_point_on_mesh(organ_m, v)
                         if self.add_internal_organ:
-                            location2,normal2,_ = int_organ.closest_point_on_mesh(v)
+                            location2,normal2,_ = closest_point_on_mesh(int_organ_m, v)
                     d = (organ.matrix_world @ v - organ.matrix_world @ location).length #distance of v to the nearest vertex on organ, in world coord
                     d_test =  ((cubeInv @ organ.matrix_world) @ (v - location)).length
                     d_cube = ((cubeInv @ organ.matrix_world) @ v - (cubeInv @ organ.matrix_world) @ location).length #distance in cube coord
@@ -213,8 +230,7 @@ class FattyTissue(bpy.types.Operator):
         
         # Remove the cube
         if not self.keep_the_cube:
-            context.scene.collection.children[0].objects.unlink(cube)
-            bpy.data.objects.remove(cube)
+            bpy.data.objects.remove(cube, do_unlink=True)
             
         # Select the fatty tissue object and runs the smooth function the number of times specified by the user in Blender
         # The smooth function can only be executed in Edit Mode
@@ -234,5 +250,9 @@ class FattyTissue(bpy.types.Operator):
         fatObj.object1 = organ.name
         if project:
             fatObj.attachThreshold = 0.001
+        
+        organ.to_mesh_clear()
+        if self.add_internal_organ:
+            int_organ.to_mesh_clear()
 
         return { 'FINISHED' }

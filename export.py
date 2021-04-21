@@ -354,7 +354,7 @@ def exportThickCurveTopology(o, opt, name):
     o.to_mesh_clear()
     return geometryNode(opt, ET.Element('HexahedronSetTopologyContainer', name = name, position = points, hexahedra = hexahedra))
 
-# CURRENTLY PROBLEMATIC DUE TO A BLENDER BUG: SEE https://developer.blender.org/T86871
+# There is a chance for this function to crash Blender due to a bug which has not yet been fixed on the latest version (2.92 as of this writing)
 def exportThickCurve(o, opt, l):
     if o not in l:
         return
@@ -1261,18 +1261,39 @@ def addMaterial(o, t):
     if len(m.materials) >= 1 :
         text = ""
         if m.materials[0].use_nodes:
-            mat = m.materials[0].node_tree.nodes['Specular'].inputs
+            mat = m.materials[0].node_tree.nodes["Material Output"].inputs["Surface"].links[0].from_node.inputs
 
             # diffuse_intensity, ambient, emit, alpha, specular_hardness
+            d_val = Vector((0.8, 0.8, 0.8))
             d_val = mat["Base Color"].default_value
-            a_val = mat["Ambient Occlusion"].default_value
             s_val = mat["Specular"].default_value
-            e_val = mat["Emissive Color"].default_value
+            if type(mat["Specular"]) is bpy.types.NodeSocketFloatFactor:
+                s_val = (d_val[0], d_val[1], d_val[2], s_val)
+                try:
+                    s_val = Vector(mult_color((1.0,1.0,1.0), 1.0 - mat["Specular Tint"].default_value)) + Vector(mult_color(d_val, mat["Specular Tint"].default_value))
+                    s_val = mult_color(s_val, mat["Specular"].default_value)
+                    s_val = (s_val[0], s_val[1], s_val[2], 1.0)
+                except KeyError as e:
+                    pass
+            try:
+                e_val = mat["Emissive Color"].default_value
+            except KeyError as e:
+                try:
+                    e_val = mat["Emission"].default_value
+                except KeyError as e2:
+                    e_val = Vector((0.0, 0.0, 0.0))
             ss = mat["Roughness"].default_value
-            tr = 1.0 - mat["Transparency"].default_value
+            try:
+                tr = 1.0 - mat["Transparency"].default_value
+            except KeyError as e:
+                try:
+                    tr = 1.0 - mat["Alpha"].default_value
+                except KeyError as e2:
+                    tr = 0.0
 
-            d = vector_to_string(mult_color(fix_color(d_val[0:4]),d_val[3]))
-            a = vector_to_string(mult_color(fix_color(d_val[0:4]),a_val))
+            d = mult_color(fix_color(d_val[0:4]),d_val[3])
+            d = vector_to_string(Vector((d[0], d[1], d[2], 1.0)))
+            a = vector_to_string(mult_color(fix_color(d_val[0:4]),1.0-d_val[3]))
             s = vector_to_string(fix_color(s_val[0:4]))
             e = vector_to_string(fix_color(e_val[0:4]))
             
