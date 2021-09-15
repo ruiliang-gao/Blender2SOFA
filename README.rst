@@ -10,15 +10,17 @@ parameters that are needed in a SOFA simulation.
 
 Install
 -------
-1. Download latest distribution zip file `surflab-blender2sofa-latest.zip`_
+1. Download latest distribution zip file `surflab-blender2sofa-v2_9.zip`_ for blender v2.9 or `surflab-blender2sofa-v2_79.zip`_ for blender v2.79
 2. Use *Install From File...* in *Addons* tab of Blender to install the plugin
 3. Activate the plugin from the list. Hit *Save User Settings* to make it permanent.
 
-For more help, look at `Installation intstructions with pictures`_
+For more help, Refer to `Blender 2.93 intstructions with Add-ons`_
 
-.. _Installation intstructions with pictures: https://bitbucket.org/surflab/blender2sofa/wiki/Install
+.. _Blender 2.93 intstructions with Add-ons: https://docs.blender.org/manual/en/latest/editors/preferences/addons.html
 
-.. _surflab-blender2sofa-latest.zip: https://bitbucket.org/surflab/blender2sofa/get/default.zip
+.. _surflab-blender2sofa-v2_79.zip: https://bitbucket.org/surflab/blender2sofa/get/default.zip
+.. _surflab-blender2sofa-v2_9.zip: https://bitbucket.org/surflab/blender2sofa/get/2.9.zip
+
 
 
 Documentation
