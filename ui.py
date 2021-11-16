@@ -172,7 +172,7 @@ class SofaScenePropertyPanel(bpy.types.Panel):
         c.prop(s, "alarmDistance")
         c.prop(s, "contactDistance")
         c.prop(s, "showXYZFrame")
-        c.prop(s, "precompution")
+        # c.prop(s, "precompution") # commented out as being instable
         c.prop(s, "useSpeechRecognition")
         c.label('Haptic Setup')
         c.prop(s, "alignOmniWithCamera")
@@ -264,7 +264,7 @@ class ConvertHexToTet(bpy.types.Operator):
         
 class ExportObjToSofa(bpy.types.Operator):
     bl_idname = "option.export_obj"
-    bl_label = "Export Selected Object to SOFA"
+    bl_label = "Export Selected Object to SOFA as OBJ"
     bl_options = { 'UNDO' }
     bl_description = 'Select the object first, and click to export .obj and .mtl files to SOFA/share/mesh'
 

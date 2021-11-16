@@ -44,11 +44,8 @@ class Blender2SOFASettings(bpy.types.AddonPreferences):
             h = self.hapticDevices[self.activeHapticDevice]
             b.prop(h, 'deviceName')
             b.prop(h, 'scale')
-            b.prop(h, 'enableAndroidController')
-            if h.enableAndroidController:
-                b.prop(h, 'serverIPAddr')
-                b.prop(h, 'serverPortNum')
-            else:
+            b.prop(h, 'enableBluetoothController')
+            if not h.enableBluetoothController:
                 b.prop(h, 'forceFeedback')
                 if h.forceFeedback:
                     b.prop(h, 'forceScale')

@@ -116,7 +116,7 @@ def addSolvers(t):
       t.append(ET.Element("EulerImplicitSolver", rayleighMass="0.05", rayleighStiffness="0.0"))
       t.append(ET.Element("CGLinearSolver",iterations="50", tolerance="1.0e-10", threshold="1.0e-6"))
 
-def convertHexTo5Tets(o):
+def convertHexTo5Tets(o): #biased partition as elements along one diagonal
     if o.type == 'MESH' and hasattr(o.data,'hexahedra') and len(o.data.hexahedra) > 0:
             mesh = o.data
     else:
@@ -183,6 +183,7 @@ def exportHexahedralTopology(o, opt, name):
 
     c =  ET.Element('HexahedronSetTopologyContainer', name= name, points = points, hexahedra = hexahedra) # createTriangleArray='1'
     return geometryNode(opt,c)
+
 def exportThickShellCollision(o, opt, name): 
     if o.alternativeCollision:
         collisionObject = opt.scene.objects[o.alternativeCollision]
@@ -204,6 +205,7 @@ def exportThickShellCollision(o, opt, name):
         points[i+V*j][1] = vn[1]
         points[i+V*j][2] = vn[2]
     
+    # get all quads from collision mesh
     quads = list(filter(lambda f: len(f.vertices) == 4, m.polygons))
     quadCount = len(quads)
     
@@ -332,12 +334,12 @@ def exportThickCurve(o, opt):
 
     t.append(createMechanicalObject(o))
     t.append(ET.Element('HexahedronSetTopologyModifier', removeIsolated = 'false'))
-    t.append(ET.Element('HexahedronSetTopologyAlgorithms',template="Vec3d"))
+    # t.append(ET.Element('HexahedronSetTopologyAlgorithms',template="Vec3d")) # deprecated
     t.append(ET.Element('HexahedronSetGeometryAlgorithms',template="Vec3d"))
 
     # set massDensity later
     if opt.scene.versionSOFA == "18":
-        t.append(ET.Element("UniformMass", vertexMass = o.totalMass, handleTopoChange="true"))
+        t.append(ET.Element("UniformMass", vertexMass = o.totalMass, handleTopologicalChanges="true"))
     else:
         t.append(ET.Element("UniformMass", mass = o.totalMass))
     #h = ET.Element("HexahedronFEMForceField",template="Vec3d", method="large")
@@ -364,7 +366,7 @@ def exportThickCurve(o, opt):
       qs.append(ET.Element("QuadSetTopologyContainer", name=name + "-quadSurf"))
       qs.append(ET.Element("QuadSetGeometryAlgorithms", template="Vec3d"))
       qs.append(ET.Element("QuadSetTopologyModifier"))
-      qs.append(ET.Element("QuadSetTopologyAlgorithms", template="Vec3d"))
+      # qs.append(ET.Element("QuadSetTopologyAlgorithms", template="Vec3d"))
       qs.append(ET.Element("Hexa2QuadTopologicalMapping", input='@../' + topo, output="@" + name + "-quadSurf"))
       if o.useShader:
         if not o.shaderFile:
@@ -385,7 +387,7 @@ def exportThickCurve(o, opt):
       ts = ET.Element('Node', name="triangle-surface")
       ts.append(ET.Element('TriangleSetTopologyContainer',name=name + '-triSurf'))
       ts.append(ET.Element('TriangleSetTopologyModifier'))
-      ts.append(ET.Element('TriangleSetTopologyAlgorithms', template="Vec3d"))
+      # ts.append(ET.Element('TriangleSetTopologyAlgorithms', template="Vec3d"))
       ts.append(ET.Element('TriangleSetGeometryAlgorithms', template="Vec3d"))
       ts.append(ET.Element('Quad2TriangleTopologicalMapping', input = "@../" + name + "-quadSurf", output = "@" + name + "-triSurf"))
       ts.extend(collisionModelParts(o, opt))
@@ -424,7 +426,7 @@ def exportThickQuadShell(o, opt):
     t.append(createMechanicalObject(o))
 
     t.append(ET.Element('HexahedronSetTopologyModifier'))
-    t.append(ET.Element('HexahedronSetTopologyAlgorithms'))
+    # t.append(ET.Element('HexahedronSetTopologyAlgorithms'))
     t.append(ET.Element('HexahedronSetGeometryAlgorithms'))
 
     t.append(ET.Element("DiagonalMass", massDensity = o.totalMass, name="diagonalMass"))
@@ -560,7 +562,6 @@ def exportThickQuadShell(o, opt):
     # t.append(v)
     return t
 
-
 def exportVolumetric(o, opt):
     name = fixName(o.name)
     t = ET.Element("Node", name = name)
@@ -572,11 +573,11 @@ def exportVolumetric(o, opt):
     t.append(exportTetrahedralTopology(o, opt, topotetra))
     t.append(createMechanicalObject(o))
     t.append(ET.Element('TetrahedronSetTopologyModifier', removeIsolated = "false"))
-    t.append(ET.Element('TetrahedronSetTopologyAlgorithms', template = 'Vec3d'))
+    # t.append(ET.Element('TetrahedronSetTopologyAlgorithms', template = 'Vec3d'))
     t.append(ET.Element('TetrahedronSetGeometryAlgorithms', template = 'Vec3d'))
-
+    
     # set massDensity later
-    t.append(ET.Element("UniformMass", vertexMass = o.totalMass, handleTopoChange="true"))
+    t.append(ET.Element("UniformMass", vertexMass = o.totalMass, handleTopologicalChanges="true"))
     if o.materialType == "ELASTIC":
         h = ET.Element('TetrahedralCorotationalFEMForceField')
         addElasticityParameters(o,h)
@@ -597,7 +598,7 @@ def exportVolumetric(o, opt):
         n = ET.Element('Node', name="triangle-surface")
         n.append(ET.Element("TriangleSetTopologyContainer",name="topotri"))
         n.append(ET.Element("TriangleSetTopologyModifier",))
-        n.append(ET.Element("TriangleSetTopologyAlgorithms", template="Vec3d" ))
+        # n.append(ET.Element("TriangleSetTopologyAlgorithms", template="Vec3d" ))
         n.append(ET.Element("TriangleSetGeometryAlgorithms", template="Vec3d"))
 
         n.append(ET.Element('Tetra2TriangleTopologicalMapping', input="@../"+topotetra, output="@topotri", flipNormals='true'))
@@ -653,12 +654,12 @@ def exportHexVolumetric(o, opt):
 
     t.append(createMechanicalObject(o))
     t.append(ET.Element('HexahedronSetTopologyModifier', removeIsolated = "false"))
-    t.append(ET.Element('HexahedronSetTopologyAlgorithms', template = 'Vec3d'))
+    # t.append(ET.Element('HexahedronSetTopologyAlgorithms', template = 'Vec3d'))
     t.append(ET.Element('HexahedronSetGeometryAlgorithms', template = 'Vec3d'))
 
     # set massDensity later
     if opt.scene.versionSOFA == "18":
-        t.append(ET.Element("UniformMass", vertexMass = o.totalMass, handleTopoChange="true"))
+        t.append(ET.Element("UniformMass", vertexMass = o.totalMass, handleTopologicalChanges="true"))
     else:
         t.append(ET.Element("UniformMass", mass = o.totalMass))
     if o.materialType == "ELASTIC":
@@ -682,7 +683,7 @@ def exportHexVolumetric(o, opt):
       qs.append(ET.Element("QuadSetTopologyContainer", name=name + "-quadSurf"))
       qs.append(ET.Element("QuadSetGeometryAlgorithms", template="Vec3d"))
       qs.append(ET.Element("QuadSetTopologyModifier"))
-      qs.append(ET.Element("QuadSetTopologyAlgorithms", template="Vec3d"))
+      # qs.append(ET.Element("QuadSetTopologyAlgorithms", template="Vec3d"))
       qs.append(ET.Element("Hexa2QuadTopologicalMapping", input='@../' + topotetra, output="@" + name + "-quadSurf"))
 
       if o.useShader:
@@ -706,7 +707,7 @@ def exportHexVolumetric(o, opt):
       ts = ET.Element('Node', name="triangle-surface")
       ts.append(ET.Element('TriangleSetTopologyContainer',name=name + '-triSurf'))
       ts.append(ET.Element('TriangleSetTopologyModifier'))
-      ts.append(ET.Element('TriangleSetTopologyAlgorithms', template="Vec3d"))
+      # ts.append(ET.Element('TriangleSetTopologyAlgorithms', template="Vec3d"))
       ts.append(ET.Element('TriangleSetGeometryAlgorithms', template="Vec3d"))
       ts.append(ET.Element('Quad2TriangleTopologicalMapping', input = "@../" + name + "-quadSurf", output = "@" + name + "-triSurf"))
       ts.extend(collisionModelParts(o,opt))
@@ -790,16 +791,15 @@ def collisionModelParts(o, opt, obstacle = False, group = None, bothSide = 0):
     if o.template in ('THICKCURVE', 'VOLUMETRIC'):
         return [
             #ET.Element("PointModel",selfCollision=sc, contactFriction = o.contactFriction, contactStiffness = o.contactStiffness, group=group, moving = M, simulated = M, bothSide= bothSide ),
-            ET.Element("PointModel",selfCollision=sc, contactFriction = o.contactFriction, active = "0", contactStiffness = o.contactStiffness, group=group, moving = M, simulated = M, bothSide= bothSide ),
-            ET.Element("LineModel",selfCollision=sc,  contactFriction = o.contactFriction, contactStiffness = o.contactStiffness, group=group, moving = M, simulated = M, bothSide= bothSide ),
-            ET.Element("TriangleModel", name="TriangleModel", tags = objectTag, selfCollision=sc, contactFriction = o.contactFriction, contactStiffness = o.contactStiffness, group=group, moving = M, simulated = M, bothSide= bothSide )
+            ET.Element("PointCollisionModel",selfCollision=sc, contactFriction = o.contactFriction, active = "0", contactStiffness = o.contactStiffness, group=group, moving = M, simulated = M, bothSide= bothSide ),
+            ET.Element("LineCollisionModel",selfCollision=sc,  contactFriction = o.contactFriction, contactStiffness = o.contactStiffness, group=group, moving = M, simulated = M, bothSide= bothSide ),
+            ET.Element("TriangleCollisionModel", name="TriangleModel", tags = objectTag, selfCollision=sc, contactFriction = o.contactFriction, contactStiffness = o.contactStiffness, group=group, moving = M, simulated = M, bothSide= bothSide )
         ]
     else:
         return [
-            ET.Element("PointModel",selfCollision=sc, proximity = o.proximity, contactFriction = o.contactFriction, contactStiffness = o.contactStiffness, group=group, moving = M, simulated = M, bothSide= bothSide ),
-            # ET.Element("TPointModel", name = 'testPointCollision', contactStiffness=o.contactStiffness, bothSide="0", proximity = o.proximity, group= o.collisionGroup, movin = M ),                          
-            ET.Element("LineModel",selfCollision=sc, proximity=o.proximity, contactFriction = o.contactFriction, contactStiffness = o.contactStiffness, group=group, moving = M, simulated = M, bothSide= bothSide ),
-            ET.Element("TriangleModel", name="TriangleModel", tags = objectTag, selfCollision=sc, proximity=o.proximity, contactFriction = o.contactFriction, contactStiffness = o.contactStiffness, group=group, moving = M, simulated = M, bothSide= bothSide )
+            ET.Element("PointCollisionModel",selfCollision=sc, proximity = o.proximity, contactFriction = o.contactFriction, contactStiffness = o.contactStiffness, group=group, moving = M, simulated = M, bothSide= bothSide ),
+            ET.Element("LineCollisionModel",selfCollision=sc, proximity=o.proximity, contactFriction = o.contactFriction, contactStiffness = o.contactStiffness, group=group, moving = M, simulated = M, bothSide= bothSide ),
+            ET.Element("TriangleCollisionModel", name="TriangleModel", tags = objectTag, selfCollision=sc, proximity=o.proximity, contactFriction = o.contactFriction, contactStiffness = o.contactStiffness, group=group, moving = M, simulated = M, bothSide= bothSide )
         ]
     
 
@@ -828,12 +828,12 @@ def exportInstrument(o, opt):
             child.append(mo)
             # the contactStiffness below used to be 0.01, Ruiliang changed to 2.0 to soften the organs.
             if scn.precompution:
-              pm = ET.Element("TPointModel", name = 'toolTip',
+              pm = ET.Element("PointCollisionModel", name = 'toolTip',
                                contactStiffness="0.000001", bothSide="0", proximity = i.proximity,
                                group= o.collisionGroup
                                )
             else:
-              pm = ET.Element("TPointModel", name = 'toolTip',
+              pm = ET.Element("PointCollisionModel", name = 'toolTip',
                                  contactStiffness="15.0", bothSide="0", proximity = i.proximity,
                                  group= o.collisionGroup
                                  )
@@ -869,12 +869,12 @@ def exportInstrument(o, opt):
             mo.set('name', 'CM');
             child.append(mo)
             if scn.precompution:
-              pm = ET.Element("PointModel", name = 'toolCollision', bothSide="0",
+              pm = ET.Element("PointCollisionModel", name = 'toolCollision', bothSide="0",
                                contactStiffness="0.00001", contactFriction="5.0", proximity = i.proximity,
                                group= o.collisionGroup, moving="1", selfCollision="0", simulated="1"
                                )
             else:
-              pm = ET.Element("PointModel", name = 'toolCollision', bothSide="0",
+              pm = ET.Element("PointCollisionModel", name = 'toolCollision', bothSide="0",
                                contactStiffness="4.7", contactFriction="500.0", proximity = i.proximity,
                                group= o.collisionGroup, moving="1", selfCollision="0", simulated="1"
                                )
@@ -997,7 +997,6 @@ def exportDeformableGrid(o,opt):
     return t
 
    
- 
 def exportCloth(o, opt):
     name=fixName(o.name)
     t = ET.Element("Node",name=name)
@@ -1007,7 +1006,7 @@ def exportCloth(o, opt):
     # Toploogy
     t.append(exportTriangularTopologyContainer(o,opt))
     t.append(ET.Element("TriangleSetTopologyModifier", removeIsolated = "false"))
-    t.append(ET.Element("TriangleSetTopologyAlgorithms"))
+    # t.append(ET.Element("TriangleSetTopologyAlgorithms"))
     t.append(ET.Element("TriangleSetGeometryAlgorithms"))
 
     # Mechanical Object
@@ -1156,7 +1155,6 @@ def addShadertoVisual(o,v):
             v.append(ogltesslvl)
     return v
 
-
 def exportObstacle(o, opt):
     name=fixName(o.name)
     t = ET.Element("Node",name=name)
@@ -1227,7 +1225,6 @@ def addMaterialToBicubic(o, t):
         #    tex = mat.texture_slots[0].texture
         #    if tex.type == 'IMAGE' :
         #        t.set("texturename", bpy.path.abspath(tex.image.filepath))
-
 
 def addMaterial(o, t):
     m = o.data
@@ -1373,8 +1370,7 @@ def exportHaptic(l, opt):
     instrumentsWithCamera = []
 
     # Stuff at the root that are needed for a haptic scene
-    if opt.scene.versionSOFA == "18":
-        nodes.append(ET.Element("RequiredPlugin", pluginName="SofaMiscCollision"))
+    nodes.append(ET.Element("RequiredPlugin", pluginName="SofaMiscCollision"))
     #nodes.append(ET.Element("RequiredPlugin", pluginName="Sensable"))
     nodes.append(ET.Element("RequiredPlugin", pluginName="SurfLabHapticDevice"))
     nodes.append(ET.Element("RequiredPlugin", pluginName="SurfLabHaptic"))
@@ -1450,12 +1446,13 @@ def exportHaptic(l, opt):
                                  tags= omniTag, scale = hp.scale * scaleBase , positionBase = positionBase, orientationBase = orientationBase, desirePosition = moveTo,
                                  permanent="true", listening="true", alignOmniWithCamera=scene.alignOmniWithCamera,
                                  forceScale = hp.forceScale);
-            if hp.enableAndroidController:
-                hapticDriverNode.set("enableUDPServer", "true")
-                hapticDriverNode.set("inServerIPAddr", hp.serverIPAddr)
-                hapticDriverNode.set("inServerPortNum", hp.serverPortNum)
+            if hp.enableBluetoothController:
+                hapticDriverNode.set("enableIPCServer", "true")
+                hapticDriverNode.set("motionScaleFactor", hp.phoneMotionScale)  
                 # hapticDriverNode.set("orientationBase", "0.0 0.0 0.0 1.0")
                 # hapticDriverNode.set("alignOmniWithCamera","true")
+            else:
+                hapticDriverNode.set("enableIPCServer", "false")
             rl.append(hapticDriverNode);
         rl.append(ET.Element("MechanicalObject", name="ToolRealPosition", tags=omniTag, template="Rigid3d", position="0 0 0 0 0 0 1",free_position="0 0 0 0 0 0 1"))
         nt = ET.Element("Node",name = "Tool");
@@ -1500,13 +1497,11 @@ def objectNode(opt, t):
     else:
         return t
 
-
 def fovOfCamera(c):
     """Calculate field of view in degrees from focal length of a lens,
     assuming the standard film size"""
     correction = 717 / 1024.0
     return 2 * math.atan(c.sensor_width / (2 * c.lens)) * 180 / math.pi * correction
-
 
 def exportCamera(o, opt):
     fov = fovOfCamera(o.data)
@@ -1594,13 +1589,26 @@ def exportScene(opt):
         # root.set("gravity",[0,0,0])
     root.set("dt",0.01)
 
+    #add the required plugins list as required in v21.06
+    root.append(ET.Element('RequiredPlugin', name='SofaBoundaryCondition'));
+    root.append(ET.Element('RequiredPlugin', name='SofaConstraint'));
+    root.append(ET.Element('RequiredPlugin', name='SofaGeneralSimpleFem'));
+    root.append(ET.Element('RequiredPlugin', name='SofaGraphComponent'));
+    root.append(ET.Element('RequiredPlugin', name='SofaImplicitOdeSolver'));
+    root.append(ET.Element('RequiredPlugin', name='SofaTopologyMapping'));
+    root.append(ET.Element('RequiredPlugin', name='SofaDeformable'));
+    root.append(ET.Element('RequiredPlugin', name='SofaMeshCollision'));
+    root.append(ET.Element('RequiredPlugin', name='SofaRigid'));
+    root.append(ET.Element('RequiredPlugin', name='SofaLoader'));
+
     #lcp = ET.Element("LCPConstraintSolver", tolerance="1e-6", maxIt = "1000", mu = scene.mu, '1e-6'))
     lcp = ET.Element("GenericConstraintSolver", tolerance="1e-6", maxIterations = "10000")
     root.append(lcp)
 
     root.append(ET.Element('FreeMotionAnimationLoop'))
     root.append(ET.Element("CollisionPipeline", depth="6", name="CollisionPipeline"))
-    root.append(ET.Element("BruteForceDetection", name="N2"))
+    root.append(ET.Element("BruteForceBroadPhase"))
+    root.append(ET.Element("BVHNarrowPhase"))
     root.append(ET.Element("LocalMinDistance", angleCone = "0.0", alarmDistance=scene.alarmDistance,contactDistance=scene.contactDistance))
     root.append(ET.Element("CollisionGroup"))
     root.append(ET.Element('CollisionResponse', response="FrictionContact", name="CollisionResponse"))
